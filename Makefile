@@ -40,7 +40,7 @@ SOURCES = \
 	__init__.py \
 	i_plugin.py i_plugin_dialog.py
 
-PLUGINNAME = i_plugin
+PLUGINNAME = interpolation
 
 PY_FILES = \
 	__init__.py \
