@@ -491,16 +491,31 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             )
             return False
 
-        # Check for zero values in the selected field
+        # Check for zero values and NULLs in the selected field
         has_zero = False
+        has_null = False
+        from qgis.PyQt.QtCore import QVariant
         for feature in input_layer.getFeatures():
             value = feature[field]
+            # Prüfe auf echte Nullwerte und auf QVariant/None
+            if value is None or (isinstance(value, QVariant) and value.isNull()):
+                has_null = True
+                break
             try:
-                if value is not None and float(value) == 0:
+                if float(value) == 0:
                     has_zero = True
                     break
             except Exception:
-                continue
+                # Falls ein Wert nicht konvertierbar ist, als ungültig behandeln
+                has_null = True
+                break
+        if has_null:
+            QMessageBox.warning(
+                self,
+                "Warnung",
+                "Daten enthalten leere oder ungültige Werte (NULLs). Die Interpolation kann dies nicht verarbeiten. Bitte filtern."
+            )
+            return False
         if has_zero:
             QMessageBox.warning(
                 self,

@@ -630,8 +630,9 @@ class IPlugIn:
                 continue
                 
             point = geom.asPoint()
-            value = feature.attribute(field_name)
-            
+            # Nutze get_field_value für robuste Wert-Erkennung (QVariant/NULL/None)
+            value = self.get_field_value(feature, field_name)
+        
             # Wenn boundary_layer vorhanden, prüfe ob der Punkt in irgendeiner Parzelle liegt
             if boundary_layer:
                 point_geom = QgsGeometry.fromPointXY(point)
@@ -642,12 +643,16 @@ class IPlugIn:
                         break
                 if not in_boundary:
                     continue
-            
+        
             # Punkt hinzufügen wenn er valide ist
-            if value is not None:
-                x.append(point.x())
-                y.append(point.y())
-                z.append(float(value))
+            if value is None:
+                msg = f"Ungültiger Wert (NULL/QVariant) im Feld '{field_name}' für Feature-ID {feature.id()}. Bitte bereinigen Sie Ihre Daten."
+                QgsMessageLog.logMessage(msg, "I-PlugIn", Qgis.Critical)
+                QMessageBox.critical(None, "Ungültige Werte gefunden", msg)
+                raise ValueError(msg)
+            x.append(point.x())
+            y.append(point.y())
+            z.append(float(value))
         
         # Convert lists to numpy arrays
         if len(x) > 0:
@@ -822,7 +827,22 @@ class IPlugIn:
                 - plot_path: Pfad zur Variogramm-Visualisierung
         """
         try:
-            # Validiere Eingabedaten
+            # Prüfe auf ungültige Werte (None, QVariant, NaN) und breche ggf. mit Fehlermeldung ab
+            from qgis.PyQt.QtCore import QVariant
+            for xi, yi, zi in zip(x, y, z):
+                if xi is None or yi is None or zi is None:
+                    raise ValueError("Die Daten enthalten ungültige Werte (NULL/leer). Bitte bereinigen Sie Ihre Daten.")
+                if isinstance(xi, QVariant) and xi.isNull():
+                    raise ValueError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
+                if isinstance(yi, QVariant) and yi.isNull():
+                    raise ValueError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
+                if isinstance(zi, QVariant) and zi.isNull():
+                    raise ValueError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
+                try:
+                    if np.isnan(float(xi)) or np.isnan(float(yi)) or np.isnan(float(zi)):
+                        raise ValueError("Die Daten enthalten ungültige Werte (NaN). Bitte bereinigen Sie Ihre Daten.")
+                except Exception:
+                    raise ValueError("Die Daten enthalten ungültige Werte (nicht numerisch). Bitte bereinigen Sie Ihre Daten.")
             if len(x) < 30:
                 raise ValueError("Zu wenige Datenpunkte für eine stabile Variogramm-Analyse (min. 30 benötigt)")
             
