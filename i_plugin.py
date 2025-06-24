@@ -422,7 +422,7 @@ class IPlugIn:
         QgsMessageLog.logMessage("Successfully created valid boundary geometry", "I-PlugIn", Qgis.Info)
         return boundary_geom
 # CHECKS DIE DATEN DIE EINGEBEN WERDEN OB SIE IN DER BOUNDARY LIEGEN
-    def validate_input_data(self, layer, field_name, boundary_layer=None):
+    def validate_input_data(self, layer, field_name=None, boundary_layer=None):
         """Validiert die Eingabedaten für die Interpolation.
         
         Führt umfangreiche Prüfungen der Eingabedaten durch:
@@ -430,8 +430,8 @@ class IPlugIn:
            - Existenz von Features
            - Gültiges Koordinatensystem (UTM)
            - Automatische UTM-Konvertierung bei Bedarf
-        2. Feld-Prüfungen:
-           - Existenz gültiger numerischer Werte
+        2. Feld-Prüfungen (optional):
+           - Existenz gültiger numerischer Werte (nur wenn field_name gesetzt)
         3. Boundary-Prüfungen (optional):
            - Gültigkeit der Geometrien
            - UTM-Konvertierung wenn nötig
@@ -439,7 +439,7 @@ class IPlugIn:
         
         Args:
             layer (QgsVectorLayer): Der zu prüfende Eingabe-Layer
-            field_name (str): Name des Feldes mit den zu interpolierenden Werten
+            field_name (str, optional): Name des Feldes mit den zu interpolierenden Werten (optional)
             boundary_layer (QgsVectorLayer, optional): Layer mit Begrenzungspolygonen
             
         Returns:
@@ -455,8 +455,9 @@ class IPlugIn:
         
         Notes:
             - Bietet interaktive UTM-Konvertierung mit Benutzerabfrage
-            - Prüft auch auf NaN-Werte im Zielfeld
+            - Prüft auch auf NaN-Werte im Zielfeld (nur wenn field_name gesetzt)
             - Boundary-Layer ist optional
+            - Wenn field_name nicht gesetzt ist, werden nur Layer- und Boundary-Prüfungen durchgeführt
         """
         # Check if layer has features
         if layer.featureCount() == 0:
@@ -464,40 +465,38 @@ class IPlugIn:
                 "Der Eingabelayer enthält keine Punkte. "
                 "Bitte wählen Sie einen Layer mit Punktdaten aus."
             )
-            
-        # Check if field has valid values
-        valid_count = 0
-        zero_count = 0
-        total_count = 0
         
-        for feature in layer.getFeatures():
-            total_count += 1
-            value = self.get_field_value(feature, field_name)
-            if value is not None and not np.isnan(value):
-                valid_count += 1
-                if value == 0:
-                    zero_count += 1
-                
-        if valid_count == 0:
-            raise ValueError(
-                f"Das ausgewählte Feld '{field_name}' enthält keine gültigen Werte. "
-                "Bitte wählen Sie ein Feld mit numerischen Werten aus."
-            )
-            
-        # Warnung wenn alle oder die meisten Werte Null sind
-        if zero_count > 0:
-            zero_percentage = (zero_count / valid_count) * 100
-            if zero_percentage > 90:  # Wenn mehr als 90% der Werte Null sind
-                msg_box = QMessageBox()
-                msg_box.setIcon(QMessageBox.Warning)
-                msg_box.setText(f"Warnung: {zero_percentage:.1f}% der Werte sind Null")
-                msg_box.setInformativeText(
-                    f"Von {valid_count} gültigen Werten sind {zero_count} Null-Werte.\n"
-                    "Dies könnte zu Problemen bei der Interpolation führen."
+        # Feld-Prüfungen nur wenn field_name gesetzt ist
+        if field_name is not None:
+            valid_count = 0
+            zero_count = 0
+            total_count = 0
+            for feature in layer.getFeatures():
+                total_count += 1
+                value = self.get_field_value(feature, field_name)
+                if value is not None and not np.isnan(value):
+                    valid_count += 1
+                    if value == 0:
+                        zero_count += 1
+            if valid_count == 0:
+                raise ValueError(
+                    f"Das ausgewählte Feld '{field_name}' enthält keine gültigen Werte. "
+                    "Bitte wählen Sie ein Feld mit numerischen Werten aus."
                 )
-                msg_box.setStandardButtons(QMessageBox.Ok)
-                msg_box.exec_()
-            
+            # Warnung wenn alle oder die meisten Werte Null sind
+            if zero_count > 0:
+                zero_percentage = (zero_count / valid_count) * 100
+                if zero_percentage > 90:  # Wenn mehr als 90% der Werte Null sind
+                    msg_box = QMessageBox()
+                    msg_box.setIcon(QMessageBox.Warning)
+                    msg_box.setText(f"Warnung: {zero_percentage:.1f}% der Werte sind Null")
+                    msg_box.setInformativeText(
+                        f"Von {valid_count} gültigen Werten sind {zero_count} Null-Werte.\n"
+                        "Dies könnte zu Problemen bei der Interpolation führen."
+                    )
+                    msg_box.setStandardButtons(QMessageBox.Ok)
+                    msg_box.exec_()
+        
         # Check if layer is in UTM coordinate system
         if not layer.crs().isValid() or not (layer.crs().authid().startswith('EPSG:326') or layer.crs().authid().startswith('EPSG:327')):
             msg_box = QMessageBox()
@@ -519,7 +518,7 @@ class IPlugIn:
                     "I-PlugIn",
                     Qgis.Warning
                 )
-            
+        
         # If boundary layer is specified, check if points fall within it and convert to UTM if needed
         if boundary_layer:
             if not boundary_layer.crs().isValid() or not (boundary_layer.crs().authid().startswith('EPSG:326') or boundary_layer.crs().authid().startswith('EPSG:327')):
@@ -566,8 +565,11 @@ class IPlugIn:
                 )
                 
             return points_within
-            
-        return valid_count
+        # Rückgabewert je nach field_name-Check
+        if field_name is not None:
+            return valid_count
+        else:
+            return None
 
 
 ################################ Interpolation beginnt #####################################################################        
@@ -843,6 +845,7 @@ class IPlugIn:
                         raise ValueError("Die Daten enthalten ungültige Werte (NaN). Bitte bereinigen Sie Ihre Daten.")
                 except Exception:
                     raise ValueError("Die Daten enthalten ungültige Werte (nicht numerisch). Bitte bereinigen Sie Ihre Daten.")
+            # Validiere Eingabedaten
             if len(x) < 30:
                 raise ValueError("Zu wenige Datenpunkte für eine stabile Variogramm-Analyse (min. 30 benötigt)")
             
@@ -917,9 +920,15 @@ class IPlugIn:
             metrics['aic'] = aic
             metrics['mse'] = mse  # MSE zu Metriken hinzufügen
             
-            # Erstelle Plot
+            # Erstelle Plot im Projekt-Output-Verzeichnis
             plotter = VariogramPlotter()
-            save_path = os.path.join(self.plugin_dir, 'variogram.png')
+            output_dir = params.get('output_dir')
+            base_name = params.get('base_name', 'variogram')
+            if output_dir is None:
+                # Fallback: plugin dir
+                save_path = os.path.join(self.plugin_dir, f'{base_name}_variogram.png')
+            else:
+                save_path = os.path.join(output_dir, f'{base_name}_variogram.png')
             plotter.plot_variogram(
                 lags, experimental,
                 model_type,
@@ -1018,7 +1027,8 @@ class IPlugIn:
             if params['variogram_model'].lower() == 'linear':
                 variogram_params = {
                     "slope": params.get('slope', params.get('range', 1.0)),  # Fallback auf range
-                    "nugget": params['nugget']
+                    "nugget": params['nugget'],
+                    "nlags": params['nlags']
                 }
             else:
                 variogram_params = {

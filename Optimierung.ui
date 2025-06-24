@@ -23,7 +23,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <widget class="QWidget" name="tab_input">
     <attribute name="title">
@@ -355,6 +355,9 @@
         <height>29</height>
        </rect>
       </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
       <property name="value">
        <double>0.100000000000000</double>
       </property>
@@ -406,6 +409,9 @@
         <width>80</width>
         <height>29</height>
        </rect>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
       </property>
       <property name="value">
        <double>0.000000000000000</double>
@@ -763,6 +769,9 @@
         <height>29</height>
        </rect>
       </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
+      </property>
       <property name="value">
        <double>0.100000000000000</double>
       </property>
@@ -788,6 +797,9 @@
         <width>80</width>
         <height>29</height>
        </rect>
+      </property>
+      <property name="singleStep">
+       <double>0.100000000000000</double>
       </property>
       <property name="value">
        <double>0.000000000000000</double>

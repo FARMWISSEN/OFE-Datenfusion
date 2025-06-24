@@ -130,7 +130,110 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         elif hasattr(self, 'page_kriging_2'):
             self.analyze_variogram_button_points.setParent(self.page_kriging_2)
 
+        # --- Optimierung: Hinzufügen-Button anbinden ---
+        if hasattr(self, 'pushButton'):
+            self.pushButton.clicked.connect(self.raster_interpolation_layer_add)
+        if hasattr(self, 'pushButton_5'):
+            self.pushButton_5.clicked.connect(self.point_interpolation_layer_add)
+        if hasattr(self, 'pushButton_4'):
+            self.pushButton_4.clicked.connect(self.target_layer_add)
+        if hasattr(self, 'pushButton_2'):
+            self.pushButton_2.clicked.connect(self.boundary_layer_add)
+        
+
 # VERBINDUNG DER SIGNAL 
+    def boundary_layer_add(self):
+        """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
+        try:
+            layer = self.mMapLayerComboBox_boundary.currentLayer() if hasattr(self, 'mMapLayerComboBox_boundary') else None
+            if layer is None:
+                QMessageBox.warning(self, "Eingabe fehlt", "Bitte wählen Sie einen Layer aus.")
+                return
+            layer_name = layer.name()
+            # Validierung (nutzt Plugin-Backend, konvertiert ggf. zu UTM und legt neuen Layer an)
+            self.plugin.validate_input_data(layer)
+            # Nach möglicher UTM-Konvertierung gezielt nach neuem Layer suchen
+            utm_layer = None
+            project = QgsProject.instance()
+            for lyr in project.mapLayers().values():
+                if lyr.name().startswith("UTM_") and layer_name in lyr.name():
+                    utm_layer = lyr
+                    break
+            if utm_layer:
+                self.mMapLayerComboBox_boundary.setLayer(utm_layer)
+            QMessageBox.information(self, "Validierung erfolgreich", f"Layer '{layer.name()}' ist gültig und kann verwendet werden.")
+        except Exception as e:
+            QMessageBox.critical(self, "Validierungsfehler", str(e))
+    def target_layer_add(self):
+        """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
+        try:
+            layer = self.mMapLayerComboBox_target_layer.currentLayer() if hasattr(self, 'mMapLayerComboBox_target_layer') else None
+            if layer is None:
+                QMessageBox.warning(self, "Eingabe fehlt", "Bitte wählen Sie einen Layer aus.")
+                return
+            layer_name = layer.name()
+            # Validierung (nutzt Plugin-Backend, konvertiert ggf. zu UTM und legt neuen Layer an)
+            self.plugin.validate_input_data(layer)
+            # Nach möglicher UTM-Konvertierung gezielt nach neuem Layer suchen
+            utm_layer = None
+            project = QgsProject.instance()
+            for lyr in project.mapLayers().values():
+                if lyr.name().startswith("UTM_") and layer_name in lyr.name():
+                    utm_layer = lyr
+                    break
+            if utm_layer:
+                self.mMapLayerComboBox_target_layer.setLayer(utm_layer)
+            QMessageBox.information(self, "Validierung erfolgreich", f"Layer '{layer.name()}' ist gültig und kann verwendet werden.")
+        except Exception as e:
+            QMessageBox.critical(self, "Validierungsfehler", str(e))
+
+    def raster_interpolation_layer_add(self):
+        """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
+        try:
+            layer = self.mMapLayerComboBox.currentLayer() if hasattr(self, 'mMapLayerComboBox') else None
+            field = self.mFieldComboBox.currentField() if hasattr(self, 'mFieldComboBox') else None
+            if layer is None or not field:
+                QMessageBox.warning(self, "Eingabe fehlt", "Bitte wählen Sie einen Layer und ein Attribut aus.")
+                return
+            layer_name = layer.name()
+            # Validierung (nutzt Plugin-Backend, konvertiert ggf. zu UTM und legt neuen Layer an)
+            self.plugin.validate_input_data(layer, field)
+            # Nach möglicher UTM-Konvertierung gezielt nach neuem Layer suchen
+            utm_layer = None
+            project = QgsProject.instance()
+            for lyr in project.mapLayers().values():
+                if lyr.name().startswith("UTM_") and layer_name in lyr.name():
+                    utm_layer = lyr
+                    break
+            if utm_layer:
+                self.mMapLayerComboBox.setLayer(utm_layer)
+            QMessageBox.information(self, "Validierung erfolgreich", f"Layer '{layer.name()}', Feld '{field}' ist gültig und kann verwendet werden.")
+        except Exception as e:
+            QMessageBox.critical(self, "Validierungsfehler", str(e))
+
+    def point_interpolation_layer_add(self):
+        """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
+        try:
+            layer = self.mMapLayerComboBox_covariate_point.currentLayer() if hasattr(self, 'mMapLayerComboBox_covariate_point') else None
+            field = self.mFieldComboBox_covariate.currentField() if hasattr(self, 'mFieldComboBox_covariate') else None
+            if layer is None or not field:
+                QMessageBox.warning(self, "Eingabe fehlt", "Bitte wählen Sie einen Layer und ein Attribut aus.")
+                return
+            layer_name = layer.name()
+            # Validierung (nutzt Plugin-Backend, konvertiert ggf. zu UTM und legt neuen Layer an)
+            self.plugin.validate_input_data(layer, field)
+            # Nach möglicher UTM-Konvertierung gezielt nach neuem Layer suchen
+            utm_layer = None
+            project = QgsProject.instance()
+            for lyr in project.mapLayers().values():
+                if lyr.name().startswith("UTM_") and layer_name in lyr.name():
+                    utm_layer = lyr
+                    break
+            if utm_layer:
+                self.mMapLayerComboBox_covariate_point.setLayer(utm_layer)
+            QMessageBox.information(self, "Validierung erfolgreich", f"Layer '{layer.name()}', Feld '{field}' ist gültig und kann verwendet werden.")
+        except Exception as e:
+            QMessageBox.critical(self, "Validierungsfehler", str(e))
 
     def show_variogram_analysis_points(self):
         """Show variogram analysis dialog with current parameters for point interpolation."""
