@@ -1,32 +1,82 @@
-Plugin Builder Results
+# I-Plugin – Interpolation für QGIS
 
-Your plugin IPlugIn was created in:
-    C:/Users/Legion Pro/OneDrive - Forschungs- u. Entwicklungszentrum FH-Kiel GmbH/4. SnapWürz/3.I-PlugIn\i_plugin
+## Übersicht
+Das I-Plugin erweitert QGIS um leistungsstarke Interpolationsverfahren (z.B. Ordinary Kriging) für Raster- und Punktdaten. Es bietet dir eine interaktive Variogramm-Analyse, automatische UTM-Konvertierung und eine deutschsprachige Benutzeroberfläche.
 
-Your QGIS plugin directory is located at:
-    C:/Users/Legion Pro/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins
+## Hauptfunktionen
+- Raster- und Punktinterpolation mittels Ordinary Kriging
+- Automatische UTM-Koordinatensystem-Konvertierung
+- Interaktive Variogramm-Analyse und -Optimierung
 
-What's Next:
+## Features
+### Interpolation
+- Ordinary Kriging für Rasterdaten und Punktdaten
+- Flexible Rasterauflösung
+- Punktinterpolation zur Datensatzanreicherung 
+- Automatische Variogramm-Parameter-Optimierung
 
-  * Copy the entire directory containing your new plugin to the QGIS plugin
-    directory
+### Datenverarbeitung
+- Automatische UTM-Zonenerkennung und -Konvertierung
+- Validierung von Eingabedaten und Geometrien
+- Unterstützung von Begrenzungspolygonen
+- Behandlung von Multi-Part-Geometrien
 
-  * Compile the resources file using pyrcc5
+### Analyse
+- Experimentelles und theoretisches Variogramm
+- Verschiedene Variogramm-Modelle verfügbar
+- RMSE- und R²-Berechnung für Modellvalidierung
 
-  * Run the tests (``make test``)
+### Benutzerfreundlichkeit
+- Interaktive Benutzeroberfläche
+- Automatische Koordinatensystem-Konvertierung
+- Ausführliche Fehlerbehandlung und Logging
+- Deutsche Benutzerführung
 
-  * Test the plugin by enabling it in the QGIS plugin manager
+## Installation
 
-  * Customize it by editing the implementation file: ``i_plugin.py``
+**Wichtig:** Für den aktuellen Entwicklungsstand musst du vor der Installation des Plugins in QGIS zunächst das Python-Package `pykrige` installieren.
 
-  * Create your own custom icon, replacing the default icon.png
+1. Öffne die **OSGeo4W Shell**.
+2. Gib folgenden Befehl ein und führe ihn aus:
+   ```
+   python -m pip install pykrige
+   ```
 
-  * Modify your user interface by opening IPlugIn_dialog_base.ui in Qt Designer
+Anschließend kannst du das Plugin wie gewohnt in QGIS installieren und testen.
 
-  * You can use the Makefile to compile your Ui and resource files when
-    you make changes. This requires GNU make (gmake)
+- **Manuell:**
+   - Kopiere dieses Repository nach `QGIS3/profiles/default/python/plugins/interpolation`.
 
-For more information, see the PyQGIS Developer Cookbook at:
-http://www.qgis.org/pyqgis-cookbook/index.html
+   - Starte QGIS neu und aktiviere das Plugin.
 
-(C) 2011-2018 GeoApt LLC - geoapt.com
+## Schnellstart
+- Aktiviere das Plugin (QGIS: Menü „Plugins“ → „Verwalten und installieren“)
+- Wähle im Menüband „I-Plugin“ aus
+- Lade deine Eingabedaten (Punkte, Polygone) und wähle die gewünschte Methode
+- Die Ergebnisse werden als neue Layer hinzugefügt
+
+## Voraussetzungen
+- QGIS >= 3.x
+- Python >= 3.7
+- GSTools (wird automatisch installiert)
+
+## Verzeichnisstruktur
+```
+interpolation/
+  ├── i_plugin.py
+  ├── i_plugin_dialog.py
+  ├── variogram_models.py
+  ├── variogram_plotter.py
+  ├── /tests
+  ├── /help
+  ├── /i18n
+  ├── /scripts
+  └── README.txt
+```
+
+## Support & Kontakt
+- Fehler bitte als Issue melden
+- Kontakt: [Deine E-Mail-Adresse oder Link zu Issues]
+
+## Lizenz
+Dieses Plugin steht unter der MIT-Lizenz. Details siehe LICENSE.txt.
