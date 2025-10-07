@@ -38,6 +38,7 @@ interpolation/
 - Kriging-Interpolation (Raster + Punkt-zu-Punkt)
 - Raster-Layer-Erstellung (GeoTIFF)
 - Metadaten-Management
+- **Automatisches Backup-Management** (neu)
 
 **Wichtige Methoden:**
 
@@ -50,8 +51,10 @@ interpolation/
 | `analyze_variogram()` | Variogramm-Analyse + Optimierung | 894-1058 |
 | `interpolate_ordinary_kriging()` | Führt Kriging durch (grid/points) | 1060-1147 |
 | `create_raster_layer()` | Erstellt GeoTIFF aus Interpolationsdaten | 1149-1227 |
-| `run_point_interpolation()` | Punkt-zu-Punkt Interpolation | 1402-1477 |
-| `run()` | Hauptworkflow für Raster-Interpolation | 1481-1735 |
+| **`create_layer_backup()`** | **Erstellt Backup vor Layer-Modifikation (neu)** | **1316-1405** |
+| `update_target_layer()` | Aktualisiert Ziel-Layer mit interpolierten Werten | 1407-1500 |
+| `run_point_interpolation()` | Punkt-zu-Punkt Interpolation (mit Backup) | 1502-1585 |
+| `run()` | Hauptworkflow für Raster-Interpolation | 1587-1841 |
 
 **Datenfluss (Raster-Interpolation):**
 ```
@@ -195,7 +198,11 @@ InterpolationError (Base)
 4. **Interpolation**:
    - `interpolate_ordinary_kriging()` mit style='points'
    - Interpoliert an Ziel-Koordinaten
-5. **Layer aktualisieren**:
+5. **🆕 Backup erstellen**:
+   - `create_layer_backup()` sichert Ziel-Layer
+   - Nur beim ersten Mal (idempotent)
+   - Speichert in `projektverzeichnis/backups/`
+6. **Layer aktualisieren**:
    - `update_target_layer()` fügt neues Feld hinzu
    - Schreibt interpolierte Werte in Attributtabelle
    - Feldname: max. 10 Zeichen (Shapefile-kompatibel)
@@ -230,6 +237,14 @@ InterpolationError (Base)
 - **Automatisch**: `calculate_optimal_lags()` berechnet optimale Lag-Anzahl
 - **Metriken**: RMSE, R², AIC für Modellvergleich
 - **Bounds**: Verhindert unrealistische Parameter
+
+### **6. Backup-Management (neu)**
+- **Automatisch**: Backup vor jeder Punkt-Interpolation
+- **Idempotent**: Nur ein Backup pro Layer (kein Timestamp)
+- **Speicherort**: `projektverzeichnis/backups/LayerName_backup.shp`
+- **Nicht-invasiv**: Backup wird nicht zum Projekt hinzugefügt
+- **Fallback**: Bei nicht gespeichertem Projekt → Home-Verzeichnis
+- **Return-Wert**: Tuple `(backup_path, was_created)` für User-Feedback
 
 ---
 
@@ -392,6 +407,7 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 - Metadaten-Export (JSON)
 - Deutsche UI und Fehlermeldungen
 - **Bugfix**: UTM-Konvertierung prüft auf existierende Layer/Dateien (verhindert Duplikate und Windows-Fehler)
+- **Feature**: Automatisches Backup vor Punkt-Interpolation (idempotent, nur ein Backup pro Layer)
 
 ---
 
@@ -399,8 +415,8 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 
 | Datei | Zeilen | Zweck | Wichtigste Funktionen |
 |-------|--------|-------|----------------------|
-| `i_plugin.py` | 1736 | Backend-Logik | `run()`, `interpolate_ordinary_kriging()`, `analyze_variogram()`, `convert_to_utm()` |
-| `i_plugin_dialog.py` | 997 | UI-Controller | `_validate_and_add_layer()`, `validate_inputs()`, `interpolate_points()` |
+| `i_plugin.py` | ~1850 | Backend-Logik | `run()`, `interpolate_ordinary_kriging()`, `analyze_variogram()`, `convert_to_utm()`, `create_layer_backup()` |
+| `i_plugin_dialog.py` | ~1020 | UI-Controller | `get_parameters()`, `validate_inputs()`, `interpolate_points()` |
 | `config.py` | 88 | Konfiguration | `InterpolationConfig` (alle Konstanten) |
 | `variogram_models.py` | 115 | Variogramm-Modelle | `optimize_variogram_parameters()`, `VARIOGRAM_MODELS` |
 | `exceptions.py` | 74 | Exception-Typen | `DataValidationError`, `GeometryError`, etc. |
@@ -420,6 +436,21 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 3. Generiert eindeutige Dateinamen mit Counter bei Konflikten
 4. Verwendet `CoordinateSystemError` für besseres Error-Handling
 5. Umfangreiches Logging für Debugging
+
+### ✅ Automatisches Backup-Management implementiert
+**Problem**: Bei Punkt-Interpolation wurde der Ziel-Layer direkt modifiziert ohne Backup
+- Keine Möglichkeit zur Wiederherstellung bei Fehlern
+- User musste manuell Backups erstellen
+
+**Lösung**:
+1. Neue Methode `create_layer_backup()` (Zeile 1316-1405)
+2. Automatisches Backup vor `update_target_layer()` in `run_point_interpolation()`
+3. Idempotent: Nur ein Backup pro Layer (ohne Timestamp)
+4. Speicherort: `projektverzeichnis/backups/LayerName_backup.shp`
+5. Return-Wert: `(backup_path, was_created)` für präzises User-Feedback
+6. Intelligente Nachricht: "wurde erstellt" vs. "existiert bereits"
+7. Nicht-invasiv: Backup wird nicht zum Projekt hinzugefügt
+8. Fallback: Bei nicht gespeichertem Projekt → Home-Verzeichnis
 
 ### ✅ Punkt-Interpolation Validierung korrigiert
 **Problem**: `validate_point_interpolation_inputs()` hatte mehrere Bugs (i_plugin_dialog.py)
