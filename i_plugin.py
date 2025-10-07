@@ -1313,6 +1313,97 @@ class IPlugIn:
         
         return str(output_path), output_dir
 
+    def create_layer_backup(self, layer, backup_suffix="_backup"):
+        """Erstellt ein Backup eines Layers, falls noch nicht vorhanden.
+        
+        Diese Methode erstellt beim ersten Aufruf ein Backup des Layers.
+        Bei weiteren Aufrufen wird das existierende Backup wiederverwendet.
+        
+        Args:
+            layer (QgsVectorLayer): Der zu sichernde Layer
+            backup_suffix (str): Suffix für den Backup-Dateinamen (default: "_backup")
+            
+        Returns:
+            tuple: (backup_path, was_created) - Pfad zur Backup-Datei und Boolean ob neu erstellt
+                   oder (None, False) bei Fehler
+            
+        Notes:
+            - Prüft ob bereits ein Backup existiert (verhindert mehrfache Backups)
+            - Speichert im Projektverzeichnis unter 'backups/'
+            - Dateiname: LayerName_backup.shp (ohne Timestamp)
+            - Backup wird NICHT automatisch zum Projekt hinzugefügt
+            - Idempotent: Mehrfache Aufrufe erstellen nur ein Backup
+        """
+        try:
+            # Prüfe ob Layer gültig ist
+            if not layer or not layer.isValid():
+                self.log("Ungültiger Layer für Backup", Qgis.Warning)
+                return None, False
+            
+            # Bestimme Backup-Verzeichnis
+            project = QgsProject.instance()
+            project_file = project.fileName()
+            if project_file:
+                project_dir = Path(os.path.dirname(project_file))
+            else:
+                self.log(
+                    "QGIS-Projekt ist nicht gespeichert. Backup wird im Home-Verzeichnis erstellt.",
+                    Qgis.Warning
+                )
+                project_dir = Path(os.path.expanduser("~"))
+            
+            # Erstelle Backup-Verzeichnis
+            backup_dir = project_dir / "backups"
+            backup_dir.mkdir(exist_ok=True)
+            
+            # Generiere Backup-Dateinamen
+            backup_filename = f"{layer.name()}{backup_suffix}.shp"
+            backup_path = backup_dir / backup_filename
+            
+            # Prüfe ob Backup-Datei bereits existiert
+            if backup_path.exists():
+                self.log(
+                    f"Backup-Datei '{backup_filename}' existiert bereits. "
+                    "Überspringe Backup-Erstellung.",
+                    Qgis.Info
+                )
+                return str(backup_path), False  # Existiert bereits, nicht neu erstellt
+            
+            # Backup existiert noch nicht - erstelle es
+            backup_path_str = str(backup_path)
+            self.log(f"Erstelle Backup von Layer '{layer.name()}': {backup_path_str}")
+            
+            # Erstelle Backup mit QGIS Processing
+            params = {
+                'INPUT': layer,
+                'OUTPUT': backup_path_str
+            }
+            
+            feedback = QgsProcessingFeedback()
+            result = processing.run("native:savefeatures", params, feedback=feedback)
+            
+            if result and 'OUTPUT' in result:
+                self.log(
+                    f"Backup erfolgreich erstellt: {backup_path.name}",
+                    Qgis.Success
+                )
+                
+                # Optional: Backup zum Projekt hinzufügen (auskommentiert, da meist nicht gewünscht)
+                # backup_layer = QgsVectorLayer(result['OUTPUT'], backup_layer_name, "ogr")
+                # if backup_layer.isValid():
+                #     project.addMapLayer(backup_layer)
+                
+                return result['OUTPUT'], True  # Neu erstellt
+            else:
+                self.log("Backup-Erstellung fehlgeschlagen", Qgis.Critical)
+                return None, False
+                
+        except Exception as e:
+            self.log(f"Fehler beim Erstellen des Backups: {str(e)}", Qgis.Critical)
+            import traceback
+            self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
+            return None, False
+
     def update_target_layer(self, target_layer, target_features, interpolated_values, field_name):
         """Aktualisiert den Ziel-Layer mit den interpolierten Werten."""
         try:
@@ -1462,6 +1553,18 @@ class IPlugIn:
             
             if interpolated_values is None:
                 raise ValueError("Interpolation fehlgeschlagen")
+        
+            # Erstelle Backup des Ziel-Layers vor Modifikation (nur beim ersten Mal)
+            backup_path, backup_created = self.create_layer_backup(target_layer)
+            if not backup_path:
+                self.log(
+                    "Warnung: Backup konnte nicht erstellt werden. Fahre trotzdem fort.",
+                    Qgis.Warning
+                )
+            
+            # Speichere Backup-Status für Success-Nachricht
+            params['backup_created'] = backup_created
+            params['backup_path'] = backup_path
         
             # Aktualisiere Ziel-Layer mit neuem Feld
             # Generiere kurzen Feldnamen für Shapefile (max. 10 Zeichen)
