@@ -1261,42 +1261,83 @@ class IPlugIn:
         base_name = f"{method}_{input_layer.name()}_{field_name}_{timestamp}"
         return base_name
 # RETURNS EIN METADATA DICT IN JSON IM ORDNER        
-    def save_metadata(self, output_dir, base_name, params):
-        """Save metadata about the interpolation."""
-        metadata = {
-            "input_layer": params["input_layer"].name(),
-            "input_field": params["input_field"],
-            "cell_size": params["cell_size"],
-            "boundary_layer": params["boundary_layer"].name() if params.get("boundary_layer") else None,
-            "timestamp": datetime.now().isoformat(),
-            "kriging_parameters": {
-                "variogram_model": params.get("variogram_model"),
-                "nlags": params.get("nlags", None),
-                "initial_parameters": {
+    def save_metadata(self, output_dir, base_name, params, interpolation_type="raster"):
+        """Speichert Metadaten über die Interpolation.
+        
+        Diese Methode ist generisch und funktioniert für beide Interpolationstypen:
+        - Raster-Interpolation: Speichert Input-Layer, Feld, Cell-Size, Boundary
+        - Punkt-Interpolation: Speichert Kovariaten-Layer, Ziel-Layer, Felder
+        
+        Args:
+            output_dir (Path): Verzeichnis für Metadaten-Datei
+            base_name (str): Basis-Name für die Metadaten-Datei
+            params (dict): Parameter-Dictionary mit allen Interpolations-Einstellungen
+            interpolation_type (str): "raster" oder "point" (default: "raster")
+            
+        Returns:
+            str: Pfad zur erstellten Metadaten-Datei oder None bei Fehler
+        """
+        try:
+            # Basis-Metadaten (für beide Typen gleich)
+            metadata = {
+                "interpolation_type": interpolation_type,
+                "timestamp": datetime.now().isoformat(),
+                "method": params.get("method", "ordinary_kriging"),
+                "kriging_parameters": {
+                    "variogram_model": params.get("variogram_model"),
+                    "nlags": params.get("nlags"),
                     "sill": params.get("sill"),
                     "range": params.get("range"),
                     "nugget": params.get("nugget")
                 }
             }
-        }
-        
-        # Füge Variogramm-Analyse-Ergebnisse hinzu, wenn vorhanden
-        if 'variogram_info' in params:
-            metadata['variogram_analysis'] = {
-                'metrics': params['variogram_info']['metrics'],
-                'parameters': params['variogram_info']['parameters'],
-                'experimental': {
-                    'lags': params['variogram_info']['experimental']['lags'][:10],  # Erste 10 Werte
-                    'semivariance': params['variogram_info']['experimental']['semivariance'][:10]  # Erste 10 Werte
-                }
-            }
-        
-        metadata_path = output_dir / f"{base_name}{InterpolationConfig.METADATA_SUFFIX}"
-        with open(metadata_path, "w") as f:
-            json.dump(metadata, f, indent=4)
+            
+            # Typ-spezifische Metadaten
+            if interpolation_type == "raster":
+                metadata.update({
+                    "input_layer": params.get("input_layer").name() if params.get("input_layer") else None,
+                    "input_field": params.get("input_field"),
+                    "cell_size": params.get("cell_size"),
+                    "boundary_layer": params.get("boundary_layer").name() if params.get("boundary_layer") else None,
+                    "output_format": "GeoTIFF"
+                })
+            elif interpolation_type == "point":
+                metadata.update({
+                    "covariate_layer": params.get("covariate_layer").name() if params.get("covariate_layer") else None,
+                    "covariate_field": params.get("covariate_field"),
+                    "target_layer": params.get("target_layer").name() if params.get("target_layer") else None,
+                    "interpolated_points": params.get("interpolated_points_count", "N/A"),
+                    "backup_created": params.get("backup_created", False),
+                    "backup_path": params.get("backup_path")
+                })
+            
+            # Speichere Metadaten
+            metadata_path = output_dir / f"{base_name}{InterpolationConfig.METADATA_SUFFIX}"
+            with open(metadata_path, "w") as f:
+                json.dump(metadata, f, indent=4)
+            
+            self.log(f"Metadaten gespeichert: {metadata_path.name}", Qgis.Info)
+            return str(metadata_path)
+            
+        except Exception as e:
+            self.log(f"Fehler beim Speichern der Metadaten: {str(e)}", Qgis.Warning)
+            return None
 # ERSTELLT DIE OUTPUT PATH UND DAS DIR             
     def setup_output_paths(self, input_layer, field_name, method):
-        """Setup output paths and directories."""
+        """Setup output paths and directories.
+        
+        Args:
+            input_layer: Input-Layer
+            field_name: Feldname
+            method: Methoden-Name (z.B. 'ordinary_kriging')
+            
+        Returns:
+            tuple: (output_path, output_dir) - Pfad zur Output-Datei und Output-Verzeichnis
+            
+        Notes:
+            - Mappt Methoden-Namen auf selbsterklärende Ordnernamen
+            - 'ordinary_kriging' → 'raster_interpolation'
+        """
         project_dir = self.get_project_dir()
         if not project_dir:
             return None, None
@@ -1304,8 +1345,17 @@ class IPlugIn:
         # Generate base name for outputs
         base_name = self.generate_output_name(input_layer, field_name, method)
         
+        # Map method names to descriptive directory names
+        method_dir_mapping = {
+            'ordinary_kriging': InterpolationConfig.RASTER_INTERPOLATION_DIR,
+            'point_interpolation': InterpolationConfig.POINT_INTERPOLATION_DIR
+        }
+        
+        # Use mapped name or fallback to original method name
+        dir_name = method_dir_mapping.get(method, method)
+        
         # Create method-specific subdirectory
-        output_dir = project_dir / method
+        output_dir = project_dir / dir_name
         output_dir.mkdir(exist_ok=True)
         
         # Generate output path
@@ -1573,6 +1623,25 @@ class IPlugIn:
             field_name = f"{clean_name[:InterpolationConfig.FIELD_NAME_TRUNCATE]}INT"
             self.update_target_layer(target_layer, target_features, interpolated_values, field_name)
             
+            # Speichere Metadaten für Punkt-Interpolation
+            params['interpolated_points_count'] = len(interpolated_values)
+            
+            # Erstelle Output-Verzeichnis für Metadaten
+            project_dir = self.get_project_dir()
+            if project_dir:
+                metadata_dir = project_dir / InterpolationConfig.POINT_INTERPOLATION_DIR
+                metadata_dir.mkdir(exist_ok=True)
+                
+                # Generiere Base-Name für Metadaten
+                base_name = self.generate_output_name(
+                    covariate_layer, 
+                    covariate_field, 
+                    InterpolationConfig.POINT_INTERPOLATION_DIR
+                )
+                
+                # Speichere Metadaten
+                self.save_metadata(metadata_dir, base_name, params, interpolation_type="point")
+            
             self.log("Punkt-Interpolation erfolgreich abgeschlossen", Qgis.Success)
         
         except Exception as e:
@@ -1703,7 +1772,7 @@ class IPlugIn:
                 )
                 
                 # Save metadata
-                self.save_metadata(output_dir, Path(output_path).stem, params)
+                self.save_metadata(output_dir, Path(output_path).stem, params, interpolation_type="raster")
                 
                 # Add layer to QGIS
                 layer_name = Path(output_path).stem

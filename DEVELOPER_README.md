@@ -37,7 +37,7 @@ interpolation/
 - Variogramm-Analyse und -Optimierung
 - Kriging-Interpolation (Raster + Punkt-zu-Punkt)
 - Raster-Layer-Erstellung (GeoTIFF)
-- Metadaten-Management
+- Metadaten-Management (generisch für Raster + Punkt)
 - **Automatisches Backup-Management** (neu)
 
 **Wichtige Methoden:**
@@ -51,10 +51,11 @@ interpolation/
 | `analyze_variogram()` | Variogramm-Analyse + Optimierung | 894-1058 |
 | `interpolate_ordinary_kriging()` | Führt Kriging durch (grid/points) | 1060-1147 |
 | `create_raster_layer()` | Erstellt GeoTIFF aus Interpolationsdaten | 1149-1227 |
-| **`create_layer_backup()`** | **Erstellt Backup vor Layer-Modifikation (neu)** | **1316-1405** |
-| `update_target_layer()` | Aktualisiert Ziel-Layer mit interpolierten Werten | 1407-1500 |
-| `run_point_interpolation()` | Punkt-zu-Punkt Interpolation (mit Backup) | 1502-1585 |
-| `run()` | Hauptworkflow für Raster-Interpolation | 1587-1841 |
+| **`save_metadata()`** | **Speichert Metadaten (generisch für Raster + Punkt)** | **1264-1324** |
+| **`create_layer_backup()`** | **Erstellt Backup vor Layer-Modifikation** | **1366-1455** |
+| `update_target_layer()` | Aktualisiert Ziel-Layer mit interpolierten Werten | 1457-1550 |
+| `run_point_interpolation()` | Punkt-zu-Punkt Interpolation (mit Backup + Metadata) | 1552-1649 |
+| `run()` | Hauptworkflow für Raster-Interpolation | 1653-1907 |
 
 **Datenfluss (Raster-Interpolation):**
 ```
@@ -136,6 +137,8 @@ User Input (Dialog)
 | UI | `DEFAULT_CELL_SIZE` | 10.0 | Standard-Rastergröße |
 | Shapefile | `MAX_FIELD_NAME_LENGTH` | 10 | Shapefile-Limit |
 | Output | `OUTPUT_DIR_NAME` | "i_plugin_outputs" | Output-Verzeichnis |
+| Output | `RASTER_INTERPOLATION_DIR` | "raster_interpolation" | Raster-Output-Unterverzeichnis |
+| Output | `POINT_INTERPOLATION_DIR` | "point_interpolation" | Punkt-Output-Unterverzeichnis |
 
 ---
 
@@ -206,6 +209,10 @@ InterpolationError (Base)
    - `update_target_layer()` fügt neues Feld hinzu
    - Schreibt interpolierte Werte in Attributtabelle
    - Feldname: max. 10 Zeichen (Shapefile-kompatibel)
+7. **Metadaten speichern**:
+   - `save_metadata()` mit `interpolation_type="point"`
+   - Speichert in `projektverzeichnis/i_plugin_outputs/point_interpolation/`
+   - Enthält: Kovariaten-Layer, Ziel-Layer, Backup-Info, Kriging-Parameter
 
 ---
 
@@ -245,6 +252,31 @@ InterpolationError (Base)
 - **Nicht-invasiv**: Backup wird nicht zum Projekt hinzugefügt
 - **Fallback**: Bei nicht gespeichertem Projekt → Home-Verzeichnis
 - **Return-Wert**: Tuple `(backup_path, was_created)` für User-Feedback
+
+### **7. Metadaten-Management (generisch)**
+- **Beide Typen**: `save_metadata()` funktioniert für Raster + Punkt
+- **Typ-Parameter**: `interpolation_type="raster"` oder `"point"`
+- **Basis-Metadaten**: Timestamp, Methode, Kriging-Parameter (beide Typen)
+- **Typ-spezifisch**: Raster (cell_size, boundary) vs. Punkt (backup_info, target_layer)
+- **Speicherorte**: 
+  - Raster: `i_plugin_outputs/raster_interpolation/`
+  - Punkt: `i_plugin_outputs/point_interpolation/`
+
+**Output-Verzeichnisstruktur:**
+```
+projektverzeichnis/
+├── i_plugin_outputs/
+│   ├── raster_interpolation/              # Raster-Outputs
+│   │   ├── raster_interpolation_Layer_Field_TIMESTAMP.tif
+│   │   ├── raster_interpolation_Layer_Field_TIMESTAMP_metadata.json
+│   │   └── raster_interpolation_Layer_Field_TIMESTAMP_variogram.png
+│   │
+│   └── point_interpolation/               # Punkt-Outputs
+│       └── point_interpolation_Layer_Field_TIMESTAMP_metadata.json
+│
+└── backups/                                # Layer-Backups
+    └── LayerName_backup.shp
+```
 
 ---
 
@@ -408,6 +440,8 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 - Deutsche UI und Fehlermeldungen
 - **Bugfix**: UTM-Konvertierung prüft auf existierende Layer/Dateien (verhindert Duplikate und Windows-Fehler)
 - **Feature**: Automatisches Backup vor Punkt-Interpolation (idempotent, nur ein Backup pro Layer)
+- **Feature**: Generische Metadaten-Speicherung für beide Interpolationstypen
+- **Improvement**: Selbsterklärende Ordnernamen (`raster_interpolation` statt `ordinary_kriging`)
 
 ---
 
@@ -443,7 +477,7 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 - User musste manuell Backups erstellen
 
 **Lösung**:
-1. Neue Methode `create_layer_backup()` (Zeile 1316-1405)
+1. Neue Methode `create_layer_backup()` (Zeile 1366-1455)
 2. Automatisches Backup vor `update_target_layer()` in `run_point_interpolation()`
 3. Idempotent: Nur ein Backup pro Layer (ohne Timestamp)
 4. Speicherort: `projektverzeichnis/backups/LayerName_backup.shp`
@@ -451,6 +485,22 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 6. Intelligente Nachricht: "wurde erstellt" vs. "existiert bereits"
 7. Nicht-invasiv: Backup wird nicht zum Projekt hinzugefügt
 8. Fallback: Bei nicht gespeichertem Projekt → Home-Verzeichnis
+
+### ✅ Metadaten-Management generisch gemacht
+**Problem**: Metadaten wurden nur für Raster-Interpolation gespeichert
+- Punkt-Interpolation hatte keine Nachvollziehbarkeit
+- Keine Info über verwendete Parameter
+
+**Lösung**:
+1. `save_metadata()` erweitert mit `interpolation_type` Parameter (Zeile 1264-1324)
+2. Basis-Metadaten für beide Typen: Timestamp, Methode, Kriging-Parameter
+3. Typ-spezifische Metadaten:
+   - Raster: input_layer, cell_size, boundary_layer, output_format
+   - Punkt: covariate_layer, target_layer, interpolated_points, backup_info
+4. Konsistente Ordnerstruktur:
+   - Raster: `i_plugin_outputs/raster_interpolation/` (vorher: `ordinary_kriging/`)
+   - Punkt: `i_plugin_outputs/point_interpolation/`
+5. Konstanten in `config.py`: `RASTER_INTERPOLATION_DIR`, `POINT_INTERPOLATION_DIR`
 
 ### ✅ Punkt-Interpolation Validierung korrigiert
 **Problem**: `validate_point_interpolation_inputs()` hatte mehrere Bugs (i_plugin_dialog.py)
