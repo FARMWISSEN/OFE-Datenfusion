@@ -62,8 +62,18 @@ from .variogram_plotter import VariogramPlotter
 
 # Initialize Qt resources from file resources.py
 from . import resources
+from .config import InterpolationConfig
+from .exceptions import (
+    InterpolationError,
+    DataValidationError,
+    GeometryError,
+    CoordinateSystemError,
+    InterpolationCalculationError,
+    OutputError
+)
 
 INTERPOLATION_LIBS_AVAILABLE = True
+
 
 class IPlugIn:
     """QGIS Plugin Implementation."""
@@ -167,6 +177,33 @@ class IPlugIn:
                 action)
             self.iface.removeToolBarIcon(action)
 
+    # ==================== HELPER FUNCTIONS ====================
+    
+    def is_utm_crs(self, crs):
+        """Prüft ob ein CRS ein UTM-Koordinatensystem ist.
+        
+        Args:
+            crs (QgsCoordinateReferenceSystem): Das zu prüfende CRS
+            
+        Returns:
+            bool: True wenn CRS ein UTM-System ist (EPSG:326xx oder EPSG:327xx)
+        """
+        if not crs or not crs.isValid():
+            return False
+        auth_id = crs.authid()
+        return auth_id.startswith('EPSG:326') or auth_id.startswith('EPSG:327')
+    
+    def log(self, message, level=Qgis.Info):
+        """Vereinfachtes Logging für das Plugin.
+        
+        Args:
+            message (str): Die Log-Nachricht
+            level (Qgis.MessageLevel): Log-Level (Info, Warning, Critical, Success)
+        """
+        QgsMessageLog.logMessage(message, "I-PlugIn", level)
+    
+    # ==================== DATA HANDLING ====================
+
     def get_field_value(self, feature, field_name):
         """Safely get numeric value from field, handling QVariant types."""
         value = feature[field_name]
@@ -217,22 +254,22 @@ class IPlugIn:
             Warning: Wenn Reparatur fehlschlägt
         """
         if not feature.hasGeometry():
-            QgsMessageLog.logMessage("Feature has no geometry", "I-PlugIn", Qgis.Info)
+            self.log("Feature has no geometry")
             return None
             
         geom = feature.geometry()
         if not geom:
-            QgsMessageLog.logMessage("Geometry is None", "I-PlugIn", Qgis.Info)
+            self.log("Geometry is None")
             return None
             
-        QgsMessageLog.logMessage(f"Original geometry type: {geom.wkbType()}", "I-PlugIn", Qgis.Info)
+        self.log(f"Original geometry type: {geom.wkbType()}")
         
         # Try to fix any invalid geometries
         if not geom.isGeosValid():
-            QgsMessageLog.logMessage("Invalid geometry, attempting to fix", "I-PlugIn", Qgis.Info)
+            self.log("Invalid geometry, attempting to fix")
             geom = geom.makeValid()
             if not geom.isGeosValid():
-                QgsMessageLog.logMessage("Failed to fix invalid geometry", "I-PlugIn", Qgis.Warning)
+                self.log("Failed to fix invalid geometry", Qgis.Warning)
                 return None
                 
         return geom
@@ -265,7 +302,7 @@ class IPlugIn:
         source_crs = layer.crs()
         
         # Check if already in UTM
-        if source_crs.isValid() and source_crs.authid().startswith('EPSG:326') or source_crs.authid().startswith('EPSG:327'):
+        if self.is_utm_crs(source_crs):
             return layer
             
         # Get layer center
@@ -296,7 +333,7 @@ class IPlugIn:
         project_dir.mkdir(parents=True, exist_ok=True)
 
         # Create output path
-        new_layer_name = "UTM_" + layer.name()
+        new_layer_name = InterpolationConfig.UTM_LAYER_PREFIX + layer.name()
         # Ensure proper path handling
         output_path = str(project_dir / f"{new_layer_name}.shp")
 
@@ -312,7 +349,7 @@ class IPlugIn:
         # Load and verify new layer
         new_layer = QgsVectorLayer(result['OUTPUT'], new_layer_name, "ogr")
         if not new_layer.isValid():
-            QgsMessageLog.logMessage("Failed to create UTM layer", "I-PlugIn", Qgis.Critical)
+            self.log("Failed to create UTM layer", Qgis.Critical)
             return None
 
         # Add to project and return
@@ -351,32 +388,32 @@ class IPlugIn:
             - Unterstützt nur Polygon-Geometrien
         """
         if not boundary_layer:
-            QgsMessageLog.logMessage("No boundary layer provided", "I-PlugIn", Qgis.Info)
+            self.log("No boundary layer provided")
             return None
             
-        QgsMessageLog.logMessage(f"Processing boundary layer with {boundary_layer.featureCount()} features", "I-PlugIn", Qgis.Info)
+        self.log(f"Processing boundary layer with {boundary_layer.featureCount()} features")
         
         boundary_geom = None
         for feature in boundary_layer.getFeatures():
             geom = self.get_valid_geometry(feature)
             if not geom:
-                QgsMessageLog.logMessage("Invalid geometry in boundary feature", "I-PlugIn", Qgis.Info)
+                self.log("Invalid geometry in boundary feature")
                 continue
                 
             # Handle different geometry types
             if geom.isMultipart():
-                QgsMessageLog.logMessage("Processing multipart geometry", "I-PlugIn", Qgis.Info)
+                self.log("Processing multipart geometry")
                 try:
                     if geom.type() == QgsWkbTypes.PolygonGeometry:
                         parts = geom.asMultiPolygon()
                     else:
-                        QgsMessageLog.logMessage(f"Unexpected geometry type: {geom.type()}", "I-PlugIn", Qgis.Info)
+                        self.log(f"Unexpected geometry type: {geom.type()}")
                         continue
                         
                     for part in parts:
                         part_geom = QgsGeometry.fromPolygonXY(part)
                         if not part_geom or not part_geom.isGeosValid():
-                            QgsMessageLog.logMessage("Invalid part geometry", "I-PlugIn", Qgis.Info)
+                            self.log("Invalid part geometry")
                             continue
                             
                         if boundary_geom is None:
@@ -384,42 +421,54 @@ class IPlugIn:
                         else:
                             try:
                                 boundary_geom = boundary_geom.combine(part_geom)
-                            except Exception as e:
-                                QgsMessageLog.logMessage(f"Error combining geometries: {str(e)}", "I-PlugIn", Qgis.Warning)
+                            except (RuntimeError, ValueError, TypeError) as e:
+                                self.log(f"Error combining geometries: {str(e)}", Qgis.Warning)
                                 continue
-                except Exception as e:
-                    QgsMessageLog.logMessage(f"Error processing multipart geometry: {str(e)}", "I-PlugIn", Qgis.Warning)
+                            except Exception as e:
+                                # Unerwarteter Fehler - sollte nicht ignoriert werden
+                                self.log(f"Unexpected error combining geometries: {str(e)}", Qgis.Critical)
+                                raise
+                except (RuntimeError, ValueError, TypeError, AttributeError) as e:
+                    self.log(f"Error processing multipart geometry: {str(e)}", Qgis.Warning)
                     continue
+                except Exception as e:
+                    # Unerwarteter Fehler
+                    self.log(f"Unexpected error in multipart geometry: {str(e)}", Qgis.Critical)
+                    raise
             else:
-                QgsMessageLog.logMessage("Processing single part geometry", "I-PlugIn", Qgis.Info)
+                self.log("Processing single part geometry")
                 if boundary_geom is None:
                     boundary_geom = geom
                 else:
                     try:
                         boundary_geom = boundary_geom.combine(geom)
-                    except Exception as e:
-                        QgsMessageLog.logMessage(f"Error combining geometries: {str(e)}", "I-PlugIn", Qgis.Warning)
+                    except (RuntimeError, ValueError, TypeError) as e:
+                        self.log(f"Error combining geometries: {str(e)}", Qgis.Warning)
                         continue
+                    except Exception as e:
+                        # Unerwarteter Fehler
+                        self.log(f"Unexpected error combining geometries: {str(e)}", Qgis.Critical)
+                        raise
                     
         if not boundary_geom:
-            QgsMessageLog.logMessage("No valid boundary geometry created", "I-PlugIn", Qgis.Warning)
-            raise ValueError(
-                "Der Grenzlayer enthält keine gültigen Polygone. "
+            self.log("No valid boundary geometry created", Qgis.Warning)
+            raise GeometryError(
+                f"Der Grenzlayer '{boundary_layer.name()}' enthält keine gültigen Polygone. "
                 "Bitte überprüfen Sie die Geometrien im Layer."
             )
             
         # Try to fix any invalid geometries after combining
         if not boundary_geom.isGeosValid():
-            QgsMessageLog.logMessage("Combined geometry is invalid, attempting to fix", "I-PlugIn", Qgis.Info)
+            self.log("Combined geometry is invalid, attempting to fix")
             boundary_geom = boundary_geom.makeValid()
             if not boundary_geom.isGeosValid():
-                QgsMessageLog.logMessage("Failed to fix combined geometry", "I-PlugIn", Qgis.Warning)
-                raise ValueError(
-                    "Die kombinierten Grenzpolygone sind ungültig. "
+                self.log("Failed to fix combined geometry", Qgis.Warning)
+                raise GeometryError(
+                    f"Die kombinierten Grenzpolygone im Layer '{boundary_layer.name()}' sind ungültig. "
                     "Bitte überprüfen Sie die Geometrien im Layer."
                 )
             
-        QgsMessageLog.logMessage("Successfully created valid boundary geometry", "I-PlugIn", Qgis.Info)
+        self.log("Successfully created valid boundary geometry")
         return boundary_geom
 # CHECKS DIE DATEN DIE EINGEBEN WERDEN OB SIE IN DER BOUNDARY LIEGEN
     def validate_input_data(self, layer, field_name=None, boundary_layer=None):
@@ -443,8 +492,8 @@ class IPlugIn:
             boundary_layer (QgsVectorLayer, optional): Layer mit Begrenzungspolygonen
             
         Returns:
-            tuple: (QgsVectorLayer, QgsVectorLayer or None) - (validierter Input-Layer,
-                   validierter Boundary-Layer oder None)
+            None: Diese Funktion gibt nichts zurück. Sie wird nur für ihre Seiteneffekte
+                  (Validierung und Exception-Throwing) verwendet.
             
         Raises:
             ValueError: Bei ungültigen Eingabedaten mit erklärender Nachricht:
@@ -461,8 +510,8 @@ class IPlugIn:
         """
         # Check if layer has features
         if layer.featureCount() == 0:
-            raise ValueError(
-                "Der Eingabelayer enthält keine Punkte. "
+            raise DataValidationError(
+                f"Der Eingabelayer '{layer.name()}' enthält keine Punkte. "
                 "Bitte wählen Sie einen Layer mit Punktdaten aus."
             )
         
@@ -479,14 +528,14 @@ class IPlugIn:
                     if value == 0:
                         zero_count += 1
             if valid_count == 0:
-                raise ValueError(
-                    f"Das ausgewählte Feld '{field_name}' enthält keine gültigen Werte. "
+                raise DataValidationError(
+                    f"Das ausgewählte Feld '{field_name}' im Layer '{layer.name()}' enthält keine gültigen Werte. "
                     "Bitte wählen Sie ein Feld mit numerischen Werten aus."
                 )
             # Warnung wenn alle oder die meisten Werte Null sind
             if zero_count > 0:
                 zero_percentage = (zero_count / valid_count) * 100
-                if zero_percentage > 90:  # Wenn mehr als 90% der Werte Null sind
+                if zero_percentage > InterpolationConfig.ZERO_VALUE_WARNING_THRESHOLD:
                     msg_box = QMessageBox()
                     msg_box.setIcon(QMessageBox.Warning)
                     msg_box.setText(f"Warnung: {zero_percentage:.1f}% der Werte sind Null")
@@ -498,7 +547,7 @@ class IPlugIn:
                     msg_box.exec_()
         
         # Check if layer is in UTM coordinate system
-        if not layer.crs().isValid() or not (layer.crs().authid().startswith('EPSG:326') or layer.crs().authid().startswith('EPSG:327')):
+        if not self.is_utm_crs(layer.crs()):
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Question)
             msg_box.setText("Der Layer ist nicht im UTM-Format.")
@@ -511,26 +560,29 @@ class IPlugIn:
                 if utm_layer:
                     layer = utm_layer
                 else:
-                    raise ValueError("Die UTM-Konvertierung ist fehlgeschlagen.")
+                    raise CoordinateSystemError(
+                        f"Die UTM-Konvertierung für Layer '{layer.name()}' ist fehlgeschlagen."
+                    )
             else:
-                QgsMessageLog.logMessage(
+                self.log(
                     "Benutzer hat UTM-Konvertierung abgelehnt. Fahre mit originalem CRS fort.",
-                    "I-PlugIn",
                     Qgis.Warning
                 )
         
         # If boundary layer is specified, check if points fall within it and convert to UTM if needed
         if boundary_layer:
-            if not boundary_layer.crs().isValid() or not (boundary_layer.crs().authid().startswith('EPSG:326') or boundary_layer.crs().authid().startswith('EPSG:327')):
+            if not self.is_utm_crs(boundary_layer.crs()):
                 utm_boundary = self.convert_to_utm(boundary_layer)
                 if utm_boundary:
                     boundary_layer = utm_boundary
                 else:
-                    raise ValueError("Die UTM-Konvertierung des Boundary-Layers ist fehlgeschlagen.")
+                    raise CoordinateSystemError(
+                        f"Die UTM-Konvertierung des Boundary-Layers '{boundary_layer.name()}' ist fehlgeschlagen."
+                    )
         if boundary_layer:
             if boundary_layer.featureCount() == 0:
-                raise ValueError(
-                    "Der Grenzlayer enthält keine Features. "
+                raise DataValidationError(
+                    f"Der Grenzlayer '{boundary_layer.name()}' enthält keine Features. "
                     "Bitte wählen Sie einen Layer mit Polygonen aus."
                 )
                 
@@ -543,8 +595,8 @@ class IPlugIn:
                     break
                     
             if not boundary_geom:
-                raise ValueError(
-                    "Der Grenzlayer enthält keine gültigen Polygone. "
+                raise GeometryError(
+                    f"Der Grenzlayer '{boundary_layer.name()}' enthält keine gültigen Polygone. "
                     "Bitte überprüfen Sie die Geometrien im Layer."
                 )
                 
@@ -559,17 +611,14 @@ class IPlugIn:
                     points_within += 1
                     
             if points_within == 0:
-                raise ValueError(
-                    "Keine Punkte liegen innerhalb der ausgewählten Grenze. "
+                raise GeometryError(
+                    f"Keine Punkte aus Layer '{layer.name()}' liegen innerhalb der Grenze '{boundary_layer.name()}'. "
                     "Bitte überprüfen Sie die Lage der Punkte und die Grenze."
                 )
                 
-            return points_within
-        # Rückgabewert je nach field_name-Check
-        if field_name is not None:
-            return valid_count
-        else:
-            return None
+            self.log(f"{points_within} Punkte liegen innerhalb der Grenze")
+        
+        # Validation erfolgreich - keine Rückgabe nötig (wird nur für Seiteneffekte verwendet)
 
 
 ################################ Interpolation beginnt #####################################################################        
@@ -613,9 +662,9 @@ class IPlugIn:
               übergeben wurde
         """
         # Log initial layer states
-        QgsMessageLog.logMessage(f"Input layer feature count: {layer.featureCount()}", "I-PlugIn", Qgis.Info)
+        self.log(f"Input layer feature count: {layer.featureCount()}")
         if boundary_layer:
-            QgsMessageLog.logMessage(f"Boundary layer feature count: {boundary_layer.featureCount()}", "I-PlugIn", Qgis.Info)
+            self.log(f"Boundary layer feature count: {boundary_layer.featureCount()}")
         
         # Validate input data
         self.validate_input_data(layer, field_name, boundary_layer)
@@ -649,9 +698,9 @@ class IPlugIn:
             # Punkt hinzufügen wenn er valide ist
             if value is None:
                 msg = f"Ungültiger Wert (NULL/QVariant) im Feld '{field_name}' für Feature-ID {feature.id()}. Bitte bereinigen Sie Ihre Daten."
-                QgsMessageLog.logMessage(msg, "I-PlugIn", Qgis.Critical)
-                QMessageBox.critical(None, "Ungültige Werte gefunden", msg)
-                raise ValueError(msg)
+                self.log(msg, Qgis.Critical)
+                # QMessageBox entfernt - wird später in run() oder Dialog gefangen und angezeigt
+                raise DataValidationError(msg)
             x.append(point.x())
             y.append(point.y())
             z.append(float(value))
@@ -697,42 +746,29 @@ class IPlugIn:
         y_max = np.ceil(y_max / cell_size) * cell_size
 
         # --- 3. Boundary um cell_size erweitern ---
-        expand = cell_size
+        expand = cell_size * InterpolationConfig.GRID_BUFFER_MULTIPLIER
         x_start = x_min - expand
         x_end   = x_max + expand
         y_start = y_min - expand
         y_end   = y_max + expand
-        QgsMessageLog.logMessage(
-            f"Boundary-Extent erweitert: xmin={x_start}, xmax={x_end}, ymin={y_start}, ymax={y_end}",
-            "I-PlugIn", Qgis.Info
+        self.log(
+            f"Boundary-Extent erweitert: xmin={x_start}, xmax={x_end}, ymin={y_start}, ymax={y_end}"
         )
 
         # --- 4. Grid erzeugen ---
         nx = int(round((x_end - x_start) / cell_size))
         ny = int(round((y_end - y_start) / cell_size))
-        x = np.arange(x_start, x_end + cell_size*0.5, cell_size)  # +0.5 wegen Rundungsfehler
-        y = np.arange(y_start, y_end + cell_size*0.5, cell_size)
+        x = np.arange(x_start, x_end + cell_size * InterpolationConfig.GRID_ARANGE_OFFSET, cell_size)
+        y = np.arange(y_start, y_end + cell_size * InterpolationConfig.GRID_ARANGE_OFFSET, cell_size)
         x = np.sort(x)
         y = np.sort(y)[::-1]
 
         # --- 5. Logging aller relevanten Werte ---
-        QgsMessageLog.logMessage(
-            f"Boundary-Extent: xmin={x_min}, xmax={x_max}, ymin={y_min}, ymax={y_max}",
-            "I-PlugIn", Qgis.Info
-        )
-        QgsMessageLog.logMessage(
-            f"Grid-Buffer: {expand} Zellen pro Seite, cell_size={cell_size}",
-            "I-PlugIn", Qgis.Info
-        )
-        QgsMessageLog.logMessage(
-            f"Grid X: x[0]={x[0]}, x[-1]={x[-1]}, len={len(x)}", "I-PlugIn", Qgis.Info
-        )
-        QgsMessageLog.logMessage(
-            f"Grid Y: y[0]={y[0]}, y[-1]={y[-1]}, len={len(y)}", "I-PlugIn", Qgis.Info
-        )
-        QgsMessageLog.logMessage(
-            f"Grid Shape: ({len(y)}, {len(x)})", "I-PlugIn", Qgis.Info
-        )
+        self.log(f"Boundary-Extent: xmin={x_min}, xmax={x_max}, ymin={y_min}, ymax={y_max}")
+        self.log(f"Grid-Buffer: {expand} Zellen pro Seite, cell_size={cell_size}")
+        self.log(f"Grid X: x[0]={x[0]}, x[-1]={x[-1]}, len={len(x)}")
+        self.log(f"Grid Y: y[0]={y[0]}, y[-1]={y[-1]}, len={len(y)}")
+        self.log(f"Grid Shape: ({len(y)}, {len(x)})")
 
         # --- 6. Maskenarray erzeugen (optional) ---
         mask = None
@@ -748,7 +784,7 @@ class IPlugIn:
                             if point.within(geom):
                                 mask[i, j] = True
                                 break
-            QgsMessageLog.logMessage(f"Mask Shape: {mask.shape}", "I-PlugIn", Qgis.Info)
+            self.log(f"Mask Shape: {mask.shape}")
 
         return x, y, mask
 
@@ -775,7 +811,7 @@ class IPlugIn:
         distances = np.array(distances)
         
         # Berechne Statistiken
-        max_dist = np.percentile(distances, 95)  # 95. Perzentil statt Maximum
+        max_dist = np.percentile(distances, InterpolationConfig.DISTANCE_PERCENTILE)
         n_pairs = len(distances)
         
         # Empirische Regeln für die Anzahl der Lags:
@@ -786,24 +822,23 @@ class IPlugIn:
         n_bins_rice = int(np.ceil(2 * n_pairs**(1/3)))
         
         # 3. Mindestens 30 Paare pro Lag für statistische Stabilität
-        min_pairs_per_lag = 30
+        min_pairs_per_lag = InterpolationConfig.MIN_PAIRS_PER_LAG
         max_lags = n_pairs // min_pairs_per_lag
         
         # Wähle die kleinste Anzahl von Lags, die alle Kriterien erfüllt
         nlags = min(n_bins_sqrt, n_bins_rice, max_lags)
         
-        # Stelle sicher, dass wir mindestens 3 Lags haben
-        nlags = max(3, nlags)
+        # Stelle sicher, dass wir mindestens MIN_LAGS haben
+        nlags = max(InterpolationConfig.MIN_LAGS, nlags)
         
         # Logging für Debugging
-        QgsMessageLog.logMessage(
+        self.log(
             f"Variogram Stats:\n"
             f"Pairs: {n_pairs}\n"
             f"Sqrt Bins: {n_bins_sqrt}, Rice Bins: {n_bins_rice}\n"
             f"Max Lags (30 pairs): {max_lags}\n"
             f"Selected Lags: {nlags}\n"
-            f"Max Distance: {max_dist:.1f}",
-            "I-PlugIn", Qgis.Info
+            f"Max Distance: {max_dist:.1f}"
         )
         
         return nlags, max_dist
@@ -833,21 +868,24 @@ class IPlugIn:
             from qgis.PyQt.QtCore import QVariant
             for xi, yi, zi in zip(x, y, z):
                 if xi is None or yi is None or zi is None:
-                    raise ValueError("Die Daten enthalten ungültige Werte (NULL/leer). Bitte bereinigen Sie Ihre Daten.")
+                    raise DataValidationError("Die Daten enthalten ungültige Werte (NULL/leer). Bitte bereinigen Sie Ihre Daten.")
                 if isinstance(xi, QVariant) and xi.isNull():
-                    raise ValueError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
+                    raise DataValidationError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
                 if isinstance(yi, QVariant) and yi.isNull():
-                    raise ValueError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
+                    raise DataValidationError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
                 if isinstance(zi, QVariant) and zi.isNull():
-                    raise ValueError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
+                    raise DataValidationError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
                 try:
                     if np.isnan(float(xi)) or np.isnan(float(yi)) or np.isnan(float(zi)):
-                        raise ValueError("Die Daten enthalten ungültige Werte (NaN). Bitte bereinigen Sie Ihre Daten.")
+                        raise DataValidationError("Die Daten enthalten ungültige Werte (NaN). Bitte bereinigen Sie Ihre Daten.")
                 except Exception:
                     raise ValueError("Die Daten enthalten ungültige Werte (nicht numerisch). Bitte bereinigen Sie Ihre Daten.")
             # Validiere Eingabedaten
-            if len(x) < 30:
-                raise ValueError("Zu wenige Datenpunkte für eine stabile Variogramm-Analyse (min. 30 benötigt)")
+            if len(x) < InterpolationConfig.MIN_POINTS_FOR_VARIOGRAM:
+                raise DataValidationError(
+                    f"Zu wenige Datenpunkte für eine stabile Variogramm-Analyse. "
+                    f"Benötigt: {InterpolationConfig.MIN_POINTS_FOR_VARIOGRAM}, Vorhanden: {len(x)}"
+                )
             
             # Konvertiere zu numpy arrays
             x = np.asarray(x, dtype=np.float64)
@@ -857,7 +895,10 @@ class IPlugIn:
             # Prüfe auf gültiges Variogramm-Modell
             model_type = params.get('variogram_model', 'spherical').lower()
             if model_type not in VARIOGRAM_MODELS:
-                raise ValueError(f"Ungültiges Variogramm-Modell: {model_type}")
+                raise InterpolationCalculationError(
+                    f"Ungültiges Variogramm-Modell: {model_type}. "
+                    f"Verfügbare Modelle: {', '.join(VARIOGRAM_MODELS.keys())}"
+                )
             
             # Verwende Anzahl der Lags aus UI oder berechne sie
             if 'nlags' in params:
@@ -868,11 +909,7 @@ class IPlugIn:
             
             # Berechne experimentelles Variogramm
             # Log nlags parameter
-            QgsMessageLog.logMessage(
-                f"Using {nlags} lags for variogram analysis",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Using {nlags} lags for variogram analysis")
             
             ok = OrdinaryKriging(
                 x, y, z,
@@ -926,9 +963,9 @@ class IPlugIn:
             base_name = params.get('base_name', 'variogram')
             if output_dir is None:
                 # Fallback: plugin dir
-                save_path = os.path.join(self.plugin_dir, f'{base_name}_variogram.png')
+                save_path = os.path.join(self.plugin_dir, f'{base_name}{InterpolationConfig.VARIOGRAM_PLOT_SUFFIX}')
             else:
-                save_path = os.path.join(output_dir, f'{base_name}_variogram.png')
+                save_path = os.path.join(output_dir, f'{base_name}{InterpolationConfig.VARIOGRAM_PLOT_SUFFIX}')
             plotter.plot_variogram(
                 lags, experimental,
                 model_type,
@@ -940,12 +977,11 @@ class IPlugIn:
             plotter.close()
             
             # Logging der Ergebnisse
-            QgsMessageLog.logMessage(
+            self.log(
                 f"Variogram Analysis Results:\n"
                 f"Model: {model_type}\n"
                 f"Parameters - Nugget: {nugget:.3f}, Range: {range_:.3f}, Sill: {sill:.3f}\n"
-                f"Metrics - RMSE: {metrics['rmse']:.3f}, R²: {metrics['r2']:.3f}, AIC: {aic:.1f}",
-                "I-PlugIn", Qgis.Info
+                f"Metrics - RMSE: {metrics['rmse']:.3f}, R²: {metrics['r2']:.3f}, AIC: {aic:.1f}"
             )
             
             return {
@@ -968,17 +1004,9 @@ class IPlugIn:
             }
             
         except Exception as e:
-            QgsMessageLog.logMessage(
-                f"Variogram analysis failed: {str(e)}",
-                "I-PlugIn",
-                Qgis.Critical
-            )
+            self.log(f"Variogram analysis failed: {str(e)}", Qgis.Critical)
             import traceback
-            QgsMessageLog.logMessage(
-                f"Traceback: {traceback.format_exc()}",
-                "I-PlugIn",
-                Qgis.Critical
-            )
+            self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
             return None
 # DIE TATSÄCHLICHE INTERPOLATION MIT POINT LAYER FUNKTION IMPLEMENTIERT RETURNS Z-VALUE FOR GRID OR ADDS COLUMN TO THE DATA
     def interpolate_ordinary_kriging(self, x, y, z, grid_x, grid_y, params, style = 'grid'):
@@ -1049,14 +1077,8 @@ class IPlugIn:
             )
             
             # Logging der verwendeten Grid-Koordinaten
-            QgsMessageLog.logMessage(
-                f"Interpolation Grid X: grid_x[0]={grid_x[0]}, grid_x[-1]={grid_x[-1]}, len={len(grid_x)}",
-                "I-PlugIn", Qgis.Info
-            )
-            QgsMessageLog.logMessage(
-                f"Interpolation Grid Y: grid_y[0]={grid_y[0]}, grid_y[-1]={grid_y[-1]}, len={len(grid_y)}",
-                "I-PlugIn", Qgis.Info
-            )
+            self.log(f"Interpolation Grid X: grid_x[0]={grid_x[0]}, grid_x[-1]={grid_x[-1]}, len={len(grid_x)}")
+            self.log(f"Interpolation Grid Y: grid_y[0]={grid_y[0]}, grid_y[-1]={grid_y[-1]}, len={len(grid_y)}")
             # Perform interpolation based on style
             if style == 'grid':
                 z_pred, z_std = ok.execute('grid', grid_x, grid_y)
@@ -1065,31 +1087,22 @@ class IPlugIn:
                 z_pred, z_std = ok.execute('points', grid_x, grid_y)
                 return z_pred
             else:
-                raise ValueError("Ungültiger style-Parameter. Muss 'grid' oder 'points' sein.")
+                raise InterpolationCalculationError(
+                    f"Ungültiger style-Parameter: '{style}'. Muss 'grid' oder 'points' sein."
+                )
             
                 
         except Exception as e:
-            QgsMessageLog.logMessage(
-                f"Interpolation failed: {str(e)}",
-                "I-PlugIn",
-                Qgis.Critical
-            )
+            self.log(f"Interpolation failed: {str(e)}", Qgis.Critical)
             import traceback
-            QgsMessageLog.logMessage(
-                f"Traceback: {traceback.format_exc()}",
-                "I-PlugIn",
-                Qgis.Critical
-            )
+            self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
             raise
 # ERSTELLT EIN RASTERLAYER WELCHES AUS DEN VECTORDATEN EIN RASTER MACHT 
     def create_raster_layer(self, data, extent, cell_size, output_path, crs, mask=None, x=None, y=None):
         """Create and save interpolated raster layer."""
         try:
             # Log input dimensions
-            QgsMessageLog.logMessage(
-                f"Data shape: {data.shape}, Mask shape: {mask.shape if mask is not None else 'None'}",
-                "I-PlugIn", Qgis.Info
-            )
+            self.log(f"Data shape: {data.shape}, Mask shape: {mask.shape if mask is not None else 'None'}")
             
             # Apply mask if provided
             if mask is not None:
@@ -1099,10 +1112,7 @@ class IPlugIn:
             height, width = data.shape
             
             # Log dimensions
-            QgsMessageLog.logMessage(
-                f"Using dimensions from data - Width: {width}, Height: {height}",
-                "I-PlugIn", Qgis.Info
-            )
+            self.log(f"Using dimensions from data - Width: {width}, Height: {height}")
             
             # Daten müssen nicht mehr geflippt werden, da y absteigend sortiert ist
             # data = np.flipud(data)
@@ -1121,30 +1131,25 @@ class IPlugIn:
             # x und y werden jetzt explizit übergeben!
             if x is not None and y is not None:
                 # Debug-Log: Grid- und Extent-Koordinaten
-                QgsMessageLog.logMessage(
-                    f"Grid X: x[0]={x[0]}, x[-1]={x[-1]}, Y: y[0]={y[0]}, y[-1]={y[-1]}",
-                    "I-PlugIn", Qgis.Info
-                )
-                QgsMessageLog.logMessage(
-                    f"Extent: xmin={extent.xMinimum()}, xmax={extent.xMaximum()}, ymin={extent.yMinimum()}, ymax={extent.yMaximum()}",
-                    "I-PlugIn", Qgis.Info
-                )
+                self.log(f"Grid X: x[0]={x[0]}, x[-1]={x[-1]}, Y: y[0]={y[0]}, y[-1]={y[-1]}")
+                self.log(f"Extent: xmin={extent.xMinimum()}, xmax={extent.xMaximum()}, ymin={extent.yMinimum()}, ymax={extent.yMaximum()}")
+                x_origin = x[0] - InterpolationConfig.RASTER_PIXEL_OFFSET * cell_size
+                y_origin = y[0] + InterpolationConfig.RASTER_PIXEL_OFFSET * cell_size
                 dataset.SetGeoTransform((
-                    x[0] - 0.5 * cell_size,  # x origin (um 2 Pixel nach links verschoben)
-                    cell_size,             # pixel width
+                    x_origin,  # x origin
+                    cell_size,  # pixel width
                     0,
-                    y[0] + 0.5 * cell_size,  # y origin (um 2 Pixel nach oben verschoben)
+                    y_origin,  # y origin
                     0,
-                    -cell_size             # pixel height
+                    -cell_size  # pixel height
                 ))
-                QgsMessageLog.logMessage(
-                    f"Raster-GeoTransform gesetzt auf: x_origin={x[0] - 0.5 * cell_size}, y_origin={y[0] + 0.5 * cell_size}, pixel_width={cell_size}, pixel_height={-cell_size} (2 Pixel nach oben links verschoben)",
-                    "I-PlugIn", Qgis.Info
+                self.log(
+                    f"Raster-GeoTransform gesetzt auf: x_origin={x_origin}, y_origin={y_origin}, pixel_width={cell_size}, pixel_height={-cell_size}"
                 )
             else:
-                QgsMessageLog.logMessage(
+                self.log(
                     "WARNUNG: create_raster_layer wurde ohne explizite Übergabe von x/y aufgerufen! Das Raster kann versetzt sein.",
-                    "I-PlugIn", Qgis.Warning
+                    Qgis.Warning
                 )
                 # Fallback: alte Methode
                 dataset.SetGeoTransform((
@@ -1170,11 +1175,7 @@ class IPlugIn:
             return True
             
         except Exception as e:
-            QgsMessageLog.logMessage(
-                f"Failed to create raster layer: {str(e)}",
-                "I-PlugIn",
-                Qgis.Critical
-            )
+            self.log(f"Failed to create raster layer: {str(e)}", Qgis.Critical)
             raise
 # CHECKT OB DAS PROJEKT GESPEICHERT IST
     def get_project_dir(self):
@@ -1189,7 +1190,7 @@ class IPlugIn:
             return None
             
         # Create project directory if it doesn't exist
-        project_dir = Path(project.fileName()).parent / "i_plugin_outputs"
+        project_dir = Path(project.fileName()).parent / InterpolationConfig.OUTPUT_DIR_NAME
         project_dir.mkdir(exist_ok=True)
         
         return project_dir
@@ -1197,7 +1198,7 @@ class IPlugIn:
     def get_layer_group(self):
         """Get or create layer group for plugin outputs."""
         root = QgsProject.instance().layerTreeRoot()
-        group_name = "I-PlugIn Interpolationen"
+        group_name = InterpolationConfig.LAYER_GROUP_NAME
         
         # Find existing group or create new one
         group = root.findGroup(group_name)
@@ -1242,7 +1243,7 @@ class IPlugIn:
                 }
             }
         
-        metadata_path = output_dir / f"{base_name}_metadata.json"
+        metadata_path = output_dir / f"{base_name}{InterpolationConfig.METADATA_SUFFIX}"
         with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=4)
 # ERSTELLT DIE OUTPUT PATH UND DAS DIR             
@@ -1268,54 +1269,40 @@ class IPlugIn:
         """Aktualisiert den Ziel-Layer mit den interpolierten Werten."""
         try:
             # Debug: Eingangswerte
-            QgsMessageLog.logMessage(
-                f"Update Layer Start - Features: {len(target_features)}, Values: {len(interpolated_values)}",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Update Layer Start - Features: {len(target_features)}, Values: {len(interpolated_values)}")
             
             # Starte Bearbeitung des Layers
             if not target_layer.startEditing():
                 raise ValueError("Konnte Layer nicht in Bearbeitungsmodus versetzen")
             
             # Debug: Zeige Layer-Informationen
-            QgsMessageLog.logMessage(
-                f"Layer Typ: {target_layer.type()}, Provider: {target_layer.dataProvider().name()}, CRS: {target_layer.crs().authid()}",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Layer Typ: {target_layer.type()}, Provider: {target_layer.dataProvider().name()}, CRS: {target_layer.crs().authid()}")
             
             # Debug: Zeige vorhandene Felder
             fields = target_layer.fields()
-            QgsMessageLog.logMessage(
-                f"Vorhandene Felder: {[field.name() for field in fields]}",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Vorhandene Felder: {[field.name() for field in fields]}")
             
             # Generiere kurzen, eindeutigen Feldnamen (max. 10 Zeichen für Shapefile)
-            base_field_name = "EM38_INT"
+            base_field_name = InterpolationConfig.DEFAULT_FIELD_PREFIX
             counter = 1
             field_name = base_field_name
             while target_layer.fields().indexOf(field_name) != -1:
-                field_name = f"{base_field_name[:6]}{counter}"
+                field_name = f"{base_field_name[:InterpolationConfig.FIELD_NAME_TRUNCATE]}{counter}"
                 counter += 1
             
-            QgsMessageLog.logMessage(
-                f"Verwende Feldnamen: {field_name}",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Verwende Feldnamen: {field_name}")
             
             # Erstelle ein neues Feld mit spezifischer Länge und Präzision für Shapefile
-            new_field = QgsField(field_name, QVariant.Double, 'Real', 20, 10)
+            new_field = QgsField(
+                field_name, 
+                QVariant.Double, 
+                'Real', 
+                InterpolationConfig.FIELD_TYPE_DOUBLE_LENGTH, 
+                InterpolationConfig.FIELD_TYPE_DOUBLE_PRECISION
+            )
             
             # Debug: Zeige Feld-Details
-            QgsMessageLog.logMessage(
-                f"Neues Feld Details - Name: {new_field.name()}, Typ: {new_field.type()}, TypeName: {new_field.typeName()}, Länge: {new_field.length()}, Präzision: {new_field.precision()}",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Neues Feld Details - Name: {new_field.name()}, Typ: {new_field.type()}, TypeName: {new_field.typeName()}, Länge: {new_field.length()}, Präzision: {new_field.precision()}")
             
             # Starte Bearbeitung wenn nicht bereits im Bearbeitungsmodus
             if not target_layer.isEditable():
@@ -1325,11 +1312,7 @@ class IPlugIn:
             # Versuche das Attribut hinzuzufügen
             if not target_layer.addAttribute(new_field):
                 provider_caps = target_layer.dataProvider().capabilities()
-                QgsMessageLog.logMessage(
-                    f"Provider Capabilities: {provider_caps}",
-                    "I-PlugIn",
-                    Qgis.Info
-                )
+                self.log(f"Provider Capabilities: {provider_caps}")
                 raise ValueError(f"Konnte Feld '{field_name}' nicht erstellen")
             
             # Commite die Änderungen
@@ -1344,19 +1327,11 @@ class IPlugIn:
             target_layer.updateFields()
             field_idx = target_layer.fields().indexOf(field_name)
             
-            QgsMessageLog.logMessage(
-                f"Neues Feld '{field_name}' erstellt mit Index {field_idx}",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Neues Feld '{field_name}' erstellt mit Index {field_idx}")
             
             # Debug: Zeige erste 5 Änderungen
             for i, (feature, value) in enumerate(list(zip(target_features, interpolated_values))[:5]):
-                QgsMessageLog.logMessage(
-                    f"Update #{i}: Feature ID {feature.id()}, Wert {value}",
-                    "I-PlugIn",
-                    Qgis.Info
-                )
+                self.log(f"Update #{i}: Feature ID {feature.id()}, Wert {value}")
                 if not target_layer.changeAttributeValue(feature.id(), field_idx, float(value)):
                     raise ValueError(f"Fehler beim Aktualisieren von Feature {feature.id()}")
             
@@ -1370,20 +1345,12 @@ class IPlugIn:
                 raise ValueError("Fehler beim Speichern der Änderungen: " + 
                                ", ".join(target_layer.commitErrors()))
             
-            QgsMessageLog.logMessage(
-                f"Ziel-Layer erfolgreich mit Feld '{field_name}' aktualisiert",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Ziel-Layer erfolgreich mit Feld '{field_name}' aktualisiert")
             
         except Exception as e:
-            QgsMessageLog.logMessage(
-                f"Fehler beim Aktualisieren des Ziel-Layers: {str(e)}",
-                "I-PlugIn",
-                Qgis.Critical
-            )
+            self.log(f"Fehler beim Aktualisieren des Ziel-Layers: {str(e)}", Qgis.Critical)
             raise
-# HIER WERDEN DIE GANZEN FUNTKIONEN GECALLED UND DER PROGRESS GEHANDELT 
+# HIER WIRD DIE PUNKT ZU PUNKT INTERPOLATION DEFINIERT
     def run_point_interpolation(self, params):
         """Führt die Punkt-zu-Punkt Interpolation durch."""
         try:
@@ -1400,11 +1367,7 @@ class IPlugIn:
             target_layer = params['target_layer']
             
             # Debug: Zeige Kovariaten-Daten
-            QgsMessageLog.logMessage(
-                f"Kovariaten-Layer: {covariate_layer.name()}, Feld: {covariate_field}",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Kovariaten-Layer: {covariate_layer.name()}, Feld: {covariate_field}")
             
             # Bereite Kovariaten-Daten vor
             x, y, z = self.prepare_data(covariate_layer, covariate_field, None)
@@ -1412,11 +1375,7 @@ class IPlugIn:
                 raise ValueError("Keine gültigen Kovariaten-Daten gefunden")
             
             # Debug: Zeige Input-Daten
-            QgsMessageLog.logMessage(
-                f"Input-Daten: x={len(x)}, y={len(y)}, z={len(z)}",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Input-Daten: x={len(x)}, y={len(y)}, z={len(z)}")
                     
             # Hole Koordinaten vom Ziel-Layer
             target_points = []
@@ -1430,11 +1389,7 @@ class IPlugIn:
                     target_features.append(feature)
             
             # Debug: Zeige Ziel-Punkte
-            QgsMessageLog.logMessage(
-                f"Anzahl Zielpunkte: {len(target_points)}",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Anzahl Zielpunkte: {len(target_points)}")
                         
             if not target_points:
                 raise ValueError("Keine gültigen Zielpunkte gefunden")
@@ -1442,11 +1397,7 @@ class IPlugIn:
             x_points, y_points = zip(*target_points)
             
             # Debug: Parameter für Kriging
-            QgsMessageLog.logMessage(
-                f"Kriging Parameter: model={params['variogram_model']}, sill={params['sill']}, range={params['range']}, nugget={params['nugget']}",
-                "I-PlugIn",
-                Qgis.Info
-            )
+            self.log(f"Kriging Parameter: model={params['variogram_model']}, sill={params['sill']}, range={params['range']}, nugget={params['nugget']}")
             
             # Führe Interpolation durch
             interpolated_values = self.interpolate_ordinary_kriging(
@@ -1459,11 +1410,7 @@ class IPlugIn:
             
             # Debug: Zeige interpolierte Werte
             if interpolated_values is not None:
-                QgsMessageLog.logMessage(
-                    f"Interpolierte Werte: min={np.min(interpolated_values)}, max={np.max(interpolated_values)}, len={len(interpolated_values)}",
-                    "I-PlugIn",
-                    Qgis.Info
-                )
+                self.log(f"Interpolierte Werte: min={np.min(interpolated_values)}, max={np.max(interpolated_values)}, len={len(interpolated_values)}")
             
             if interpolated_values is None:
                 raise ValueError("Interpolation fehlgeschlagen")
@@ -1472,24 +1419,17 @@ class IPlugIn:
             # Generiere kurzen Feldnamen für Shapefile (max. 10 Zeichen)
             # Entferne Sonderzeichen und kürze wenn nötig
             clean_name = ''.join(c for c in covariate_field if c.isalnum())
-            field_name = f"{clean_name[:6]}INT"
+            field_name = f"{clean_name[:InterpolationConfig.FIELD_NAME_TRUNCATE]}INT"
             self.update_target_layer(target_layer, target_features, interpolated_values, field_name)
             
-            QgsMessageLog.logMessage(
-                "Punkt-Interpolation erfolgreich abgeschlossen",
-                "I-PlugIn",
-                Qgis.Success
-            )
+            self.log("Punkt-Interpolation erfolgreich abgeschlossen", Qgis.Success)
         
         except Exception as e:
-            QgsMessageLog.logMessage(
-                f"Fehler bei der Punkt-Interpolation: {str(e)}",
-                "I-PlugIn",
-                Qgis.Critical
-            )
+            self.log(f"Fehler bei der Punkt-Interpolation: {str(e)}", Qgis.Critical)
             raise
    
                 
+# HIER WERDEN DIE GANZEN FUNTKIONEN GECALLED UND DER PROGRESS GEHANDELT 
     def run(self):
         """Run method that performs all the real work"""
         
@@ -1595,10 +1535,10 @@ class IPlugIn:
                 # Bestimme die Extent basierend auf Boundary oder Input Layer
                 if params.get('boundary_layer'):
                     extent = params['boundary_layer'].extent()
-                    QgsMessageLog.logMessage("Using boundary extent for raster", "I-PlugIn", Qgis.Info)
+                    self.log("Using boundary extent for raster")
                 else:
                     extent = params['input_layer'].extent()
-                    QgsMessageLog.logMessage("Using input layer extent for raster", "I-PlugIn", Qgis.Info)
+                    self.log("Using input layer extent for raster")
                 
                 self.create_raster_layer(
                     interpolated_data,
@@ -1652,12 +1592,96 @@ class IPlugIn:
                 # Close the progress dialog
                 progress.close()
                     
-            except Exception as e:
+            except DataValidationError as e:
+                # Close progress dialog if it exists
+                if 'progress' in locals():
+                    progress.close()
+                    
+                self.iface.messageBar().pushWarning(
+                    "I-PlugIn - Datenvalidierung",
+                    f"Daten-Problem: {str(e)}"
+                )
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Datenvalidierung fehlgeschlagen",
+                    str(e)
+                )
+                
+            except GeometryError as e:
+                # Close progress dialog if it exists
+                if 'progress' in locals():
+                    progress.close()
+                    
+                self.iface.messageBar().pushWarning(
+                    "I-PlugIn - Geometrie",
+                    f"Geometrie-Problem: {str(e)}"
+                )
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Geometrie-Problem",
+                    str(e)
+                )
+                
+            except CoordinateSystemError as e:
+                # Close progress dialog if it exists
+                if 'progress' in locals():
+                    progress.close()
+                    
+                self.iface.messageBar().pushWarning(
+                    "I-PlugIn - Koordinatensystem",
+                    f"CRS-Problem: {str(e)}"
+                )
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Koordinatensystem-Problem",
+                    str(e)
+                )
+                
+            except InterpolationCalculationError as e:
                 # Close progress dialog if it exists
                 if 'progress' in locals():
                     progress.close()
                     
                 self.iface.messageBar().pushCritical(
+                    "I-PlugIn - Berechnung",
+                    f"Interpolations-Fehler: {str(e)}"
+                )
+                QMessageBox.critical(
+                    self.iface.mainWindow(),
+                    "Interpolation fehlgeschlagen",
+                    str(e)
+                )
+                
+            except InterpolationError as e:
+                # Catch all other plugin-specific errors
+                if 'progress' in locals():
+                    progress.close()
+                    
+                self.iface.messageBar().pushCritical(
                     "I-PlugIn",
-                    f"Fehler bei der Interpolation: {str(e)}"
+                    f"Plugin-Fehler: {str(e)}"
+                )
+                QMessageBox.critical(
+                    self.iface.mainWindow(),
+                    "Fehler",
+                    str(e)
+                )
+                
+            except Exception as e:
+                # Unexpected errors
+                if 'progress' in locals():
+                    progress.close()
+                    
+                self.log(f"Unerwarteter Fehler: {str(e)}", Qgis.Critical)
+                import traceback
+                self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
+                    
+                self.iface.messageBar().pushCritical(
+                    "I-PlugIn - Unerwarteter Fehler",
+                    f"Ein unerwarteter Fehler ist aufgetreten: {str(e)}"
+                )
+                QMessageBox.critical(
+                    self.iface.mainWindow(),
+                    "Unerwarteter Fehler",
+                    f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}\n\nBitte prüfen Sie das Log für Details."
                 )
