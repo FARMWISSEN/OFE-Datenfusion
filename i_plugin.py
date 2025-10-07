@@ -63,6 +63,14 @@ from .variogram_plotter import VariogramPlotter
 # Initialize Qt resources from file resources.py
 from . import resources
 from .config import InterpolationConfig
+from .exceptions import (
+    InterpolationError,
+    DataValidationError,
+    GeometryError,
+    CoordinateSystemError,
+    InterpolationCalculationError,
+    OutputError
+)
 
 INTERPOLATION_LIBS_AVAILABLE = True
 
@@ -444,8 +452,8 @@ class IPlugIn:
                     
         if not boundary_geom:
             self.log("No valid boundary geometry created", Qgis.Warning)
-            raise ValueError(
-                "Der Grenzlayer enthält keine gültigen Polygone. "
+            raise GeometryError(
+                f"Der Grenzlayer '{boundary_layer.name()}' enthält keine gültigen Polygone. "
                 "Bitte überprüfen Sie die Geometrien im Layer."
             )
             
@@ -455,8 +463,8 @@ class IPlugIn:
             boundary_geom = boundary_geom.makeValid()
             if not boundary_geom.isGeosValid():
                 self.log("Failed to fix combined geometry", Qgis.Warning)
-                raise ValueError(
-                    "Die kombinierten Grenzpolygone sind ungültig. "
+                raise GeometryError(
+                    f"Die kombinierten Grenzpolygone im Layer '{boundary_layer.name()}' sind ungültig. "
                     "Bitte überprüfen Sie die Geometrien im Layer."
                 )
             
@@ -502,8 +510,8 @@ class IPlugIn:
         """
         # Check if layer has features
         if layer.featureCount() == 0:
-            raise ValueError(
-                "Der Eingabelayer enthält keine Punkte. "
+            raise DataValidationError(
+                f"Der Eingabelayer '{layer.name()}' enthält keine Punkte. "
                 "Bitte wählen Sie einen Layer mit Punktdaten aus."
             )
         
@@ -520,8 +528,8 @@ class IPlugIn:
                     if value == 0:
                         zero_count += 1
             if valid_count == 0:
-                raise ValueError(
-                    f"Das ausgewählte Feld '{field_name}' enthält keine gültigen Werte. "
+                raise DataValidationError(
+                    f"Das ausgewählte Feld '{field_name}' im Layer '{layer.name()}' enthält keine gültigen Werte. "
                     "Bitte wählen Sie ein Feld mit numerischen Werten aus."
                 )
             # Warnung wenn alle oder die meisten Werte Null sind
@@ -552,7 +560,9 @@ class IPlugIn:
                 if utm_layer:
                     layer = utm_layer
                 else:
-                    raise ValueError("Die UTM-Konvertierung ist fehlgeschlagen.")
+                    raise CoordinateSystemError(
+                        f"Die UTM-Konvertierung für Layer '{layer.name()}' ist fehlgeschlagen."
+                    )
             else:
                 self.log(
                     "Benutzer hat UTM-Konvertierung abgelehnt. Fahre mit originalem CRS fort.",
@@ -566,11 +576,13 @@ class IPlugIn:
                 if utm_boundary:
                     boundary_layer = utm_boundary
                 else:
-                    raise ValueError("Die UTM-Konvertierung des Boundary-Layers ist fehlgeschlagen.")
+                    raise CoordinateSystemError(
+                        f"Die UTM-Konvertierung des Boundary-Layers '{boundary_layer.name()}' ist fehlgeschlagen."
+                    )
         if boundary_layer:
             if boundary_layer.featureCount() == 0:
-                raise ValueError(
-                    "Der Grenzlayer enthält keine Features. "
+                raise DataValidationError(
+                    f"Der Grenzlayer '{boundary_layer.name()}' enthält keine Features. "
                     "Bitte wählen Sie einen Layer mit Polygonen aus."
                 )
                 
@@ -583,8 +595,8 @@ class IPlugIn:
                     break
                     
             if not boundary_geom:
-                raise ValueError(
-                    "Der Grenzlayer enthält keine gültigen Polygone. "
+                raise GeometryError(
+                    f"Der Grenzlayer '{boundary_layer.name()}' enthält keine gültigen Polygone. "
                     "Bitte überprüfen Sie die Geometrien im Layer."
                 )
                 
@@ -599,8 +611,8 @@ class IPlugIn:
                     points_within += 1
                     
             if points_within == 0:
-                raise ValueError(
-                    "Keine Punkte liegen innerhalb der ausgewählten Grenze. "
+                raise GeometryError(
+                    f"Keine Punkte aus Layer '{layer.name()}' liegen innerhalb der Grenze '{boundary_layer.name()}'. "
                     "Bitte überprüfen Sie die Lage der Punkte und die Grenze."
                 )
                 
@@ -688,7 +700,7 @@ class IPlugIn:
                 msg = f"Ungültiger Wert (NULL/QVariant) im Feld '{field_name}' für Feature-ID {feature.id()}. Bitte bereinigen Sie Ihre Daten."
                 self.log(msg, Qgis.Critical)
                 QMessageBox.critical(None, "Ungültige Werte gefunden", msg)
-                raise ValueError(msg)
+                raise DataValidationError(msg)
             x.append(point.x())
             y.append(point.y())
             z.append(float(value))
@@ -856,21 +868,24 @@ class IPlugIn:
             from qgis.PyQt.QtCore import QVariant
             for xi, yi, zi in zip(x, y, z):
                 if xi is None or yi is None or zi is None:
-                    raise ValueError("Die Daten enthalten ungültige Werte (NULL/leer). Bitte bereinigen Sie Ihre Daten.")
+                    raise DataValidationError("Die Daten enthalten ungültige Werte (NULL/leer). Bitte bereinigen Sie Ihre Daten.")
                 if isinstance(xi, QVariant) and xi.isNull():
-                    raise ValueError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
+                    raise DataValidationError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
                 if isinstance(yi, QVariant) and yi.isNull():
-                    raise ValueError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
+                    raise DataValidationError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
                 if isinstance(zi, QVariant) and zi.isNull():
-                    raise ValueError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
+                    raise DataValidationError("Die Daten enthalten ungültige Werte (QVariant/leer). Bitte bereinigen Sie Ihre Daten.")
                 try:
                     if np.isnan(float(xi)) or np.isnan(float(yi)) or np.isnan(float(zi)):
-                        raise ValueError("Die Daten enthalten ungültige Werte (NaN). Bitte bereinigen Sie Ihre Daten.")
+                        raise DataValidationError("Die Daten enthalten ungültige Werte (NaN). Bitte bereinigen Sie Ihre Daten.")
                 except Exception:
                     raise ValueError("Die Daten enthalten ungültige Werte (nicht numerisch). Bitte bereinigen Sie Ihre Daten.")
             # Validiere Eingabedaten
             if len(x) < InterpolationConfig.MIN_POINTS_FOR_VARIOGRAM:
-                raise ValueError(f"Zu wenige Datenpunkte für eine stabile Variogramm-Analyse (min. {InterpolationConfig.MIN_POINTS_FOR_VARIOGRAM} benötigt)")
+                raise DataValidationError(
+                    f"Zu wenige Datenpunkte für eine stabile Variogramm-Analyse. "
+                    f"Benötigt: {InterpolationConfig.MIN_POINTS_FOR_VARIOGRAM}, Vorhanden: {len(x)}"
+                )
             
             # Konvertiere zu numpy arrays
             x = np.asarray(x, dtype=np.float64)
@@ -880,7 +895,10 @@ class IPlugIn:
             # Prüfe auf gültiges Variogramm-Modell
             model_type = params.get('variogram_model', 'spherical').lower()
             if model_type not in VARIOGRAM_MODELS:
-                raise ValueError(f"Ungültiges Variogramm-Modell: {model_type}")
+                raise InterpolationCalculationError(
+                    f"Ungültiges Variogramm-Modell: {model_type}. "
+                    f"Verfügbare Modelle: {', '.join(VARIOGRAM_MODELS.keys())}"
+                )
             
             # Verwende Anzahl der Lags aus UI oder berechne sie
             if 'nlags' in params:
@@ -1069,7 +1087,9 @@ class IPlugIn:
                 z_pred, z_std = ok.execute('points', grid_x, grid_y)
                 return z_pred
             else:
-                raise ValueError("Ungültiger style-Parameter. Muss 'grid' oder 'points' sein.")
+                raise InterpolationCalculationError(
+                    f"Ungültiger style-Parameter: '{style}'. Muss 'grid' oder 'points' sein."
+                )
             
                 
         except Exception as e:
@@ -1572,12 +1592,96 @@ class IPlugIn:
                 # Close the progress dialog
                 progress.close()
                     
-            except Exception as e:
+            except DataValidationError as e:
+                # Close progress dialog if it exists
+                if 'progress' in locals():
+                    progress.close()
+                    
+                self.iface.messageBar().pushWarning(
+                    "I-PlugIn - Datenvalidierung",
+                    f"Daten-Problem: {str(e)}"
+                )
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Datenvalidierung fehlgeschlagen",
+                    str(e)
+                )
+                
+            except GeometryError as e:
+                # Close progress dialog if it exists
+                if 'progress' in locals():
+                    progress.close()
+                    
+                self.iface.messageBar().pushWarning(
+                    "I-PlugIn - Geometrie",
+                    f"Geometrie-Problem: {str(e)}"
+                )
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Geometrie-Problem",
+                    str(e)
+                )
+                
+            except CoordinateSystemError as e:
+                # Close progress dialog if it exists
+                if 'progress' in locals():
+                    progress.close()
+                    
+                self.iface.messageBar().pushWarning(
+                    "I-PlugIn - Koordinatensystem",
+                    f"CRS-Problem: {str(e)}"
+                )
+                QMessageBox.warning(
+                    self.iface.mainWindow(),
+                    "Koordinatensystem-Problem",
+                    str(e)
+                )
+                
+            except InterpolationCalculationError as e:
                 # Close progress dialog if it exists
                 if 'progress' in locals():
                     progress.close()
                     
                 self.iface.messageBar().pushCritical(
+                    "I-PlugIn - Berechnung",
+                    f"Interpolations-Fehler: {str(e)}"
+                )
+                QMessageBox.critical(
+                    self.iface.mainWindow(),
+                    "Interpolation fehlgeschlagen",
+                    str(e)
+                )
+                
+            except InterpolationError as e:
+                # Catch all other plugin-specific errors
+                if 'progress' in locals():
+                    progress.close()
+                    
+                self.iface.messageBar().pushCritical(
                     "I-PlugIn",
-                    f"Fehler bei der Interpolation: {str(e)}"
+                    f"Plugin-Fehler: {str(e)}"
+                )
+                QMessageBox.critical(
+                    self.iface.mainWindow(),
+                    "Fehler",
+                    str(e)
+                )
+                
+            except Exception as e:
+                # Unexpected errors
+                if 'progress' in locals():
+                    progress.close()
+                    
+                self.log(f"Unerwarteter Fehler: {str(e)}", Qgis.Critical)
+                import traceback
+                self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
+                    
+                self.iface.messageBar().pushCritical(
+                    "I-PlugIn - Unerwarteter Fehler",
+                    f"Ein unerwarteter Fehler ist aufgetreten: {str(e)}"
+                )
+                QMessageBox.critical(
+                    self.iface.mainWindow(),
+                    "Unerwarteter Fehler",
+                    f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}\n\nBitte prüfen Sie das Log für Details."
                 )
