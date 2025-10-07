@@ -65,6 +65,65 @@ from . import resources
 
 INTERPOLATION_LIBS_AVAILABLE = True
 
+
+# ==================== CONFIGURATION ====================
+
+class InterpolationConfig:
+    """Zentrale Konfiguration für Interpolations-Parameter und Konstanten."""
+    
+    # Variogramm-Analyse
+    MIN_POINTS_FOR_VARIOGRAM = 30  # Minimale Anzahl Punkte für stabile Variogramm-Analyse
+    MIN_PAIRS_PER_LAG = 30  # Minimale Anzahl Punkt-Paare pro Lag-Klasse
+    MIN_LAGS = 3  # Minimale Anzahl von Lags
+    MAX_LAGS = 20  # Maximale Anzahl von Lags
+    
+    # Grid-Erstellung
+    GRID_BUFFER_MULTIPLIER = 1.0  # Multiplikator für Grid-Buffer (cell_size * multiplier)
+    GRID_ARANGE_OFFSET = 0.5  # Offset für np.arange zur Vermeidung von Rundungsfehlern
+    
+    # Raster-Parameter
+    RASTER_PIXEL_OFFSET = 0.5  # Pixel-Offset für GeoTransform
+    
+    # Feldnamen (für Shapefile-Kompatibilität)
+    DEFAULT_FIELD_PREFIX = "EM38_INT"  # Standard-Präfix für interpolierte Felder
+    MAX_FIELD_NAME_LENGTH = 10  # Maximale Länge für Shapefile-Feldnamen
+    FIELD_NAME_TRUNCATE = 6  # Anzahl Zeichen vom Original-Feldnamen
+    
+    # Feld-Eigenschaften
+    FIELD_TYPE_DOUBLE_LENGTH = 20  # Länge für Double-Felder
+    FIELD_TYPE_DOUBLE_PRECISION = 10  # Präzision für Double-Felder
+    
+    # Datenvalidierung
+    ZERO_VALUE_WARNING_THRESHOLD = 90  # Prozent - Warnung wenn mehr als X% Null-Werte
+    
+    # UI-Defaults
+    DEFAULT_CELL_SIZE = 10.0
+    DEFAULT_CELL_SIZE_MIN = 0.1
+    DEFAULT_CELL_SIZE_MAX = 10000.0
+    DEFAULT_SILL = 0.1
+    DEFAULT_SILL_MIN = 0.0
+    DEFAULT_SILL_MAX = 10000.0
+    DEFAULT_RANGE = 100.0
+    DEFAULT_RANGE_MIN = 0.1
+    DEFAULT_RANGE_MAX = 10000.0
+    DEFAULT_NUGGET = 0.0
+    DEFAULT_NUGGET_MIN = 0.0
+    DEFAULT_NUGGET_MAX = 10000.0
+    DEFAULT_NLAGS = 10
+    
+    # Output-Verzeichnisse
+    OUTPUT_DIR_NAME = "i_plugin_outputs"
+    LAYER_GROUP_NAME = "I-PlugIn Interpolationen"
+    
+    # Datei-Suffixe
+    METADATA_SUFFIX = "_metadata.json"
+    VARIOGRAM_PLOT_SUFFIX = "_variogram.png"
+    UTM_LAYER_PREFIX = "UTM_"
+    
+    # Distanz-Berechnung
+    DISTANCE_PERCENTILE = 95  # Perzentil für maximale Distanz in Variogramm-Analyse
+
+
 class IPlugIn:
     """QGIS Plugin Implementation."""
 
@@ -323,7 +382,7 @@ class IPlugIn:
         project_dir.mkdir(parents=True, exist_ok=True)
 
         # Create output path
-        new_layer_name = "UTM_" + layer.name()
+        new_layer_name = InterpolationConfig.UTM_LAYER_PREFIX + layer.name()
         # Ensure proper path handling
         output_path = str(project_dir / f"{new_layer_name}.shp")
 
@@ -513,7 +572,7 @@ class IPlugIn:
             # Warnung wenn alle oder die meisten Werte Null sind
             if zero_count > 0:
                 zero_percentage = (zero_count / valid_count) * 100
-                if zero_percentage > 90:  # Wenn mehr als 90% der Werte Null sind
+                if zero_percentage > InterpolationConfig.ZERO_VALUE_WARNING_THRESHOLD:
                     msg_box = QMessageBox()
                     msg_box.setIcon(QMessageBox.Warning)
                     msg_box.setText(f"Warnung: {zero_percentage:.1f}% der Werte sind Null")
@@ -723,7 +782,7 @@ class IPlugIn:
         y_max = np.ceil(y_max / cell_size) * cell_size
 
         # --- 3. Boundary um cell_size erweitern ---
-        expand = cell_size
+        expand = cell_size * InterpolationConfig.GRID_BUFFER_MULTIPLIER
         x_start = x_min - expand
         x_end   = x_max + expand
         y_start = y_min - expand
@@ -735,8 +794,8 @@ class IPlugIn:
         # --- 4. Grid erzeugen ---
         nx = int(round((x_end - x_start) / cell_size))
         ny = int(round((y_end - y_start) / cell_size))
-        x = np.arange(x_start, x_end + cell_size*0.5, cell_size)  # +0.5 wegen Rundungsfehler
-        y = np.arange(y_start, y_end + cell_size*0.5, cell_size)
+        x = np.arange(x_start, x_end + cell_size * InterpolationConfig.GRID_ARANGE_OFFSET, cell_size)
+        y = np.arange(y_start, y_end + cell_size * InterpolationConfig.GRID_ARANGE_OFFSET, cell_size)
         x = np.sort(x)
         y = np.sort(y)[::-1]
 
@@ -788,7 +847,7 @@ class IPlugIn:
         distances = np.array(distances)
         
         # Berechne Statistiken
-        max_dist = np.percentile(distances, 95)  # 95. Perzentil statt Maximum
+        max_dist = np.percentile(distances, InterpolationConfig.DISTANCE_PERCENTILE)
         n_pairs = len(distances)
         
         # Empirische Regeln für die Anzahl der Lags:
@@ -799,14 +858,14 @@ class IPlugIn:
         n_bins_rice = int(np.ceil(2 * n_pairs**(1/3)))
         
         # 3. Mindestens 30 Paare pro Lag für statistische Stabilität
-        min_pairs_per_lag = 30
+        min_pairs_per_lag = InterpolationConfig.MIN_PAIRS_PER_LAG
         max_lags = n_pairs // min_pairs_per_lag
         
         # Wähle die kleinste Anzahl von Lags, die alle Kriterien erfüllt
         nlags = min(n_bins_sqrt, n_bins_rice, max_lags)
         
-        # Stelle sicher, dass wir mindestens 3 Lags haben
-        nlags = max(3, nlags)
+        # Stelle sicher, dass wir mindestens MIN_LAGS haben
+        nlags = max(InterpolationConfig.MIN_LAGS, nlags)
         
         # Logging für Debugging
         self.log(
@@ -858,8 +917,8 @@ class IPlugIn:
                 except Exception:
                     raise ValueError("Die Daten enthalten ungültige Werte (nicht numerisch). Bitte bereinigen Sie Ihre Daten.")
             # Validiere Eingabedaten
-            if len(x) < 30:
-                raise ValueError("Zu wenige Datenpunkte für eine stabile Variogramm-Analyse (min. 30 benötigt)")
+            if len(x) < InterpolationConfig.MIN_POINTS_FOR_VARIOGRAM:
+                raise ValueError(f"Zu wenige Datenpunkte für eine stabile Variogramm-Analyse (min. {InterpolationConfig.MIN_POINTS_FOR_VARIOGRAM} benötigt)")
             
             # Konvertiere zu numpy arrays
             x = np.asarray(x, dtype=np.float64)
@@ -934,9 +993,9 @@ class IPlugIn:
             base_name = params.get('base_name', 'variogram')
             if output_dir is None:
                 # Fallback: plugin dir
-                save_path = os.path.join(self.plugin_dir, f'{base_name}_variogram.png')
+                save_path = os.path.join(self.plugin_dir, f'{base_name}{InterpolationConfig.VARIOGRAM_PLOT_SUFFIX}')
             else:
-                save_path = os.path.join(output_dir, f'{base_name}_variogram.png')
+                save_path = os.path.join(output_dir, f'{base_name}{InterpolationConfig.VARIOGRAM_PLOT_SUFFIX}')
             plotter.plot_variogram(
                 lags, experimental,
                 model_type,
@@ -1102,16 +1161,18 @@ class IPlugIn:
                 # Debug-Log: Grid- und Extent-Koordinaten
                 self.log(f"Grid X: x[0]={x[0]}, x[-1]={x[-1]}, Y: y[0]={y[0]}, y[-1]={y[-1]}")
                 self.log(f"Extent: xmin={extent.xMinimum()}, xmax={extent.xMaximum()}, ymin={extent.yMinimum()}, ymax={extent.yMaximum()}")
+                x_origin = x[0] - InterpolationConfig.RASTER_PIXEL_OFFSET * cell_size
+                y_origin = y[0] + InterpolationConfig.RASTER_PIXEL_OFFSET * cell_size
                 dataset.SetGeoTransform((
-                    x[0] - 0.5 * cell_size,  # x origin (um 2 Pixel nach links verschoben)
-                    cell_size,             # pixel width
+                    x_origin,  # x origin
+                    cell_size,  # pixel width
                     0,
-                    y[0] + 0.5 * cell_size,  # y origin (um 2 Pixel nach oben verschoben)
+                    y_origin,  # y origin
                     0,
-                    -cell_size             # pixel height
+                    -cell_size  # pixel height
                 ))
                 self.log(
-                    f"Raster-GeoTransform gesetzt auf: x_origin={x[0] - 0.5 * cell_size}, y_origin={y[0] + 0.5 * cell_size}, pixel_width={cell_size}, pixel_height={-cell_size} (2 Pixel nach oben links verschoben)"
+                    f"Raster-GeoTransform gesetzt auf: x_origin={x_origin}, y_origin={y_origin}, pixel_width={cell_size}, pixel_height={-cell_size}"
                 )
             else:
                 self.log(
@@ -1157,7 +1218,7 @@ class IPlugIn:
             return None
             
         # Create project directory if it doesn't exist
-        project_dir = Path(project.fileName()).parent / "i_plugin_outputs"
+        project_dir = Path(project.fileName()).parent / InterpolationConfig.OUTPUT_DIR_NAME
         project_dir.mkdir(exist_ok=True)
         
         return project_dir
@@ -1165,7 +1226,7 @@ class IPlugIn:
     def get_layer_group(self):
         """Get or create layer group for plugin outputs."""
         root = QgsProject.instance().layerTreeRoot()
-        group_name = "I-PlugIn Interpolationen"
+        group_name = InterpolationConfig.LAYER_GROUP_NAME
         
         # Find existing group or create new one
         group = root.findGroup(group_name)
@@ -1210,7 +1271,7 @@ class IPlugIn:
                 }
             }
         
-        metadata_path = output_dir / f"{base_name}_metadata.json"
+        metadata_path = output_dir / f"{base_name}{InterpolationConfig.METADATA_SUFFIX}"
         with open(metadata_path, "w") as f:
             json.dump(metadata, f, indent=4)
 # ERSTELLT DIE OUTPUT PATH UND DAS DIR             
@@ -1250,17 +1311,23 @@ class IPlugIn:
             self.log(f"Vorhandene Felder: {[field.name() for field in fields]}")
             
             # Generiere kurzen, eindeutigen Feldnamen (max. 10 Zeichen für Shapefile)
-            base_field_name = "EM38_INT"
+            base_field_name = InterpolationConfig.DEFAULT_FIELD_PREFIX
             counter = 1
             field_name = base_field_name
             while target_layer.fields().indexOf(field_name) != -1:
-                field_name = f"{base_field_name[:6]}{counter}"
+                field_name = f"{base_field_name[:InterpolationConfig.FIELD_NAME_TRUNCATE]}{counter}"
                 counter += 1
             
             self.log(f"Verwende Feldnamen: {field_name}")
             
             # Erstelle ein neues Feld mit spezifischer Länge und Präzision für Shapefile
-            new_field = QgsField(field_name, QVariant.Double, 'Real', 20, 10)
+            new_field = QgsField(
+                field_name, 
+                QVariant.Double, 
+                'Real', 
+                InterpolationConfig.FIELD_TYPE_DOUBLE_LENGTH, 
+                InterpolationConfig.FIELD_TYPE_DOUBLE_PRECISION
+            )
             
             # Debug: Zeige Feld-Details
             self.log(f"Neues Feld Details - Name: {new_field.name()}, Typ: {new_field.type()}, TypeName: {new_field.typeName()}, Länge: {new_field.length()}, Präzision: {new_field.precision()}")
@@ -1380,7 +1447,7 @@ class IPlugIn:
             # Generiere kurzen Feldnamen für Shapefile (max. 10 Zeichen)
             # Entferne Sonderzeichen und kürze wenn nötig
             clean_name = ''.join(c for c in covariate_field if c.isalnum())
-            field_name = f"{clean_name[:6]}INT"
+            field_name = f"{clean_name[:InterpolationConfig.FIELD_NAME_TRUNCATE]}INT"
             self.update_target_layer(target_layer, target_features, interpolated_values, field_name)
             
             self.log("Punkt-Interpolation erfolgreich abgeschlossen", Qgis.Success)
