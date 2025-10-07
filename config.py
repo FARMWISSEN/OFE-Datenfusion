@@ -53,6 +53,8 @@ class InterpolationConfig:
     # Output-Verzeichnisse
     OUTPUT_DIR_NAME = "i_plugin_outputs"
     LAYER_GROUP_NAME = "I-PlugIn Interpolationen"
+    RASTER_INTERPOLATION_DIR = "raster_interpolation"
+    POINT_INTERPOLATION_DIR = "point_interpolation"
     
     # Datei-Suffixe
     METADATA_SUFFIX = "_metadata.json"
