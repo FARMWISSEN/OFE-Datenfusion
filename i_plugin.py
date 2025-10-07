@@ -279,10 +279,9 @@ class IPlugIn:
         
         Diese Methode führt folgende Schritte durch:
         1. Prüft ob der Layer bereits in UTM ist (EPSG:326xx oder EPSG:327xx)
-        2. Berechnet den Mittelpunkt des Layers
-        3. Transformiert den Mittelpunkt nach WGS84
-        4. Berechnet die passende UTM-Zone basierend auf der Länge
-        5. Erstellt einen neuen Layer mit dem UTM-Koordinatensystem
+        2. Prüft ob bereits ein konvertierter Layer im Projekt existiert
+        3. Berechnet den Mittelpunkt des Layers und die passende UTM-Zone
+        4. Erstellt einen neuen Layer mit eindeutigem Dateinamen
         
         Args:
             layer (QgsVectorLayer): Der zu konvertierende Layer
@@ -292,9 +291,11 @@ class IPlugIn:
                            wenn dieser bereits in UTM ist
             
         Raises:
-            ValueError: Wenn die Konvertierung fehlschlägt
+            CoordinateSystemError: Wenn die Konvertierung fehlschlägt
             
         Notes:
+            - Prüft auf existierende UTM-Layer im Projekt (vermeidet Duplikate)
+            - Generiert eindeutige Dateinamen bei Konflikten
             - Der neue Layer wird automatisch dem Projekt hinzugefügt
             - Der Dateiname des neuen Layers beginnt mit 'UTM_'
             - Für die Nord-/Südhalbkugel werden die EPSG-Codes 326xx/327xx verwendet
@@ -303,9 +304,10 @@ class IPlugIn:
         
         # Check if already in UTM
         if self.is_utm_crs(source_crs):
+            self.log(f"Layer '{layer.name()}' ist bereits in UTM ({source_crs.authid()})")
             return layer
-            
-        # Get layer center
+        
+        # Calculate target UTM zone first
         extent = layer.extent()
         center_x = (extent.xMinimum() + extent.xMaximum()) / 2
         center_y = (extent.yMinimum() + extent.yMaximum()) / 2
@@ -321,9 +323,26 @@ class IPlugIn:
         utm_zone = int((lon + 180) / 6) + 1
         target_epsg = 32600 + utm_zone if lat >= 0 else 32700 + utm_zone
         target_crs = QgsCoordinateReferenceSystem(f"EPSG:{target_epsg}")
-
+        
+        # Check if a UTM-converted layer already exists in the project
+        new_layer_name = InterpolationConfig.UTM_LAYER_PREFIX + layer.name()
+        project = QgsProject.instance()
+        
+        for existing_layer in project.mapLayers().values():
+            # Prüfe ob Layer mit gleichem Namen und passendem UTM-CRS existiert
+            if (existing_layer.name() == new_layer_name and 
+                isinstance(existing_layer, QgsVectorLayer) and
+                existing_layer.crs().authid() == target_crs.authid()):
+                
+                self.log(
+                    f"UTM-Layer '{new_layer_name}' existiert bereits im Projekt "
+                    f"mit CRS {target_crs.authid()}. Verwende existierenden Layer.",
+                    Qgis.Info
+                )
+                return existing_layer
+        
         # Get project directory or home directory as fallback
-        project_file = QgsProject.instance().fileName()
+        project_file = project.fileName()
         if project_file:
             project_dir = Path(os.path.dirname(project_file))
         else:
@@ -332,28 +351,57 @@ class IPlugIn:
         # Ensure output directory exists
         project_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create output path
-        new_layer_name = InterpolationConfig.UTM_LAYER_PREFIX + layer.name()
-        # Ensure proper path handling
-        output_path = str(project_dir / f"{new_layer_name}.shp")
+        # Generate unique output path to avoid file conflicts
+        base_output_path = project_dir / f"{new_layer_name}.shp"
+        output_path = base_output_path
+        counter = 1
+        
+        # Check if file already exists and generate unique name
+        while output_path.exists():
+            self.log(
+                f"Datei '{output_path}' existiert bereits. Generiere eindeutigen Namen.",
+                Qgis.Warning
+            )
+            output_path = project_dir / f"{new_layer_name}_{counter}.shp"
+            counter += 1
+        
+        output_path_str = str(output_path)
+        self.log(f"Erstelle neuen UTM-Layer: {output_path_str}")
 
         # Reproject layer
         params = {
             'INPUT': layer,
             'TARGET_CRS': target_crs,
-            'OUTPUT': output_path
+            'OUTPUT': output_path_str
         }
-        feedback = QgsProcessingFeedback()
-        result = processing.run("native:reprojectlayer", params, feedback=feedback)
+        
+        try:
+            feedback = QgsProcessingFeedback()
+            result = processing.run("native:reprojectlayer", params, feedback=feedback)
+        except Exception as e:
+            self.log(f"Fehler bei der UTM-Konvertierung: {str(e)}", Qgis.Critical)
+            raise CoordinateSystemError(
+                f"Die UTM-Konvertierung für Layer '{layer.name()}' ist fehlgeschlagen: {str(e)}"
+            )
 
         # Load and verify new layer
-        new_layer = QgsVectorLayer(result['OUTPUT'], new_layer_name, "ogr")
+        # Use the layer name without counter suffix for display
+        display_name = new_layer_name if counter == 1 else f"{new_layer_name}_{counter-1}"
+        new_layer = QgsVectorLayer(result['OUTPUT'], display_name, "ogr")
+        
         if not new_layer.isValid():
             self.log("Failed to create UTM layer", Qgis.Critical)
-            return None
+            raise CoordinateSystemError(
+                f"Der erstellte UTM-Layer für '{layer.name()}' ist ungültig."
+            )
 
         # Add to project and return
-        QgsProject.instance().addMapLayer(new_layer)
+        project.addMapLayer(new_layer)
+        self.log(
+            f"UTM-Layer '{display_name}' erfolgreich erstellt "
+            f"(CRS: {target_crs.authid()}, Datei: {output_path.name})",
+            Qgis.Success
+        )
         return new_layer
 # DIE BOUNDARY POLYGONS ÜBERPRÜFEN UND RETURN 
     def combine_boundary_geometries(self, boundary_layer):
