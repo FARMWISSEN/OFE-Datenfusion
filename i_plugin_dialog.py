@@ -504,10 +504,17 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     # Close progress dialog
                     progress.close()
                     
+                    # Erstelle passende Success-Nachricht basierend auf Backup-Status
+                    backup_msg = ""
+                    if params.get('backup_created'):
+                        backup_msg = "\n\nErstellung eines Backups des Ziel-Layers wurde im Projektverzeichnis unter 'backups/' durchgeführt."
+                    elif params.get('backup_path'):
+                        backup_msg = "\n\nEin Backup des Ziel-Layers existiert bereits im Projektverzeichnis unter 'backups/'."
+                    
                     QMessageBox.information(
                         self,
                         "Erfolg",
-                        "Punkt-Interpolation erfolgreich abgeschlossen."
+                        f"Punkt-Interpolation erfolgreich abgeschlossen.{backup_msg}"
                     )
                     
                 except InterpolationError as e:
