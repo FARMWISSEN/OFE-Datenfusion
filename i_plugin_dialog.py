@@ -433,35 +433,58 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
     def validate_point_interpolation_inputs(self):
         """Validiert die Eingaben für die Punkt-Interpolation."""
+        # Check target layer
         if not self.mMapLayerComboBox_target_layer.currentLayer():
             QMessageBox.warning(self, "Warnung", "Bitte wählen Sie einen Ziel-Layer aus.")
             return False
+        
+        # Check covariate layer
+        if not self.mMapLayerComboBox_covariate_point.currentLayer():
+            QMessageBox.warning(self, "Warnung", "Bitte wählen Sie einen Kovariaten-Layer aus.")
+            return False
             
-        if not self.mFieldComboBox.currentField():
-            QMessageBox.warning(self, "Warnung", "Bitte wählen Sie ein Eingabe-Feld aus.")
+        # Check covariate field (not the raster field!)
+        if not self.mFieldComboBox_covariate.currentField():
+            QMessageBox.warning(self, "Warnung", "Bitte wählen Sie ein Kovariaten-Feld aus.")
             return False
 
-                # Check for zero values in the selected field
+        # Check for zero and NULL values in the COVARIATE field (not target!)
         has_zero = False
-        for feature in self.mMapLayerComboBox_target_layer.currentLayer().getFeatures():
-            value = feature[self.mFieldComboBox.currentField()]
+        has_null = False
+        from qgis.PyQt.QtCore import QVariant
+        
+        covariate_layer = self.mMapLayerComboBox_covariate_point.currentLayer()
+        covariate_field = self.mFieldComboBox_covariate.currentField()
+        
+        for feature in covariate_layer.getFeatures():
+            value = feature[covariate_field]
+            # Check for NULL values
+            if value is None or (isinstance(value, QVariant) and value.isNull()):
+                has_null = True
+                break
             try:
-                if value is not None and float(value) == 0:
+                if float(value) == 0:
                     has_zero = True
                     break
             except (ValueError, TypeError, AttributeError):
-                # Wert nicht konvertierbar - überspringen
-                continue
+                # Value not convertible - treat as invalid
+                has_null = True
+                break
+        
+        if has_null:
+            QMessageBox.warning(
+                self,
+                "Warnung",
+                "Kovariaten-Daten enthalten leere oder ungültige Werte (NULLs). Die Interpolation kann dies nicht verarbeiten. Bitte filtern."
+            )
+            return False
+            
         if has_zero:
             QMessageBox.warning(
                 self,
                 "Warnung",
-                "Daten enthalten 0 Werte. Die Interpolation kann dies nicht verarbeiten. Bitte filtern."
+                "Kovariaten-Daten enthalten 0 Werte. Die Interpolation kann dies nicht verarbeiten. Bitte filtern."
             )
-            return False
-            
-        if not self.mMapLayerComboBox_target_layer.currentLayer():
-            QMessageBox.warning(self, "Warnung", "Bitte wählen Sie einen Ziel-Layer aus.")
             return False
             
         return True
