@@ -24,7 +24,7 @@ class InterpolationConfig:
     RASTER_PIXEL_OFFSET = 0.5  # Pixel-Offset für GeoTransform
     
     # Feldnamen (für Shapefile-Kompatibilität)
-    DEFAULT_FIELD_PREFIX = "EM38_INT"  # Standard-Präfix für interpolierte Felder
+    DEFAULT_FIELD_PREFIX = "COV_INT"  # Standard-Präfix für interpolierte Felder
     MAX_FIELD_NAME_LENGTH = 10  # Maximale Länge für Shapefile-Feldnamen
     FIELD_NAME_TRUNCATE = 6  # Anzahl Zeichen vom Original-Feldnamen
     
