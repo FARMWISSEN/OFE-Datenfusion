@@ -763,29 +763,34 @@ class IPlugIn:
         return None, None, None
 # ERSTELLT OUTPUT GRID FÜRS KRIGING ERSTELLT DIE COORDINATES 
     def create_output_grid(self, extent, cell_size, boundary_layer=None):
-        """Create output grid for interpolation with exact buffer and full debug logging."""
+        """Create output grid for interpolation with exact buffer and full debug logging.
+        
+        Diese Methode erstellt ein regelmäßiges Grid für die Kriging-Interpolation und
+        eine Maske, die definiert, welche Pixel innerhalb der Boundary liegen.
+        
+        Args:
+            extent: QgsRectangle mit der Extent für das Grid
+            cell_size: Größe einer Rasterzelle in Metern
+            boundary_layer: Optional - Layer mit Polygon-Geometrien zur Maskierung
+            
+        Returns:
+            tuple: (x, y, mask)
+                - x: numpy array mit X-Koordinaten der Pixel-Zentren
+                - y: numpy array mit Y-Koordinaten der Pixel-Zentren (absteigend sortiert)
+                - mask: numpy boolean array - True für Pixel innerhalb der Boundary
+                
+        Notes:
+            - Extent wird an Rasterzellen ausgerichtet (floor/ceil)
+            - Buffer wird automatisch hinzugefügt (GRID_BUFFER_MULTIPLIER)
+            - Maske verwendet Pixel-Polygone statt Punkte für vollständige Abdeckung
+            - Pixel werden eingeschlossen, wenn sie die Boundary überlappen (intersects)
+        """
         # --- 1. Extent bestimmen ---
-        if boundary_layer and boundary_layer.featureCount() > 0:
-            x_min = x_max = y_min = y_max = None
-            for feature in boundary_layer.getFeatures():
-                geom = feature.geometry()
-                if geom and geom.isGeosValid():
-                    bbox = geom.boundingBox()
-                    if x_min is None:
-                        x_min = bbox.xMinimum()
-                        x_max = bbox.xMaximum()
-                        y_min = bbox.yMinimum()
-                        y_max = bbox.yMaximum()
-                    else:
-                        x_min = min(x_min, bbox.xMinimum())
-                        x_max = max(x_max, bbox.xMaximum())
-                        y_min = min(y_min, bbox.yMinimum())
-                        y_max = max(y_max, bbox.yMaximum())
-        else:
-            x_min = extent.xMinimum()
-            x_max = extent.xMaximum()
-            y_min = extent.yMinimum()
-            y_max = extent.yMaximum()
+        # Verwende die übergebene Extent (kann bereits erweitert sein)
+        x_min = extent.xMinimum()
+        x_max = extent.xMaximum()
+        y_min = extent.yMinimum()
+        y_max = extent.yMaximum()
 
         # --- 2. Extent an Rasterzellen ausrichten ---
         x_min = np.floor(x_min / cell_size) * cell_size
@@ -793,7 +798,7 @@ class IPlugIn:
         y_min = np.floor(y_min / cell_size) * cell_size
         y_max = np.ceil(y_max / cell_size) * cell_size
 
-        # --- 3. Boundary um cell_size erweitern ---
+        # --- 3. Boundary um cell_size erweitern (zusätzlicher Buffer) ---
         expand = cell_size * InterpolationConfig.GRID_BUFFER_MULTIPLIER
         x_start = x_min - expand
         x_end   = x_max + expand
@@ -823,13 +828,28 @@ class IPlugIn:
         if boundary_layer:
             xx, yy = np.meshgrid(x, y)
             mask = np.zeros((len(y), len(x)), dtype=bool)
+            
+            # Erstelle Pixel-Polygone statt nur Punkte für bessere Abdeckung
+            half_cell = cell_size / 2.0
+            
             for i in range(len(y)):
                 for j in range(len(x)):
-                    point = QgsGeometry.fromPointXY(QgsPointXY(xx[i, j], yy[i, j]))
+                    # Erstelle ein Pixel-Polygon (Quadrat um das Pixel-Zentrum)
+                    px = xx[i, j]
+                    py = yy[i, j]
+                    pixel_polygon = QgsGeometry.fromPolygonXY([[
+                        QgsPointXY(px - half_cell, py - half_cell),
+                        QgsPointXY(px + half_cell, py - half_cell),
+                        QgsPointXY(px + half_cell, py + half_cell),
+                        QgsPointXY(px - half_cell, py + half_cell),
+                        QgsPointXY(px - half_cell, py - half_cell)
+                    ]])
+                    
                     for feature in boundary_layer.getFeatures():
                         geom = feature.geometry()
                         if geom and geom.isGeosValid():
-                            if point.within(geom):
+                            # Pixel ist "drin" wenn es die Boundary überlappt oder berührt
+                            if pixel_polygon.intersects(geom):
                                 mask[i, j] = True
                                 break
             self.log(f"Mask Shape: {mask.shape}")
@@ -1731,9 +1751,17 @@ class IPlugIn:
                 if progress.wasCanceled():
                     raise Exception("Interpolation wurde vom Benutzer abgebrochen")
                 
-                # Create output grid
+                # Bestimme die Extent für Grid-Erstellung
+                if params.get('boundary_layer'):
+                    grid_extent = params['boundary_layer'].extent()
+                    self.log("Using boundary extent for grid")
+                else:
+                    grid_extent = params['input_layer'].extent()
+                    self.log("Using input layer extent for grid")
+                
+                # Create output grid (Buffer wird automatisch durch GRID_BUFFER_MULTIPLIER hinzugefügt)
                 grid_x, grid_y, mask = self.create_output_grid(
-                    params['input_layer'].extent(),
+                    grid_extent,
                     params['cell_size'],
                     params.get('boundary_layer')
                 )
@@ -1752,14 +1780,9 @@ class IPlugIn:
                     raise Exception("Interpolation wurde vom Benutzer abgebrochen")
                 
                 # Create and save raster layer
-                # Bestimme die Extent basierend auf Boundary oder Input Layer
-                if params.get('boundary_layer'):
-                    extent = params['boundary_layer'].extent()
-                    self.log("Using boundary extent for raster")
-                else:
-                    extent = params['input_layer'].extent()
-                    self.log("Using input layer extent for raster")
-                
+                # Verwende die erweiterte Extent für das Raster
+                extent = grid_extent
+                    
                 self.create_raster_layer(
                     interpolated_data,
                     extent,

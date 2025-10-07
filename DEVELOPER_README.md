@@ -262,6 +262,13 @@ InterpolationError (Base)
   - Raster: `i_plugin_outputs/raster_interpolation/`
   - Punkt: `i_plugin_outputs/point_interpolation/`
 
+### **8. Boundary-Masken-Berechnung (verbessert)**
+- **Problem**: Pixel an Rändern/Ecken wurden nicht eingeschlossen
+- **Alte Methode**: Prüft ob Pixel-**Zentrum** innerhalb Boundary (`point.within()`)
+- **Neue Methode**: Prüft ob Pixel-**Polygon** Boundary überlappt (`polygon.intersects()`)
+- **Ergebnis**: Vollständige Feldabdeckung, keine fehlenden Randpixel
+- **Implementierung**: `create_output_grid()` erstellt Pixel-Quadrate (cell_size/2 Radius)
+
 **Output-Verzeichnisstruktur:**
 ```
 projektverzeichnis/
@@ -442,6 +449,7 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 - **Feature**: Automatisches Backup vor Punkt-Interpolation (idempotent, nur ein Backup pro Layer)
 - **Feature**: Generische Metadaten-Speicherung für beide Interpolationstypen
 - **Improvement**: Selbsterklärende Ordnernamen (`raster_interpolation` statt `ordinary_kriging`)
+- **Bugfix**: Vollständige Raster-Abdeckung an Boundary-Rändern (Pixel-Polygon-Maske statt Punkt-Maske)
 
 ---
 
@@ -501,6 +509,19 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
    - Raster: `i_plugin_outputs/raster_interpolation/` (vorher: `ordinary_kriging/`)
    - Punkt: `i_plugin_outputs/point_interpolation/`
 5. Konstanten in `config.py`: `RASTER_INTERPOLATION_DIR`, `POINT_INTERPOLATION_DIR`
+
+### ✅ Boundary-Masken-Berechnung verbessert
+**Problem**: Pixel an Boundary-Rändern und -Ecken fehlten
+- Alte Maske prüfte nur ob Pixel-Zentrum innerhalb Boundary liegt
+- Pixel, die Boundary berühren aber Zentrum außerhalb haben, wurden maskiert (NaN)
+- Resultat: Unvollständige Feldabdeckung, fehlende Ecken
+
+**Lösung**:
+1. Pixel-Polygone statt Punkte: Erstellt Quadrat mit `cell_size/2` Radius (Zeile 811-825)
+2. Überlappungs-Test: Verwendet `intersects()` statt `within()` (Zeile 831)
+3. Alle Pixel, die Boundary berühren oder überlappen, werden eingeschlossen
+4. Vollständige Feldabdeckung ohne fehlende Randpixel
+5. Keine Änderung an Grid-Größe notwendig - nur Masken-Logik verbessert
 
 ### ✅ Punkt-Interpolation Validierung korrigiert
 **Problem**: `validate_point_interpolation_inputs()` hatte mehrere Bugs (i_plugin_dialog.py)
