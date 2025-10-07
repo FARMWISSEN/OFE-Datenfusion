@@ -32,7 +32,7 @@ from qgis.core import (QgsMapLayerProxyModel, QgsFieldProxyModel, QgsProject, Qg
                       QgsRasterLayer, QgsRectangle, QgsCoordinateReferenceSystem)
 
 from .variogram_dialog import VariogramDialog
-from .i_plugin import InterpolationConfig
+from .config import InterpolationConfig
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(

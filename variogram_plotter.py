@@ -4,7 +4,7 @@ from .variogram_models import VARIOGRAM_MODELS
 
 # Import config for constants
 try:
-    from .i_plugin import InterpolationConfig
+    from .config import InterpolationConfig
 except ImportError:
     # Fallback if import fails
     class InterpolationConfig:

@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt
 
 # Import config for constants
 try:
-    from .i_plugin import InterpolationConfig
+    from .config import InterpolationConfig
 except ImportError:
     # Fallback if import fails
     class InterpolationConfig:

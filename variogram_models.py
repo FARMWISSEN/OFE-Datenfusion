@@ -4,7 +4,7 @@ from typing import Tuple, Dict, List, Optional
 
 # Import config for constants
 try:
-    from .i_plugin import InterpolationConfig
+    from .config import InterpolationConfig
 except ImportError:
     # Fallback if import fails (e.g., during testing)
     class InterpolationConfig:
