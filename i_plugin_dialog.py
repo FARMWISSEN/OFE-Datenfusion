@@ -33,6 +33,13 @@ from qgis.core import (QgsMapLayerProxyModel, QgsFieldProxyModel, QgsProject, Qg
 
 from .variogram_dialog import VariogramDialog
 from .config import InterpolationConfig
+from .exceptions import (
+    InterpolationError,
+    DataValidationError,
+    GeometryError,
+    CoordinateSystemError,
+    InterpolationCalculationError
+)
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -177,9 +184,20 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     break
             if utm_layer:
                 self.mMapLayerComboBox_boundary.setLayer(utm_layer)
-            QMessageBox.information(self, "Validierung erfolgreich", f"Layer '{layer.name()}' ist gültig und kann verwendet werden.")
+            self.iface.messageBar().pushSuccess(
+                "I-PlugIn - Validierung",
+                f"Layer '{layer.name()}' ist gültig und kann verwendet werden."
+            )
+        except DataValidationError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Datenvalidierung", str(e), duration=5)
+        except GeometryError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Geometrie", str(e), duration=5)
+        except CoordinateSystemError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Koordinatensystem", str(e), duration=5)
+        except InterpolationError as e:
+            self.iface.messageBar().pushCritical("I-PlugIn - Fehler", str(e), duration=5)
         except Exception as e:
-            QMessageBox.critical(self, "Validierungsfehler", str(e))
+            self.iface.messageBar().pushCritical("I-PlugIn - Unerwarteter Fehler", str(e), duration=5)
     def target_layer_add(self):
         """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
         try:
@@ -199,9 +217,20 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     break
             if utm_layer:
                 self.mMapLayerComboBox_target_layer.setLayer(utm_layer)
-            QMessageBox.information(self, "Validierung erfolgreich", f"Layer '{layer.name()}' ist gültig und kann verwendet werden.")
+            self.iface.messageBar().pushSuccess(
+                "I-PlugIn - Validierung",
+                f"Layer '{layer.name()}' ist gültig und kann verwendet werden."
+            )
+        except DataValidationError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Datenvalidierung", str(e), duration=5)
+        except GeometryError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Geometrie", str(e), duration=5)
+        except CoordinateSystemError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Koordinatensystem", str(e), duration=5)
+        except InterpolationError as e:
+            self.iface.messageBar().pushCritical("I-PlugIn - Fehler", str(e), duration=5)
         except Exception as e:
-            QMessageBox.critical(self, "Validierungsfehler", str(e))
+            self.iface.messageBar().pushCritical("I-PlugIn - Unerwarteter Fehler", str(e), duration=5)
 
     def raster_interpolation_layer_add(self):
         """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
@@ -223,9 +252,20 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     break
             if utm_layer:
                 self.mMapLayerComboBox.setLayer(utm_layer)
-            QMessageBox.information(self, "Validierung erfolgreich", f"Layer '{layer.name()}', Feld '{field}' ist gültig und kann verwendet werden.")
+            self.iface.messageBar().pushSuccess(
+                "I-PlugIn - Validierung",
+                f"Layer '{layer.name()}', Feld '{field}' ist gültig und kann verwendet werden."
+            )
+        except DataValidationError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Datenvalidierung", str(e), duration=5)
+        except GeometryError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Geometrie", str(e), duration=5)
+        except CoordinateSystemError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Koordinatensystem", str(e), duration=5)
+        except InterpolationError as e:
+            self.iface.messageBar().pushCritical("I-PlugIn - Fehler", str(e), duration=5)
         except Exception as e:
-            QMessageBox.critical(self, "Validierungsfehler", str(e))
+            self.iface.messageBar().pushCritical("I-PlugIn - Unerwarteter Fehler", str(e), duration=5)
 
     def point_interpolation_layer_add(self):
         """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
@@ -247,9 +287,20 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     break
             if utm_layer:
                 self.mMapLayerComboBox_covariate_point.setLayer(utm_layer)
-            QMessageBox.information(self, "Validierung erfolgreich", f"Layer '{layer.name()}', Feld '{field}' ist gültig und kann verwendet werden.")
+            self.iface.messageBar().pushSuccess(
+                "I-PlugIn - Validierung",
+                f"Layer '{layer.name()}', Feld '{field}' ist gültig und kann verwendet werden."
+            )
+        except DataValidationError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Datenvalidierung", str(e), duration=5)
+        except GeometryError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Geometrie", str(e), duration=5)
+        except CoordinateSystemError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Koordinatensystem", str(e), duration=5)
+        except InterpolationError as e:
+            self.iface.messageBar().pushCritical("I-PlugIn - Fehler", str(e), duration=5)
         except Exception as e:
-            QMessageBox.critical(self, "Validierungsfehler", str(e))
+            self.iface.messageBar().pushCritical("I-PlugIn - Unerwarteter Fehler", str(e), duration=5)
 
     def show_variogram_analysis_points(self):
         """Show variogram analysis dialog with current parameters for point interpolation."""
@@ -292,12 +343,19 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             dialog.display_results(results['plot_path'], results['metrics'])
             dialog.exec_()
 
+        except InterpolationCalculationError as e:
+            QMessageBox.critical(self, "Variogramm-Analyse fehlgeschlagen", str(e))
+        except DataValidationError as e:
+            QMessageBox.warning(self, "Datenvalidierung", str(e))
+        except InterpolationError as e:
+            QMessageBox.critical(self, "Fehler", str(e))
         except Exception as e:
             QgsMessageLog.logMessage(
-                f"Failed to show point variogram analysis: {str(e)}",
+                f"Unerwarteter Fehler bei Variogramm-Analyse: {str(e)}",
                 "I-PlugIn",
                 Qgis.Critical
             )
+            QMessageBox.critical(self, "Unerwarteter Fehler", f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}")
 
     def connect_signals(self):
         """Connect signals to slots."""
@@ -391,7 +449,8 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 if value is not None and float(value) == 0:
                     has_zero = True
                     break
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
+                # Wert nicht konvertierbar - überspringen
                 continue
         if has_zero:
             QMessageBox.warning(
@@ -457,18 +516,29 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                         "Punkt-Interpolation erfolgreich abgeschlossen."
                     )
                     
+                except InterpolationError as e:
+                    progress.close()
+                    raise
                 except Exception as e:
                     progress.close()
-                    raise e
+                    raise
                     
                 finally:
                     progress.close()
             
+        except DataValidationError as e:
+            QMessageBox.warning(self, "Datenvalidierung", str(e))
+        except GeometryError as e:
+            QMessageBox.warning(self, "Geometrie-Problem", str(e))
+        except InterpolationCalculationError as e:
+            QMessageBox.critical(self, "Interpolation fehlgeschlagen", str(e))
+        except InterpolationError as e:
+            QMessageBox.critical(self, "Fehler", str(e))
         except Exception as e:
             QMessageBox.critical(
                 self,
-                "Fehler",
-                f"Fehler bei der Punkt-Interpolation: {str(e)}"
+                "Unerwarteter Fehler",
+                f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}"
             )
 
     def save_settings(self):
@@ -634,7 +704,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 if float(value) == 0:
                     has_zero = True
                     break
-            except Exception:
+            except (ValueError, TypeError, AttributeError):
                 # Falls ein Wert nicht konvertierbar ist, als ungültig behandeln
                 has_null = True
                 break
@@ -714,11 +784,19 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # Accept dialog
             super().accept()
             
+        except DataValidationError as e:
+            QMessageBox.warning(self, "Datenvalidierung", str(e))
+        except GeometryError as e:
+            QMessageBox.warning(self, "Geometrie-Problem", str(e))
+        except InterpolationCalculationError as e:
+            QMessageBox.critical(self, "Interpolation fehlgeschlagen", str(e))
+        except InterpolationError as e:
+            QMessageBox.critical(self, "Fehler", str(e))
         except Exception as e:
             QMessageBox.critical(
                 self,
-                "Fehler",
-                f"Fehler bei der Interpolation: {str(e)}"
+                "Unerwarteter Fehler",
+                f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}"
             )
 
     def show_variogram_analysis(self):
@@ -762,12 +840,19 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             dialog.display_results(results['plot_path'], results['metrics'])
             dialog.exec_()
             
+        except InterpolationCalculationError as e:
+            QMessageBox.critical(self, "Variogramm-Analyse fehlgeschlagen", str(e))
+        except DataValidationError as e:
+            QMessageBox.warning(self, "Datenvalidierung", str(e))
+        except InterpolationError as e:
+            QMessageBox.critical(self, "Fehler", str(e))
         except Exception as e:
             QgsMessageLog.logMessage(
-                f"Failed to show variogram analysis: {str(e)}",
+                f"Unerwarteter Fehler bei Variogramm-Analyse: {str(e)}",
                 "I-PlugIn",
                 Qgis.Critical
             )
+            QMessageBox.critical(self, "Unerwarteter Fehler", f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}")
 
     def update_ui_state(self):
         """Update UI state based on current selections."""

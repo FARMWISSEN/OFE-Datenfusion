@@ -2,9 +2,10 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QTextEdit, QPushButton
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 
-# Import config for constants
+# Import config and exceptions for constants
 try:
     from .config import InterpolationConfig
+    from .exceptions import InterpolationError, InterpolationCalculationError
 except ImportError:
     # Fallback if import fails
     class InterpolationConfig:
@@ -13,6 +14,12 @@ except ImportError:
         VARIOGRAM_METRICS_TEXT_HEIGHT = 100
         VARIOGRAM_IMAGE_WIDTH = 550
         VARIOGRAM_IMAGE_HEIGHT = 400
+    
+    # Fallback exceptions
+    class InterpolationError(Exception):
+        pass
+    class InterpolationCalculationError(InterpolationError):
+        pass
 
 class VariogramDialog(QDialog):
     def __init__(self, parent=None):
@@ -54,21 +61,35 @@ class VariogramDialog(QDialog):
         Args:
             plot_path: Path to the variogram plot image
             metrics: Dictionary containing RMSE and R² values
+            
+        Raises:
+            InterpolationCalculationError: If plot image cannot be loaded
         """
-        # Display plot
-        pixmap = QPixmap(plot_path)
-        scaled_pixmap = pixmap.scaled(
-            InterpolationConfig.VARIOGRAM_IMAGE_WIDTH,
-            InterpolationConfig.VARIOGRAM_IMAGE_HEIGHT,
-            Qt.KeepAspectRatio, 
-            Qt.SmoothTransformation
-        )
-        self.plot_label.setPixmap(scaled_pixmap)
-        
-        # Display metrics
-        metrics_text = f"Variogram Analyse:\n"
-        metrics_text += f"RMSE: {metrics['rmse']:.3f}\n"
-        metrics_text += f"R²: {metrics['r2']:.3f}\n"
-        metrics_text += "\nLower RMSE values and R² values closer to 1 indicate better model fit."
-        
-        self.metrics_text.setText(metrics_text)
+        try:
+            # Display plot
+            pixmap = QPixmap(plot_path)
+            if pixmap.isNull():
+                raise InterpolationCalculationError(
+                    f"Variogramm-Plot konnte nicht geladen werden: {plot_path}"
+                )
+            
+            scaled_pixmap = pixmap.scaled(
+                InterpolationConfig.VARIOGRAM_IMAGE_WIDTH,
+                InterpolationConfig.VARIOGRAM_IMAGE_HEIGHT,
+                Qt.KeepAspectRatio, 
+                Qt.SmoothTransformation
+            )
+            self.plot_label.setPixmap(scaled_pixmap)
+            
+            # Display metrics
+            metrics_text = f"Variogram Analyse:\n"
+            metrics_text += f"RMSE: {metrics['rmse']:.3f}\n"
+            metrics_text += f"R²: {metrics['r2']:.3f}\n"
+            metrics_text += "\nLower RMSE values and R² values closer to 1 indicate better model fit."
+            
+            self.metrics_text.setText(metrics_text)
+            
+        except (KeyError, TypeError) as e:
+            raise InterpolationCalculationError(
+                f"Ungültige Metriken für Variogramm-Anzeige: {str(e)}"
+            )

@@ -699,7 +699,7 @@ class IPlugIn:
             if value is None:
                 msg = f"Ungültiger Wert (NULL/QVariant) im Feld '{field_name}' für Feature-ID {feature.id()}. Bitte bereinigen Sie Ihre Daten."
                 self.log(msg, Qgis.Critical)
-                QMessageBox.critical(None, "Ungültige Werte gefunden", msg)
+                # QMessageBox entfernt - wird später in run() oder Dialog gefangen und angezeigt
                 raise DataValidationError(msg)
             x.append(point.x())
             y.append(point.y())
