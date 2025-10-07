@@ -164,143 +164,114 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.pushButton_2.clicked.connect(self.boundary_layer_add)
         
 
-# VERBINDUNG DER SIGNAL 
+# VERBINDUNG DER SIGNAL
+    def _validate_and_add_layer(self, layer_combo, field_combo=None, layer_type_name="Layer"):
+        """
+        Generische Helper-Funktion für Layer-Validierung mit UTM-Konvertierung.
+        
+        Args:
+            layer_combo: QgsMapLayerComboBox - Die ComboBox mit dem zu validierenden Layer
+            field_combo: QgsFieldComboBox (optional) - Die ComboBox mit dem Feld
+            layer_type_name: str - Name des Layer-Typs für Fehlermeldungen
+            
+        Returns:
+            bool: True wenn erfolgreich, False bei Fehler
+        """
+        try:
+            # Layer holen
+            layer = layer_combo.currentLayer() if hasattr(layer_combo, 'currentLayer') else None
+            if layer is None:
+                QMessageBox.warning(self, "Eingabe fehlt", "Bitte wählen Sie einen Layer aus.")
+                return False
+            
+            # Optional: Feld holen
+            field = None
+            if field_combo is not None:
+                field = field_combo.currentField() if hasattr(field_combo, 'currentField') else None
+                if not field:
+                    QMessageBox.warning(self, "Eingabe fehlt", "Bitte wählen Sie einen Layer und ein Attribut aus.")
+                    return False
+            
+            layer_name = layer.name()
+            
+            # Validierung (nutzt Plugin-Backend, konvertiert ggf. zu UTM und legt neuen Layer an)
+            if field is not None:
+                self.plugin.validate_input_data(layer, field)
+            else:
+                self.plugin.validate_input_data(layer)
+            
+            # Nach möglicher UTM-Konvertierung gezielt nach neuem Layer suchen
+            utm_layer = None
+            project = QgsProject.instance()
+            for lyr in project.mapLayers().values():
+                if lyr.name().startswith("UTM_") and layer_name in lyr.name():
+                    utm_layer = lyr
+                    break
+            
+            # ComboBox auf UTM-Layer setzen, falls konvertiert wurde
+            if utm_layer:
+                layer_combo.setLayer(utm_layer)
+            
+            # Erfolgsmeldung
+            if field is not None:
+                self.iface.messageBar().pushSuccess(
+                    "I-PlugIn - Validierung",
+                    f"Layer '{layer.name()}', Feld '{field}' ist gültig und kann verwendet werden."
+                )
+            else:
+                self.iface.messageBar().pushSuccess(
+                    "I-PlugIn - Validierung",
+                    f"Layer '{layer.name()}' ist gültig und kann verwendet werden."
+                )
+            
+            return True
+            
+        except DataValidationError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Datenvalidierung", str(e), duration=5)
+            return False
+        except GeometryError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Geometrie", str(e), duration=5)
+            return False
+        except CoordinateSystemError as e:
+            self.iface.messageBar().pushWarning("I-PlugIn - Koordinatensystem", str(e), duration=5)
+            return False
+        except InterpolationError as e:
+            self.iface.messageBar().pushCritical("I-PlugIn - Fehler", str(e), duration=5)
+            return False
+        except Exception as e:
+            self.iface.messageBar().pushCritical("I-PlugIn - Unerwarteter Fehler", str(e), duration=5)
+            return False
+    
     def boundary_layer_add(self):
-        """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
-        try:
-            layer = self.mMapLayerComboBox_boundary.currentLayer() if hasattr(self, 'mMapLayerComboBox_boundary') else None
-            if layer is None:
-                QMessageBox.warning(self, "Eingabe fehlt", "Bitte wählen Sie einen Layer aus.")
-                return
-            layer_name = layer.name()
-            # Validierung (nutzt Plugin-Backend, konvertiert ggf. zu UTM und legt neuen Layer an)
-            self.plugin.validate_input_data(layer)
-            # Nach möglicher UTM-Konvertierung gezielt nach neuem Layer suchen
-            utm_layer = None
-            project = QgsProject.instance()
-            for lyr in project.mapLayers().values():
-                if lyr.name().startswith("UTM_") and layer_name in lyr.name():
-                    utm_layer = lyr
-                    break
-            if utm_layer:
-                self.mMapLayerComboBox_boundary.setLayer(utm_layer)
-            self.iface.messageBar().pushSuccess(
-                "I-PlugIn - Validierung",
-                f"Layer '{layer.name()}' ist gültig und kann verwendet werden."
-            )
-        except DataValidationError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Datenvalidierung", str(e), duration=5)
-        except GeometryError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Geometrie", str(e), duration=5)
-        except CoordinateSystemError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Koordinatensystem", str(e), duration=5)
-        except InterpolationError as e:
-            self.iface.messageBar().pushCritical("I-PlugIn - Fehler", str(e), duration=5)
-        except Exception as e:
-            self.iface.messageBar().pushCritical("I-PlugIn - Unerwarteter Fehler", str(e), duration=5)
+        """Validiert den Boundary-Layer im Optimierungs-Tab."""
+        self._validate_and_add_layer(
+            layer_combo=self.mMapLayerComboBox_boundary,
+            field_combo=None,
+            layer_type_name="Boundary"
+        )
     def target_layer_add(self):
-        """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
-        try:
-            layer = self.mMapLayerComboBox_target_layer.currentLayer() if hasattr(self, 'mMapLayerComboBox_target_layer') else None
-            if layer is None:
-                QMessageBox.warning(self, "Eingabe fehlt", "Bitte wählen Sie einen Layer aus.")
-                return
-            layer_name = layer.name()
-            # Validierung (nutzt Plugin-Backend, konvertiert ggf. zu UTM und legt neuen Layer an)
-            self.plugin.validate_input_data(layer)
-            # Nach möglicher UTM-Konvertierung gezielt nach neuem Layer suchen
-            utm_layer = None
-            project = QgsProject.instance()
-            for lyr in project.mapLayers().values():
-                if lyr.name().startswith("UTM_") and layer_name in lyr.name():
-                    utm_layer = lyr
-                    break
-            if utm_layer:
-                self.mMapLayerComboBox_target_layer.setLayer(utm_layer)
-            self.iface.messageBar().pushSuccess(
-                "I-PlugIn - Validierung",
-                f"Layer '{layer.name()}' ist gültig und kann verwendet werden."
-            )
-        except DataValidationError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Datenvalidierung", str(e), duration=5)
-        except GeometryError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Geometrie", str(e), duration=5)
-        except CoordinateSystemError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Koordinatensystem", str(e), duration=5)
-        except InterpolationError as e:
-            self.iface.messageBar().pushCritical("I-PlugIn - Fehler", str(e), duration=5)
-        except Exception as e:
-            self.iface.messageBar().pushCritical("I-PlugIn - Unerwarteter Fehler", str(e), duration=5)
+        """Validiert den Ziel-Layer für Punkt-Interpolation."""
+        self._validate_and_add_layer(
+            layer_combo=self.mMapLayerComboBox_target_layer,
+            field_combo=None,
+            layer_type_name="Ziel"
+        )
 
     def raster_interpolation_layer_add(self):
-        """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
-        try:
-            layer = self.mMapLayerComboBox.currentLayer() if hasattr(self, 'mMapLayerComboBox') else None
-            field = self.mFieldComboBox.currentField() if hasattr(self, 'mFieldComboBox') else None
-            if layer is None or not field:
-                QMessageBox.warning(self, "Eingabe fehlt", "Bitte wählen Sie einen Layer und ein Attribut aus.")
-                return
-            layer_name = layer.name()
-            # Validierung (nutzt Plugin-Backend, konvertiert ggf. zu UTM und legt neuen Layer an)
-            self.plugin.validate_input_data(layer, field)
-            # Nach möglicher UTM-Konvertierung gezielt nach neuem Layer suchen
-            utm_layer = None
-            project = QgsProject.instance()
-            for lyr in project.mapLayers().values():
-                if lyr.name().startswith("UTM_") and layer_name in lyr.name():
-                    utm_layer = lyr
-                    break
-            if utm_layer:
-                self.mMapLayerComboBox.setLayer(utm_layer)
-            self.iface.messageBar().pushSuccess(
-                "I-PlugIn - Validierung",
-                f"Layer '{layer.name()}', Feld '{field}' ist gültig und kann verwendet werden."
-            )
-        except DataValidationError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Datenvalidierung", str(e), duration=5)
-        except GeometryError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Geometrie", str(e), duration=5)
-        except CoordinateSystemError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Koordinatensystem", str(e), duration=5)
-        except InterpolationError as e:
-            self.iface.messageBar().pushCritical("I-PlugIn - Fehler", str(e), duration=5)
-        except Exception as e:
-            self.iface.messageBar().pushCritical("I-PlugIn - Unerwarteter Fehler", str(e), duration=5)
+        """Validiert den Input-Layer und Feld für Raster-Interpolation."""
+        self._validate_and_add_layer(
+            layer_combo=self.mMapLayerComboBox,
+            field_combo=self.mFieldComboBox,
+            layer_type_name="Raster-Input"
+        )
 
     def point_interpolation_layer_add(self):
-        """Validiert den aktuell gewählten Layer und das Attribut im Optimierungs-Tab."""
-        try:
-            layer = self.mMapLayerComboBox_covariate_point.currentLayer() if hasattr(self, 'mMapLayerComboBox_covariate_point') else None
-            field = self.mFieldComboBox_covariate.currentField() if hasattr(self, 'mFieldComboBox_covariate') else None
-            if layer is None or not field:
-                QMessageBox.warning(self, "Eingabe fehlt", "Bitte wählen Sie einen Layer und ein Attribut aus.")
-                return
-            layer_name = layer.name()
-            # Validierung (nutzt Plugin-Backend, konvertiert ggf. zu UTM und legt neuen Layer an)
-            self.plugin.validate_input_data(layer, field)
-            # Nach möglicher UTM-Konvertierung gezielt nach neuem Layer suchen
-            utm_layer = None
-            project = QgsProject.instance()
-            for lyr in project.mapLayers().values():
-                if lyr.name().startswith("UTM_") and layer_name in lyr.name():
-                    utm_layer = lyr
-                    break
-            if utm_layer:
-                self.mMapLayerComboBox_covariate_point.setLayer(utm_layer)
-            self.iface.messageBar().pushSuccess(
-                "I-PlugIn - Validierung",
-                f"Layer '{layer.name()}', Feld '{field}' ist gültig und kann verwendet werden."
-            )
-        except DataValidationError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Datenvalidierung", str(e), duration=5)
-        except GeometryError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Geometrie", str(e), duration=5)
-        except CoordinateSystemError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Koordinatensystem", str(e), duration=5)
-        except InterpolationError as e:
-            self.iface.messageBar().pushCritical("I-PlugIn - Fehler", str(e), duration=5)
-        except Exception as e:
-            self.iface.messageBar().pushCritical("I-PlugIn - Unerwarteter Fehler", str(e), duration=5)
+        """Validiert den Kovariaten-Layer und Feld für Punkt-Interpolation."""
+        self._validate_and_add_layer(
+            layer_combo=self.mMapLayerComboBox_covariate_point,
+            field_combo=self.mFieldComboBox_covariate,
+            layer_type_name="Kovariaten"
+        )
 
     def show_variogram_analysis_points(self):
         """Show variogram analysis dialog with current parameters for point interpolation."""
@@ -433,35 +404,58 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
     def validate_point_interpolation_inputs(self):
         """Validiert die Eingaben für die Punkt-Interpolation."""
+        # Check target layer
         if not self.mMapLayerComboBox_target_layer.currentLayer():
             QMessageBox.warning(self, "Warnung", "Bitte wählen Sie einen Ziel-Layer aus.")
             return False
+        
+        # Check covariate layer
+        if not self.mMapLayerComboBox_covariate_point.currentLayer():
+            QMessageBox.warning(self, "Warnung", "Bitte wählen Sie einen Kovariaten-Layer aus.")
+            return False
             
-        if not self.mFieldComboBox.currentField():
-            QMessageBox.warning(self, "Warnung", "Bitte wählen Sie ein Eingabe-Feld aus.")
+        # Check covariate field (not the raster field!)
+        if not self.mFieldComboBox_covariate.currentField():
+            QMessageBox.warning(self, "Warnung", "Bitte wählen Sie ein Kovariaten-Feld aus.")
             return False
 
-                # Check for zero values in the selected field
+        # Check for zero and NULL values in the COVARIATE field (not target!)
         has_zero = False
-        for feature in self.mMapLayerComboBox_target_layer.currentLayer().getFeatures():
-            value = feature[self.mFieldComboBox.currentField()]
+        has_null = False
+        from qgis.PyQt.QtCore import QVariant
+        
+        covariate_layer = self.mMapLayerComboBox_covariate_point.currentLayer()
+        covariate_field = self.mFieldComboBox_covariate.currentField()
+        
+        for feature in covariate_layer.getFeatures():
+            value = feature[covariate_field]
+            # Check for NULL values
+            if value is None or (isinstance(value, QVariant) and value.isNull()):
+                has_null = True
+                break
             try:
-                if value is not None and float(value) == 0:
+                if float(value) == 0:
                     has_zero = True
                     break
             except (ValueError, TypeError, AttributeError):
-                # Wert nicht konvertierbar - überspringen
-                continue
+                # Value not convertible - treat as invalid
+                has_null = True
+                break
+        
+        if has_null:
+            QMessageBox.warning(
+                self,
+                "Warnung",
+                "Kovariaten-Daten enthalten leere oder ungültige Werte (NULLs). Die Interpolation kann dies nicht verarbeiten. Bitte filtern."
+            )
+            return False
+            
         if has_zero:
             QMessageBox.warning(
                 self,
                 "Warnung",
-                "Daten enthalten 0 Werte. Die Interpolation kann dies nicht verarbeiten. Bitte filtern."
+                "Kovariaten-Daten enthalten 0 Werte. Die Interpolation kann dies nicht verarbeiten. Bitte filtern."
             )
-            return False
-            
-        if not self.mMapLayerComboBox_target_layer.currentLayer():
-            QMessageBox.warning(self, "Warnung", "Bitte wählen Sie einen Ziel-Layer aus.")
             return False
             
         return True

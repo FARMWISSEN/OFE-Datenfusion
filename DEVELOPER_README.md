@@ -96,10 +96,12 @@ User Input (Dialog)
 |---------|-------|--------|
 | `setup_ui_components()` | Initialisiert UI-Elemente | 72-165 |
 | `connect_signals()` | Verbindet Signals mit Slots | 360-390 |
-| `validate_inputs()` | Prüft UI-Eingaben | 653-734 |
+| `_validate_and_add_layer()` | Generische Layer-Validierung (Helper) | 168-243 |
+| `validate_inputs()` | Prüft UI-Eingaben (Raster) | 653-734 |
+| `validate_point_interpolation_inputs()` | Prüft UI-Eingaben (Punkt) | 434-490 |
 | `get_parameters()` | Sammelt Parameter für Backend | 618-633 |
 | `show_variogram_analysis()` | Zeigt Variogramm-Dialog | (in Dialog) |
-| `interpolate_points()` | Startet Punkt-Interpolation | 469-542 |
+| `interpolate_points()` | Startet Punkt-Interpolation | 492-542 |
 
 ---
 
@@ -398,7 +400,7 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 | Datei | Zeilen | Zweck | Wichtigste Funktionen |
 |-------|--------|-------|----------------------|
 | `i_plugin.py` | 1736 | Backend-Logik | `run()`, `interpolate_ordinary_kriging()`, `analyze_variogram()`, `convert_to_utm()` |
-| `i_plugin_dialog.py` | 1004 | UI-Controller | `get_parameters()`, `validate_inputs()`, `interpolate_points()` |
+| `i_plugin_dialog.py` | 997 | UI-Controller | `_validate_and_add_layer()`, `validate_inputs()`, `interpolate_points()` |
 | `config.py` | 88 | Konfiguration | `InterpolationConfig` (alle Konstanten) |
 | `variogram_models.py` | 115 | Variogramm-Modelle | `optimize_variogram_parameters()`, `VARIOGRAM_MODELS` |
 | `exceptions.py` | 74 | Exception-Typen | `DataValidationError`, `GeometryError`, etc. |
@@ -418,6 +420,43 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 3. Generiert eindeutige Dateinamen mit Counter bei Konflikten
 4. Verwendet `CoordinateSystemError` für besseres Error-Handling
 5. Umfangreiches Logging für Debugging
+
+### ✅ Punkt-Interpolation Validierung korrigiert
+**Problem**: `validate_point_interpolation_inputs()` hatte mehrere Bugs (i_plugin_dialog.py)
+- Prüfte falsches Feld (`mFieldComboBox` statt `mFieldComboBox_covariate`)
+- Prüfte falschen Layer (Target statt Covariate für Null/Zero-Werte)
+- Redundanter Check für Target-Layer (zweimal)
+- Fehlende Prüfung für Covariate-Layer
+- Keine NULL-Wert-Prüfung (nur Zero)
+
+**Lösung**:
+1. Kovariaten-Layer-Check hinzugefügt (Zeile 441-444)
+2. Korrektes Feld geprüft: `mFieldComboBox_covariate` (Zeile 447-449)
+3. Null/Zero-Check im richtigen Layer: Covariate statt Target (Zeile 456-472)
+4. NULL-Wert-Prüfung hinzugefügt mit `QVariant.isNull()` (Zeile 462-464)
+5. Redundanter Check entfernt
+6. Klarere Fehlermeldungen: "Kovariaten-Daten enthalten..."
+
+### ✅ Layer-Validierungs-Funktionen refactored (DRY)
+**Problem**: 4 fast identische Funktionen mit dupliziertem Code (~132 Zeilen)
+- `boundary_layer_add()`
+- `target_layer_add()`
+- `raster_interpolation_layer_add()`
+- `point_interpolation_layer_add()`
+
+**Lösung**:
+1. Generische Helper-Funktion erstellt: `_validate_and_add_layer()` (Zeile 168-243)
+2. Alle 4 Funktionen refactored zu schlanken Wrappern (je ~5 Zeilen)
+3. Zentrale Fehlerbehandlung für alle 5 Exception-Typen
+4. Explizite Parameter (layer_combo, field_combo, layer_type_name)
+5. Rückwärtskompatibel - keine Breaking Changes
+6. **30 Zeilen Code gespart** (1027 → 997 Zeilen)
+
+**Vorteile**:
+- DRY-Prinzip: Code nur einmal
+- Wartbarkeit: Änderungen an einer Stelle
+- Testbarkeit: Eine Funktion statt vier
+- Lesbarkeit: Selbstdokumentierend
 
 ---
 
