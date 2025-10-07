@@ -413,12 +413,20 @@ class IPlugIn:
                         else:
                             try:
                                 boundary_geom = boundary_geom.combine(part_geom)
-                            except Exception as e:
+                            except (RuntimeError, ValueError, TypeError) as e:
                                 self.log(f"Error combining geometries: {str(e)}", Qgis.Warning)
                                 continue
-                except Exception as e:
+                            except Exception as e:
+                                # Unerwarteter Fehler - sollte nicht ignoriert werden
+                                self.log(f"Unexpected error combining geometries: {str(e)}", Qgis.Critical)
+                                raise
+                except (RuntimeError, ValueError, TypeError, AttributeError) as e:
                     self.log(f"Error processing multipart geometry: {str(e)}", Qgis.Warning)
                     continue
+                except Exception as e:
+                    # Unerwarteter Fehler
+                    self.log(f"Unexpected error in multipart geometry: {str(e)}", Qgis.Critical)
+                    raise
             else:
                 self.log("Processing single part geometry")
                 if boundary_geom is None:
@@ -426,9 +434,13 @@ class IPlugIn:
                 else:
                     try:
                         boundary_geom = boundary_geom.combine(geom)
-                    except Exception as e:
+                    except (RuntimeError, ValueError, TypeError) as e:
                         self.log(f"Error combining geometries: {str(e)}", Qgis.Warning)
                         continue
+                    except Exception as e:
+                        # Unerwarteter Fehler
+                        self.log(f"Unexpected error combining geometries: {str(e)}", Qgis.Critical)
+                        raise
                     
         if not boundary_geom:
             self.log("No valid boundary geometry created", Qgis.Warning)
@@ -472,8 +484,8 @@ class IPlugIn:
             boundary_layer (QgsVectorLayer, optional): Layer mit Begrenzungspolygonen
             
         Returns:
-            tuple: (QgsVectorLayer, QgsVectorLayer or None) - (validierter Input-Layer,
-                   validierter Boundary-Layer oder None)
+            None: Diese Funktion gibt nichts zurück. Sie wird nur für ihre Seiteneffekte
+                  (Validierung und Exception-Throwing) verwendet.
             
         Raises:
             ValueError: Bei ungültigen Eingabedaten mit erklärender Nachricht:
@@ -592,12 +604,9 @@ class IPlugIn:
                     "Bitte überprüfen Sie die Lage der Punkte und die Grenze."
                 )
                 
-            return points_within
-        # Rückgabewert je nach field_name-Check
-        if field_name is not None:
-            return valid_count
-        else:
-            return None
+            self.log(f"{points_within} Punkte liegen innerhalb der Grenze")
+        
+        # Validation erfolgreich - keine Rückgabe nötig (wird nur für Seiteneffekte verwendet)
 
 
 ################################ Interpolation beginnt #####################################################################        
