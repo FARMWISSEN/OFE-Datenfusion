@@ -2,6 +2,18 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QTextEdit, QPushButton
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 
+# Import config for constants
+try:
+    from .i_plugin import InterpolationConfig
+except ImportError:
+    # Fallback if import fails
+    class InterpolationConfig:
+        VARIOGRAM_DIALOG_MIN_WIDTH = 600
+        VARIOGRAM_DIALOG_MIN_HEIGHT = 500
+        VARIOGRAM_METRICS_TEXT_HEIGHT = 100
+        VARIOGRAM_IMAGE_WIDTH = 550
+        VARIOGRAM_IMAGE_HEIGHT = 400
+
 class VariogramDialog(QDialog):
     def __init__(self, parent=None):
         super(VariogramDialog, self).__init__(parent)
@@ -10,7 +22,10 @@ class VariogramDialog(QDialog):
     def setup_ui(self):
         """Setup the dialog's UI components."""
         self.setWindowTitle("Variogram Analyse")
-        self.setMinimumSize(600, 500)
+        self.setMinimumSize(
+            InterpolationConfig.VARIOGRAM_DIALOG_MIN_WIDTH,
+            InterpolationConfig.VARIOGRAM_DIALOG_MIN_HEIGHT
+        )
         
         # Create layout
         layout = QVBoxLayout()
@@ -23,7 +38,7 @@ class VariogramDialog(QDialog):
         # Metrics text area
         self.metrics_text = QTextEdit()
         self.metrics_text.setReadOnly(True)
-        self.metrics_text.setMaximumHeight(100)
+        self.metrics_text.setMaximumHeight(InterpolationConfig.VARIOGRAM_METRICS_TEXT_HEIGHT)
         layout.addWidget(self.metrics_text)
         
         # Close button
@@ -42,7 +57,12 @@ class VariogramDialog(QDialog):
         """
         # Display plot
         pixmap = QPixmap(plot_path)
-        scaled_pixmap = pixmap.scaled(550, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        scaled_pixmap = pixmap.scaled(
+            InterpolationConfig.VARIOGRAM_IMAGE_WIDTH,
+            InterpolationConfig.VARIOGRAM_IMAGE_HEIGHT,
+            Qt.KeepAspectRatio, 
+            Qt.SmoothTransformation
+        )
         self.plot_label.setPixmap(scaled_pixmap)
         
         # Display metrics

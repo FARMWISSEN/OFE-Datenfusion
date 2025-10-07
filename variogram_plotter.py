@@ -2,6 +2,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 from .variogram_models import VARIOGRAM_MODELS
 
+# Import config for constants
+try:
+    from .i_plugin import InterpolationConfig
+except ImportError:
+    # Fallback if import fails
+    class InterpolationConfig:
+        VARIOGRAM_PLOT_FIGSIZE = (10, 6)
+        VARIOGRAM_PLOT_RESOLUTION = 100
+        VARIOGRAM_PLOT_EXPERIMENTAL_COLOR = 'blue'
+        VARIOGRAM_PLOT_EXPERIMENTAL_MARKER = 'o'
+        VARIOGRAM_PLOT_EXPERIMENTAL_ALPHA = 0.6
+        VARIOGRAM_PLOT_MODEL_COLOR = 'red'
+        VARIOGRAM_PLOT_MODEL_LINESTYLE = '-'
+        VARIOGRAM_PLOT_GRID_ALPHA = 0.3
+
 class VariogramPlotter:
     def __init__(self):
         """Initialize the variogram plotter"""
@@ -24,24 +39,34 @@ class VariogramPlotter:
             show: Whether to display the plot
         """
         # Create plot
-        self.fig, self.ax = plt.subplots(figsize=(10, 6))
+        self.fig, self.ax = plt.subplots(figsize=InterpolationConfig.VARIOGRAM_PLOT_FIGSIZE)
         
         # Plot experimental variogram points
-        self.ax.scatter(lags, experimental, c='blue', marker='o', 
-                   label='Experimental', alpha=0.6)
+        self.ax.scatter(
+            lags, experimental, 
+            c=InterpolationConfig.VARIOGRAM_PLOT_EXPERIMENTAL_COLOR, 
+            marker=InterpolationConfig.VARIOGRAM_PLOT_EXPERIMENTAL_MARKER, 
+            label='Experimental', 
+            alpha=InterpolationConfig.VARIOGRAM_PLOT_EXPERIMENTAL_ALPHA
+        )
         
         # Plot theoretical variogram line
         if model_type in VARIOGRAM_MODELS:
-            x = np.linspace(0, max(lags), 100)
+            x = np.linspace(0, max(lags), InterpolationConfig.VARIOGRAM_PLOT_RESOLUTION)
             y = VARIOGRAM_MODELS[model_type](x, nugget, range_, sill)
-            self.ax.plot(x, y, 'r-', label=f'{model_type.capitalize()} Model')
+            self.ax.plot(
+                x, y, 
+                color=InterpolationConfig.VARIOGRAM_PLOT_MODEL_COLOR,
+                linestyle=InterpolationConfig.VARIOGRAM_PLOT_MODEL_LINESTYLE,
+                label=f'{model_type.capitalize()} Model'
+            )
         
         # Customize plot
         self.ax.set_xlabel('Lag Distance')
         self.ax.set_ylabel('Semivariance')
         self.ax.set_title(title)
         self.ax.legend()
-        self.ax.grid(True, alpha=0.3)
+        self.ax.grid(True, alpha=InterpolationConfig.VARIOGRAM_PLOT_GRID_ALPHA)
         
         if save_path:
             self.fig.savefig(save_path)

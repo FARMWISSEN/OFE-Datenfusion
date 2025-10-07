@@ -122,6 +122,30 @@ class InterpolationConfig:
     
     # Distanz-Berechnung
     DISTANCE_PERCENTILE = 95  # Perzentil für maximale Distanz in Variogramm-Analyse
+    
+    # Variogramm-Modell-Parameter
+    VARIOGRAM_EXPONENTIAL_FACTOR = 3.0  # Faktor für exponential/gaussian Modelle
+    VARIOGRAM_BOUNDS_MULTIPLIER = 2  # Multiplikator für Upper Bounds bei Optimierung
+    VARIOGRAM_DEFAULT_NUGGET_FALLBACK = 0  # Fallback-Wert wenn keine Daten
+    VARIOGRAM_DEFAULT_SILL_FALLBACK = 1  # Fallback-Wert wenn keine Daten
+    VARIOGRAM_DEFAULT_RANGE_FALLBACK = 1  # Fallback-Wert wenn keine Daten
+    
+    # Variogramm-Plot-Einstellungen
+    VARIOGRAM_PLOT_FIGSIZE = (10, 6)  # Plot-Dimensionen (width, height)
+    VARIOGRAM_PLOT_RESOLUTION = 100  # Anzahl Punkte für theoretische Kurve
+    VARIOGRAM_PLOT_EXPERIMENTAL_COLOR = 'blue'  # Farbe für experimentelle Punkte
+    VARIOGRAM_PLOT_EXPERIMENTAL_MARKER = 'o'  # Marker-Style für experimentelle Punkte
+    VARIOGRAM_PLOT_EXPERIMENTAL_ALPHA = 0.6  # Transparenz für experimentelle Punkte
+    VARIOGRAM_PLOT_MODEL_COLOR = 'red'  # Farbe für Modell-Linie
+    VARIOGRAM_PLOT_MODEL_LINESTYLE = '-'  # Linien-Style für Modell
+    VARIOGRAM_PLOT_GRID_ALPHA = 0.3  # Transparenz für Grid
+    
+    # Variogramm-Dialog-Einstellungen
+    VARIOGRAM_DIALOG_MIN_WIDTH = 600  # Minimale Dialog-Breite
+    VARIOGRAM_DIALOG_MIN_HEIGHT = 500  # Minimale Dialog-Höhe
+    VARIOGRAM_METRICS_TEXT_HEIGHT = 100  # Höhe des Metrics-Textfeldes
+    VARIOGRAM_IMAGE_WIDTH = 550  # Breite des angezeigten Bildes
+    VARIOGRAM_IMAGE_HEIGHT = 400  # Höhe des angezeigten Bildes
 
 
 class IPlugIn:

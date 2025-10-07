@@ -2,6 +2,18 @@ import numpy as np
 from scipy.optimize import curve_fit
 from typing import Tuple, Dict, List, Optional
 
+# Import config for constants
+try:
+    from .i_plugin import InterpolationConfig
+except ImportError:
+    # Fallback if import fails (e.g., during testing)
+    class InterpolationConfig:
+        VARIOGRAM_EXPONENTIAL_FACTOR = 3.0
+        VARIOGRAM_BOUNDS_MULTIPLIER = 2
+        VARIOGRAM_DEFAULT_NUGGET_FALLBACK = 0
+        VARIOGRAM_DEFAULT_SILL_FALLBACK = 1
+        VARIOGRAM_DEFAULT_RANGE_FALLBACK = 1
+
 def linear_variogram_model(d: np.ndarray, nugget: float, range_: float, sill: float) -> np.ndarray:
     """Linear variogram model."""
     slope = (sill - nugget) / range_
@@ -15,11 +27,11 @@ def spherical_variogram_model(d: np.ndarray, nugget: float, range_: float, sill:
 
 def exponential_variogram_model(d: np.ndarray, nugget: float, range_: float, sill: float) -> np.ndarray:
     """Exponential variogram model."""
-    return nugget + (sill - nugget) * (1 - np.exp(-3.0 * d/range_))
+    return nugget + (sill - nugget) * (1 - np.exp(-InterpolationConfig.VARIOGRAM_EXPONENTIAL_FACTOR * d/range_))
 
 def gaussian_variogram_model(d: np.ndarray, nugget: float, range_: float, sill: float) -> np.ndarray:
     """Gaussian variogram model."""
-    return nugget + (sill - nugget) * (1 - np.exp(-3.0 * (d/range_)**2))
+    return nugget + (sill - nugget) * (1 - np.exp(-InterpolationConfig.VARIOGRAM_EXPONENTIAL_FACTOR * (d/range_)**2))
 
 # Dictionary of available variogram models
 VARIOGRAM_MODELS = {
@@ -68,14 +80,16 @@ def optimize_variogram_parameters(
         
     # Estimate initial parameters if not provided
     if initial_guess is None:
-        nugget = gamma[0] if len(gamma) > 0 else 0
-        sill = np.max(gamma) if len(gamma) > 0 else 1
-        range_ = np.median(lags) if len(lags) > 0 else 1
+        nugget = gamma[0] if len(gamma) > 0 else InterpolationConfig.VARIOGRAM_DEFAULT_NUGGET_FALLBACK
+        sill = np.max(gamma) if len(gamma) > 0 else InterpolationConfig.VARIOGRAM_DEFAULT_SILL_FALLBACK
+        range_ = np.median(lags) if len(lags) > 0 else InterpolationConfig.VARIOGRAM_DEFAULT_RANGE_FALLBACK
         initial_guess = [nugget, range_, sill]
     
     # Set bounds for parameters
     bounds = ([0, 0, 0],  # Lower bounds: all parameters must be positive
-             [np.inf, np.max(lags)*2, np.max(gamma)*2])  # Upper bounds
+             [np.inf, 
+              np.max(lags) * InterpolationConfig.VARIOGRAM_BOUNDS_MULTIPLIER, 
+              np.max(gamma) * InterpolationConfig.VARIOGRAM_BOUNDS_MULTIPLIER])  # Upper bounds
     
     try:
         # Try curve_fit optimization
