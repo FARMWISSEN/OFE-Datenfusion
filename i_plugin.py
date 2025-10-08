@@ -48,8 +48,14 @@ from qgis.core import (
     QgsField, 
     QgsGeometry, 
     QgsWkbTypes,
-    QgsVectorDataProvider
+    QgsVectorDataProvider,
+    QgsSingleBandPseudoColorRenderer,
+    QgsColorRampShader,
+    QgsRasterShader,
+    QgsGradientColorRamp,
+    QgsGradientStop
 )
+from qgis.PyQt.QtGui import QColor
 from pykrige import OrdinaryKriging
 import processing
 
@@ -1245,6 +1251,104 @@ class IPlugIn:
         except Exception as e:
             self.log(f"Failed to create raster layer: {str(e)}", Qgis.Critical)
             raise
+
+    def apply_color_ramp_to_raster(self, layer):
+        """Wendet eine Farbrampe auf ein Raster-Layer an.
+        
+        Erstellt eine Red → Yellow → Green Farbrampe basierend auf den Min/Max-Werten des Rasters.
+        Diese Methode ist optional - wenn sie fehlschlägt, wird nur geloggt, aber keine Exception geworfen.
+        
+        Args:
+            layer (QgsRasterLayer): Das Raster-Layer, auf das die Farbrampe angewendet werden soll
+            
+        Returns:
+            bool: True bei Erfolg, False bei Fehler
+            
+        Notes:
+            - Fehler werden nur geloggt, nicht geworfen (Styling ist optional)
+            - Layer bleibt in Graustufen, wenn Styling fehlschlägt
+            - Verwendet automatisch Min/Max-Werte aus Band-Statistiken
+        """
+        try:
+            # Prüfe ob Layer gültig ist
+            if not layer or not layer.isValid():
+                self.log("Ungültiger Layer für Farbrampe - überspringe Styling", Qgis.Warning)
+                return False
+            
+            # Hole Daten-Provider und Band-Statistiken
+            provider = layer.dataProvider()
+            stats = provider.bandStatistics(1)  # Band 1
+            
+            min_val = stats.minimumValue
+            max_val = stats.maximumValue
+            
+            self.log(f"Applying color ramp: min={min_val:.2f}, max={max_val:.2f}")
+            
+            # Erstelle Renderer mit Pseudo-Color
+            renderer = QgsSingleBandPseudoColorRenderer(provider, 1)
+            
+            # Erstelle Gradient Color Ramp (Red → Yellow → Green)
+            # Definiere Farbverlauf mit Zwischenstopp bei Gelb
+            color_ramp = QgsGradientColorRamp(
+                QColor(255, 0, 0),      # Start: Rot
+                QColor(0, 255, 0)       # Ende: Grün
+            )
+            # Füge Gelb als Zwischenstopp bei 50% hinzu
+            color_ramp.setStops([QgsGradientStop(0.5, QColor(255, 255, 0))])
+            
+            # Erstelle Color Ramp Shader (ohne Parameter im Konstruktor)
+            shader = QgsColorRampShader()
+            shader.setColorRampType(QgsColorRampShader.Interpolated)
+            
+            # Klassifiziere manuell mit gleichmäßig verteilten Klassen
+            num_classes = InterpolationConfig.COLOR_RAMP_CLASSES
+            color_ramp_items = []
+            
+            for i in range(num_classes):
+                fraction = i / (num_classes - 1)
+                value = min_val + fraction * (max_val - min_val)
+                
+                # Hole Farbe aus dem Gradient
+                color = color_ramp.color(fraction)
+                label = f"{value:.2f}"
+                
+                color_ramp_items.append(
+                    QgsColorRampShader.ColorRampItem(value, color, label)
+                )
+                
+                self.log(f"Class {i+1}: value={value:.2f}, color=RGB({color.red()},{color.green()},{color.blue()})")
+            
+            shader.setColorRampItemList(color_ramp_items)
+            self.log(f"Total color ramp items created: {len(color_ramp_items)}")
+            
+            # WICHTIG: Setze Min/Max explizit
+            shader.setMinimumValue(min_val)
+            shader.setMaximumValue(max_val)
+            
+            # Setze Shader im Renderer
+            raster_shader = QgsRasterShader()
+            raster_shader.setRasterShaderFunction(shader)
+            renderer.setShader(raster_shader)
+            
+            # Wende Renderer auf Layer an
+            layer.setRenderer(renderer)
+            layer.triggerRepaint()
+            
+            self.log("Color ramp applied successfully", Qgis.Success)
+            return True
+            
+        except Exception as e:
+            # Styling ist optional - logge nur, werfe keine Exception
+            # Das Raster ist bereits erstellt und funktioniert, nur die Farben fehlen
+            self.log(
+                f"Warnung: Farbrampe konnte nicht angewendet werden: {str(e)}. "
+                "Layer wird in Graustufen angezeigt.",
+                Qgis.Warning
+            )
+            import traceback
+            self.log(f"Traceback: {traceback.format_exc()}", Qgis.Info)
+            return False
+
 # CHECKT OB DAS PROJEKT GESPEICHERT IST
     def get_project_dir(self):
         """Get or create project directory for outputs."""
@@ -1806,6 +1910,9 @@ class IPlugIn:
                     group = self.get_layer_group()
                     QgsProject.instance().addMapLayer(layer, False)
                     group.addLayer(layer)
+                    
+                    # Apply color ramp styling
+                    self.apply_color_ramp_to_raster(layer)
                     
                     # Get variogram info from params
                     variogram_info = params.get('variogram_info', {})

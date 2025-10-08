@@ -38,7 +38,8 @@ interpolation/
 - Kriging-Interpolation (Raster + Punkt-zu-Punkt)
 - Raster-Layer-Erstellung (GeoTIFF)
 - Metadaten-Management (generisch für Raster + Punkt)
-- **Automatisches Backup-Management** (neu)
+- **Automatisches Backup-Management**
+- **Automatisches Farbrampen-Styling** (neu)
 
 **Wichtige Methoden:**
 
@@ -51,7 +52,8 @@ interpolation/
 | `analyze_variogram()` | Variogramm-Analyse + Optimierung | 894-1058 |
 | `interpolate_ordinary_kriging()` | Führt Kriging durch (grid/points) | 1060-1147 |
 | `create_raster_layer()` | Erstellt GeoTIFF aus Interpolationsdaten | 1149-1227 |
-| **`save_metadata()`** | **Speichert Metadaten (generisch für Raster + Punkt)** | **1264-1324** |
+| **`apply_color_ramp_to_raster()`** | **Wendet automatisch Farbrampe auf Raster an (neu)** | **1253-1350** |
+| **`save_metadata()`** | **Speichert Metadaten (generisch für Raster + Punkt)** | **1352-1412** |
 | **`create_layer_backup()`** | **Erstellt Backup vor Layer-Modifikation** | **1366-1455** |
 | `update_target_layer()` | Aktualisiert Ziel-Layer mit interpolierten Werten | 1457-1550 |
 | `run_point_interpolation()` | Punkt-zu-Punkt Interpolation (mit Backup + Metadata) | 1552-1649 |
@@ -139,6 +141,7 @@ User Input (Dialog)
 | Output | `OUTPUT_DIR_NAME` | "i_plugin_outputs" | Output-Verzeichnis |
 | Output | `RASTER_INTERPOLATION_DIR` | "raster_interpolation" | Raster-Output-Unterverzeichnis |
 | Output | `POINT_INTERPOLATION_DIR` | "point_interpolation" | Punkt-Output-Unterverzeichnis |
+| Styling | `COLOR_RAMP_CLASSES` | 6 | Anzahl Farbklassen für Raster-Visualisierung |
 
 ---
 
@@ -268,6 +271,15 @@ InterpolationError (Base)
 - **Neue Methode**: Prüft ob Pixel-**Polygon** Boundary überlappt (`polygon.intersects()`)
 - **Ergebnis**: Vollständige Feldabdeckung, keine fehlenden Randpixel
 - **Implementierung**: `create_output_grid()` erstellt Pixel-Quadrate (cell_size/2 Radius)
+
+### **9. Automatisches Farbrampen-Styling (neu)**
+- **Automatisch**: Jedes Raster bekommt sofort eine Farbrampe
+- **Farbschema**: Red → Yellow → Green (intuitiv: niedrig=rot, hoch=grün)
+- **Klassifizierung**: 6 gleichmäßig verteilte Klassen (konfigurierbar)
+- **Interpoliert**: Sanfte Übergänge zwischen Farben
+- **Min/Max**: Automatisch aus Band-Statistiken
+- **Optional**: Fehler werden nur geloggt, Raster bleibt verwendbar
+- **Konfiguration**: `COLOR_RAMP_CLASSES` in `config.py`
 
 **Output-Verzeichnisstruktur:**
 ```
@@ -450,6 +462,7 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 - **Feature**: Generische Metadaten-Speicherung für beide Interpolationstypen
 - **Improvement**: Selbsterklärende Ordnernamen (`raster_interpolation` statt `ordinary_kriging`)
 - **Bugfix**: Vollständige Raster-Abdeckung an Boundary-Rändern (Pixel-Polygon-Maske statt Punkt-Maske)
+- **Feature**: Automatisches Farbrampen-Styling für Raster-Layer (Red→Yellow→Green, 6 Klassen)
 
 ---
 
@@ -522,6 +535,22 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 3. Alle Pixel, die Boundary berühren oder überlappen, werden eingeschlossen
 4. Vollständige Feldabdeckung ohne fehlende Randpixel
 5. Keine Änderung an Grid-Größe notwendig - nur Masken-Logik verbessert
+
+### ✅ Automatisches Farbrampen-Styling implementiert
+**Problem**: Raster-Layer wurden in Graustufen angezeigt
+- Schwer zu interpretieren
+- User musste manuell Styling anpassen
+- Keine konsistente Visualisierung
+
+**Lösung**:
+1. Neue Methode `apply_color_ramp_to_raster()` (Zeile 1253-1350)
+2. Gradient Color Ramp: Red → Yellow → Green mit Zwischenstopp bei 50%
+3. Automatische Min/Max-Erkennung aus Band-Statistiken
+4. 6 gleichmäßig verteilte Farbklassen (konfigurierbar via `COLOR_RAMP_CLASSES`)
+5. Interpolierter Modus für sanfte Übergänge
+6. Wird automatisch nach Layer-Erstellung aufgerufen
+7. Optional: Fehler werden nur geloggt, werfen keine Exception
+8. Imports: `QgsGradientColorRamp`, `QgsGradientStop`, `QgsColorRampShader`
 
 ### ✅ Punkt-Interpolation Validierung korrigiert
 **Problem**: `validate_point_interpolation_inputs()` hatte mehrere Bugs (i_plugin_dialog.py)

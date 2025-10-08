@@ -23,6 +23,9 @@ class InterpolationConfig:
     # Raster-Parameter
     RASTER_PIXEL_OFFSET = 0.5  # Pixel-Offset für GeoTransform
     
+    # Farbrampen-Styling
+    COLOR_RAMP_CLASSES = 6  # Anzahl der Farbklassen für Raster-Visualisierung
+    
     # Feldnamen (für Shapefile-Kompatibilität)
     DEFAULT_FIELD_PREFIX = "COV_INT"  # Standard-Präfix für interpolierte Felder
     MAX_FIELD_NAME_LENGTH = 10  # Maximale Länge für Shapefile-Feldnamen
