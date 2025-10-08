@@ -53,7 +53,10 @@ from qgis.core import (
     QgsColorRampShader,
     QgsRasterShader,
     QgsGradientColorRamp,
-    QgsGradientStop
+    QgsGradientStop,
+    QgsGraduatedSymbolRenderer,
+    QgsRendererRange,
+    QgsMarkerSymbol
 )
 from qgis.PyQt.QtGui import QColor
 from pykrige import OrdinaryKriging
@@ -1287,14 +1290,27 @@ class IPlugIn:
             # Erstelle Renderer mit Pseudo-Color
             renderer = QgsSingleBandPseudoColorRenderer(provider, 1)
             
-            # Erstelle Gradient Color Ramp (Red → Yellow → Green)
-            # Definiere Farbverlauf mit Zwischenstopp bei Gelb
+            # Erstelle Gradient Color Ramp (Red → Orange → Yellow → Light Green → Green)
+            # Verwende QGIS Standard RYG-Farben aus config.py mit 5 Stops
             color_ramp = QgsGradientColorRamp(
-                QColor(255, 0, 0),      # Start: Rot
-                QColor(0, 255, 0)       # Ende: Grün
+                QColor(*InterpolationConfig.COLOR_RAMP_START),   # Start: Rot (0%)
+                QColor(*InterpolationConfig.COLOR_RAMP_END)      # Ende: Grün (100%)
             )
-            # Füge Gelb als Zwischenstopp bei 50% hinzu
-            color_ramp.setStops([QgsGradientStop(0.5, QColor(255, 255, 0))])
+            # Füge Zwischenstopps hinzu für sanfteren Verlauf
+            color_ramp.setStops([
+                QgsGradientStop(
+                    InterpolationConfig.COLOR_RAMP_STOP_1_POSITION,
+                    QColor(*InterpolationConfig.COLOR_RAMP_STOP_1)  # Orange (25%)
+                ),
+                QgsGradientStop(
+                    InterpolationConfig.COLOR_RAMP_MIDDLE_POSITION,
+                    QColor(*InterpolationConfig.COLOR_RAMP_MIDDLE)  # Gelb (50%)
+                ),
+                QgsGradientStop(
+                    InterpolationConfig.COLOR_RAMP_STOP_2_POSITION,
+                    QColor(*InterpolationConfig.COLOR_RAMP_STOP_2)  # Hellgrün (75%)
+                )
+            ])
             
             # Erstelle Color Ramp Shader (ohne Parameter im Konstruktor)
             shader = QgsColorRampShader()
@@ -1347,6 +1363,182 @@ class IPlugIn:
             )
             import traceback
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Info)
+            return False
+
+    def create_vector_layer_from_grid(self, grid_x, grid_y, interpolated_data, output_path, crs, mask=None, field_name="value"):
+        """Erstellt einen Punkt-Vector-Layer aus den interpolierten Grid-Daten.
+        
+        Args:
+            grid_x (np.array): X-Koordinaten des Grids
+            grid_y (np.array): Y-Koordinaten des Grids
+            interpolated_data (np.array): Interpolierte Werte (2D array)
+            output_path (str): Pfad für den Output-Shapefile
+            crs (QgsCoordinateReferenceSystem): Koordinatensystem
+            mask (np.array): Boolean-Maske - True für Punkte innerhalb Boundary (optional)
+            field_name (str): Name des Werte-Feldes (default: "value")
+            
+        Returns:
+            bool: True bei Erfolg, False bei Fehler
+            
+        Notes:
+            - Nur Punkte mit mask[i,j]=True werden exportiert (wenn Maske vorhanden)
+            - NaN-Werte werden automatisch übersprungen
+        """
+        try:
+            # Erstelle Memory-Layer
+            layer = QgsVectorLayer(f"Point?crs={crs.authid()}", "interpolated_points", "memory")
+            provider = layer.dataProvider()
+            
+            # Füge Felder hinzu
+            provider.addAttributes([
+                QgsField("x", QVariant.Double),
+                QgsField("y", QVariant.Double),
+                QgsField(field_name, QVariant.Double)
+            ])
+            layer.updateFields()
+            
+            # Erstelle Features aus Grid
+            features = []
+            for i in range(len(grid_y)):
+                for j in range(len(grid_x)):
+                    value = interpolated_data[i, j]
+                    
+                    # Überspringe NaN-Werte (außerhalb Boundary)
+                    if np.isnan(value):
+                        continue
+                    
+                    # Überspringe Punkte außerhalb der Boundary (wenn Maske vorhanden)
+                    if mask is not None and not mask[i, j]:
+                        continue
+                    
+                    # Erstelle Punkt-Feature
+                    feature = QgsFeature()
+                    feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(grid_x[j], grid_y[i])))
+                    feature.setAttributes([grid_x[j], grid_y[i], float(value)])
+                    features.append(feature)
+            
+            # Füge alle Features hinzu
+            provider.addFeatures(features)
+            layer.updateExtents()
+            
+            self.log(f"Created vector layer with {len(features)} points")
+            
+            # Speichere als Shapefile
+            error = QgsVectorFileWriter.writeAsVectorFormat(
+                layer,
+                output_path,
+                "UTF-8",
+                crs,
+                "ESRI Shapefile"
+            )
+            
+            if error[0] == QgsVectorFileWriter.NoError:
+                self.log(f"Vector layer saved successfully: {output_path}", Qgis.Success)
+                return True
+            else:
+                self.log(f"Error saving vector layer: {error}", Qgis.Warning)
+                return False
+                
+        except Exception as e:
+            self.log(f"Failed to create vector layer: {str(e)}", Qgis.Warning)
+            import traceback
+            self.log(f"Traceback: {traceback.format_exc()}", Qgis.Warning)
+            return False
+
+    def apply_graduated_symbology_to_vector(self, layer, field_name):
+        """Wendet abgestufte Symbolisierung auf Vector-Layer an.
+        
+        Verwendet den gleichen Farbverlauf wie beim Raster (Red → Yellow → Green)
+        und die gleiche Anzahl an Klassen.
+        
+        Args:
+            layer (QgsVectorLayer): Der Vector-Layer
+            field_name (str): Name des Feldes für die Klassifizierung
+            
+        Returns:
+            bool: True bei Erfolg, False bei Fehler
+        """
+        try:
+            # Prüfe ob Layer und Feld gültig sind
+            if not layer or not layer.isValid():
+                self.log("Ungültiger Layer für Symbolisierung", Qgis.Warning)
+                return False
+            
+            field_index = layer.fields().indexOf(field_name)
+            if field_index == -1:
+                self.log(f"Feld '{field_name}' nicht gefunden", Qgis.Warning)
+                return False
+            
+            # Hole Min/Max-Werte aus dem Feld
+            min_val = layer.minimumValue(field_index)
+            max_val = layer.maximumValue(field_index)
+            
+            self.log(f"Applying graduated symbology: field={field_name}, min={min_val:.2f}, max={max_val:.2f}")
+            
+            # Erstelle Gradient Color Ramp (gleich wie beim Raster)
+            # Verwende QGIS Standard RYG-Farben aus config.py mit 5 Stops
+            color_ramp = QgsGradientColorRamp(
+                QColor(*InterpolationConfig.COLOR_RAMP_START),   # Start: Rot (0%)
+                QColor(*InterpolationConfig.COLOR_RAMP_END)      # Ende: Grün (100%)
+            )
+            color_ramp.setStops([
+                QgsGradientStop(
+                    InterpolationConfig.COLOR_RAMP_STOP_1_POSITION,
+                    QColor(*InterpolationConfig.COLOR_RAMP_STOP_1)  # Orange (25%)
+                ),
+                QgsGradientStop(
+                    InterpolationConfig.COLOR_RAMP_MIDDLE_POSITION,
+                    QColor(*InterpolationConfig.COLOR_RAMP_MIDDLE)  # Gelb (50%)
+                ),
+                QgsGradientStop(
+                    InterpolationConfig.COLOR_RAMP_STOP_2_POSITION,
+                    QColor(*InterpolationConfig.COLOR_RAMP_STOP_2)  # Hellgrün (75%)
+                )
+            ])
+            
+            # Erstelle Klassen (gleiche Anzahl wie beim Raster)
+            num_classes = InterpolationConfig.COLOR_RAMP_CLASSES
+            ranges = []
+            
+            for i in range(num_classes):
+                # Berechne Klassengrenzen
+                lower = min_val + (i / num_classes) * (max_val - min_val)
+                upper = min_val + ((i + 1) / num_classes) * (max_val - min_val)
+                
+                # Hole Farbe aus dem Gradient (Mitte der Klasse)
+                fraction = (i + 0.5) / num_classes
+                color = color_ramp.color(fraction)
+                
+                # Erstelle Symbol für diese Klasse
+                symbol = QgsMarkerSymbol.createSimple({
+                    'name': 'circle',
+                    'color': color.name(),
+                    'size': '2',
+                    'outline_style': 'no'
+                })
+                
+                # Label für die Klasse
+                label = f"{lower:.2f} - {upper:.2f}"
+                
+                # Erstelle Range
+                range_obj = QgsRendererRange(lower, upper, symbol, label)
+                ranges.append(range_obj)
+            
+            # Erstelle Graduated Renderer
+            renderer = QgsGraduatedSymbolRenderer(field_name, ranges)
+            renderer.setMode(QgsGraduatedSymbolRenderer.Custom)  # Benutzerdefinierte Klassen
+            
+            # Wende Renderer auf Layer an
+            layer.setRenderer(renderer)
+            layer.triggerRepaint()
+            
+            self.log(f"Graduated symbology applied successfully with {num_classes} classes", Qgis.Success)
+            return True
+            
+        except Exception as e:
+            self.log(f"Fehler beim Anwenden der Symbolisierung: {str(e)}", Qgis.Warning)
+            import traceback
+            self.log(f"Traceback: {traceback.format_exc()}", Qgis.Warning)
             return False
 
 # CHECKT OB DAS PROJEKT GESPEICHERT IST
@@ -1901,6 +2093,16 @@ class IPlugIn:
                 # Save metadata
                 self.save_metadata(output_dir, Path(output_path).stem, params, interpolation_type="raster")
                 
+                # Create vector layer from interpolated grid points
+                vector_output_path = str(output_dir / f"{Path(output_path).stem}_points.shp")
+                vector_created = self.create_vector_layer_from_grid(
+                    grid_x, grid_y, interpolated_data,
+                    vector_output_path,
+                    target_crs,
+                    mask=mask,
+                    field_name=params['input_field']
+                )
+                
                 # Add layer to QGIS
                 layer_name = Path(output_path).stem
                 layer = QgsRasterLayer(output_path, layer_name)
@@ -1913,6 +2115,17 @@ class IPlugIn:
                     
                     # Apply color ramp styling
                     self.apply_color_ramp_to_raster(layer)
+                    
+                    # Add vector layer to project if created successfully
+                    if vector_created and Path(vector_output_path).exists():
+                        vector_layer = QgsVectorLayer(vector_output_path, f"{layer_name}_points", "ogr")
+                        if vector_layer.isValid():
+                            # Wende abgestufte Symbolisierung an
+                            self.apply_graduated_symbology_to_vector(vector_layer, params['input_field'])
+                            
+                            QgsProject.instance().addMapLayer(vector_layer, False)
+                            group.addLayer(vector_layer)
+                            self.log(f"Vector layer added to project: {layer_name}_points", Qgis.Success)
                     
                     # Get variogram info from params
                     variogram_info = params.get('variogram_info', {})

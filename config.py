@@ -26,6 +26,19 @@ class InterpolationConfig:
     # Farbrampen-Styling
     COLOR_RAMP_CLASSES = 6  # Anzahl der Farbklassen für Raster-Visualisierung
     
+    # Farbverlauf-Definitionen (RGB-Werte)
+    # QGIS Standard Red-Yellow-Green Gradient mit 5 Stops
+    COLOR_RAMP_START = (215, 25, 28)      # Rot (0%)
+    COLOR_RAMP_STOP_1 = (253, 174, 97)    # Orange (25%)
+    COLOR_RAMP_MIDDLE = (255, 255, 192)   # Helles Gelb (50%)
+    COLOR_RAMP_STOP_2 = (166, 217, 106)   # Hellgrün (75%)
+    COLOR_RAMP_END = (26, 150, 65)        # Grün (100%)
+    
+    # Positionen der Gradient-Stops (0.0 bis 1.0)
+    COLOR_RAMP_STOP_1_POSITION = 0.25
+    COLOR_RAMP_MIDDLE_POSITION = 0.5
+    COLOR_RAMP_STOP_2_POSITION = 0.75
+    
     # Feldnamen (für Shapefile-Kompatibilität)
     DEFAULT_FIELD_PREFIX = "COV_INT"  # Standard-Präfix für interpolierte Felder
     MAX_FIELD_NAME_LENGTH = 10  # Maximale Länge für Shapefile-Feldnamen

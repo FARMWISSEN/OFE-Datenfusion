@@ -39,7 +39,8 @@ interpolation/
 - Raster-Layer-Erstellung (GeoTIFF)
 - Metadaten-Management (generisch für Raster + Punkt)
 - **Automatisches Backup-Management**
-- **Automatisches Farbrampen-Styling** (neu)
+- **Automatisches Farbrampen-Styling** für Raster
+- **Vector-Layer-Export** mit abgestufter Symbolisierung (neu)
 
 **Wichtige Methoden:**
 
@@ -52,8 +53,10 @@ interpolation/
 | `analyze_variogram()` | Variogramm-Analyse + Optimierung | 894-1058 |
 | `interpolate_ordinary_kriging()` | Führt Kriging durch (grid/points) | 1060-1147 |
 | `create_raster_layer()` | Erstellt GeoTIFF aus Interpolationsdaten | 1149-1227 |
-| **`apply_color_ramp_to_raster()`** | **Wendet automatisch Farbrampe auf Raster an (neu)** | **1253-1350** |
-| **`save_metadata()`** | **Speichert Metadaten (generisch für Raster + Punkt)** | **1352-1412** |
+| **`apply_color_ramp_to_raster()`** | **Wendet automatisch Farbrampe auf Raster an** | **1253-1350** |
+| **`create_vector_layer_from_grid()`** | **Erstellt Vector-Layer aus Grid-Daten (neu)** | **1352-1430** |
+| **`apply_graduated_symbology_to_vector()`** | **Wendet abgestufte Symbolisierung auf Vector an (neu)** | **1432-1514** |
+| **`save_metadata()`** | **Speichert Metadaten (generisch für Raster + Punkt)** | **1516-1576** |
 | **`create_layer_backup()`** | **Erstellt Backup vor Layer-Modifikation** | **1366-1455** |
 | `update_target_layer()` | Aktualisiert Ziel-Layer mit interpolierten Werten | 1457-1550 |
 | `run_point_interpolation()` | Punkt-zu-Punkt Interpolation (mit Backup + Metadata) | 1552-1649 |
@@ -142,6 +145,11 @@ User Input (Dialog)
 | Output | `RASTER_INTERPOLATION_DIR` | "raster_interpolation" | Raster-Output-Unterverzeichnis |
 | Output | `POINT_INTERPOLATION_DIR` | "point_interpolation" | Punkt-Output-Unterverzeichnis |
 | Styling | `COLOR_RAMP_CLASSES` | 6 | Anzahl Farbklassen für Raster-Visualisierung |
+| Styling | `COLOR_RAMP_START` | (215, 25, 28) | Rot - Start des RYG-Verlaufs |
+| Styling | `COLOR_RAMP_STOP_1` | (253, 174, 97) | Orange - 25% Position |
+| Styling | `COLOR_RAMP_MIDDLE` | (255, 255, 192) | Gelb - 50% Position |
+| Styling | `COLOR_RAMP_STOP_2` | (166, 217, 106) | Hellgrün - 75% Position |
+| Styling | `COLOR_RAMP_END` | (26, 150, 65) | Grün - Ende des RYG-Verlaufs |
 
 ---
 
@@ -272,14 +280,23 @@ InterpolationError (Base)
 - **Ergebnis**: Vollständige Feldabdeckung, keine fehlenden Randpixel
 - **Implementierung**: `create_output_grid()` erstellt Pixel-Quadrate (cell_size/2 Radius)
 
-### **9. Automatisches Farbrampen-Styling (neu)**
+### **9. Automatisches Farbrampen-Styling**
 - **Automatisch**: Jedes Raster bekommt sofort eine Farbrampe
-- **Farbschema**: Red → Yellow → Green (intuitiv: niedrig=rot, hoch=grün)
+- **Farbschema**: QGIS Standard RYG mit 5 Stops (Rot → Orange → Gelb → Hellgrün → Grün)
 - **Klassifizierung**: 6 gleichmäßig verteilte Klassen (konfigurierbar)
 - **Interpoliert**: Sanfte Übergänge zwischen Farben
 - **Min/Max**: Automatisch aus Band-Statistiken
 - **Optional**: Fehler werden nur geloggt, Raster bleibt verwendbar
-- **Konfiguration**: `COLOR_RAMP_CLASSES` in `config.py`
+- **Konfiguration**: Alle Farben und Klassen-Anzahl in `config.py`
+
+### **10. Vector-Layer-Export mit Symbolisierung (neu)**
+- **Automatisch**: Erstellt Vector-Layer parallel zum Raster
+- **Boundary-Filterung**: Nur Punkte innerhalb der Feldgrenze
+- **Felder**: X, Y, und interpolierter Wert
+- **Symbolisierung**: Abgestufte Darstellung mit gleichem Farbschema wie Raster
+- **Konsistent**: Gleiche Anzahl Klassen und Farben wie Raster
+- **Format**: Shapefile (.shp)
+- **Dateiname**: `{raster_name}_points.shp`
 
 **Output-Verzeichnisstruktur:**
 ```
@@ -462,7 +479,8 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 - **Feature**: Generische Metadaten-Speicherung für beide Interpolationstypen
 - **Improvement**: Selbsterklärende Ordnernamen (`raster_interpolation` statt `ordinary_kriging`)
 - **Bugfix**: Vollständige Raster-Abdeckung an Boundary-Rändern (Pixel-Polygon-Maske statt Punkt-Maske)
-- **Feature**: Automatisches Farbrampen-Styling für Raster-Layer (Red→Yellow→Green, 6 Klassen)
+- **Feature**: Automatisches Farbrampen-Styling für Raster-Layer (QGIS Standard RYG, 5 Stops, 6 Klassen)
+- **Feature**: Vector-Layer-Export mit abgestufter Symbolisierung (automatisch parallel zum Raster)
 
 ---
 
@@ -551,6 +569,25 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 6. Wird automatisch nach Layer-Erstellung aufgerufen
 7. Optional: Fehler werden nur geloggt, werfen keine Exception
 8. Imports: `QgsGradientColorRamp`, `QgsGradientStop`, `QgsColorRampShader`
+9. 5-Stop-Gradient: Rot (0%) → Orange (25%) → Gelb (50%) → Hellgrün (75%) → Grün (100%)
+10. Alle Farben konfigurierbar in `config.py`
+
+### ✅ Vector-Layer-Export mit Symbolisierung implementiert
+**Problem**: Nur Raster-Output verfügbar
+- Keine Punkt-Daten für weitere Analysen
+- Keine Flexibilität für andere GIS-Operationen
+- Manuelle Konvertierung notwendig
+
+**Lösung**:
+1. Neue Methode `create_vector_layer_from_grid()` (Zeile 1352-1430)
+2. Erstellt Punkt-Features aus Grid-Daten (X, Y, Wert)
+3. Boundary-Filterung: Nur Punkte mit mask[i,j]=True
+4. Speichert als Shapefile parallel zum Raster
+5. Neue Methode `apply_graduated_symbology_to_vector()` (Zeile 1432-1514)
+6. Abgestufte Symbolisierung mit gleichem Farbschema wie Raster
+7. 6 Klassen mit QGIS Standard RYG-Farben
+8. Automatisch zur Layer-Gruppe hinzugefügt
+9. Imports: `QgsGraduatedSymbolRenderer`, `QgsRendererRange`, `QgsMarkerSymbol`
 
 ### ✅ Punkt-Interpolation Validierung korrigiert
 **Problem**: `validate_point_interpolation_inputs()` hatte mehrere Bugs (i_plugin_dialog.py)
