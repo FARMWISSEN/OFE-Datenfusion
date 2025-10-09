@@ -813,10 +813,6 @@ class IPlugIn:
         x_end   = x_max + expand
         y_start = y_min - expand
         y_end   = y_max + expand
-        self.log(
-            f"Boundary-Extent erweitert: xmin={x_start}, xmax={x_end}, ymin={y_start}, ymax={y_end}"
-        )
-
         # --- 4. Grid erzeugen ---
         nx = int(round((x_end - x_start) / cell_size))
         ny = int(round((y_end - y_start) / cell_size))
@@ -825,12 +821,8 @@ class IPlugIn:
         x = np.sort(x)
         y = np.sort(y)[::-1]
 
-        # --- 5. Logging aller relevanten Werte ---
-        self.log(f"Boundary-Extent: xmin={x_min}, xmax={x_max}, ymin={y_min}, ymax={y_max}")
-        self.log(f"Grid-Buffer: {expand} Zellen pro Seite, cell_size={cell_size}")
-        self.log(f"Grid X: x[0]={x[0]}, x[-1]={x[-1]}, len={len(x)}")
-        self.log(f"Grid Y: y[0]={y[0]}, y[-1]={y[-1]}, len={len(y)}")
-        self.log(f"Grid Shape: ({len(y)}, {len(x)})")
+        # Log Grid-Erstellung
+        self.log(f"Grid erstellt: {len(x)}x{len(y)} Pixel (cell_size={cell_size}m)")
 
         # --- 6. Maskenarray erzeugen (optional) ---
         mask = None
@@ -1153,9 +1145,6 @@ class IPlugIn:
                 coordinates_type='euclidean'
             )
             
-            # Logging der verwendeten Grid-Koordinaten
-            self.log(f"Interpolation Grid X: grid_x[0]={grid_x[0]}, grid_x[-1]={grid_x[-1]}, len={len(grid_x)}")
-            self.log(f"Interpolation Grid Y: grid_y[0]={grid_y[0]}, grid_y[-1]={grid_y[-1]}, len={len(grid_y)}")
             # Perform interpolation based on style
             if style == 'grid':
                 z_pred, z_std = ok.execute('grid', grid_x, grid_y)
@@ -1178,18 +1167,12 @@ class IPlugIn:
     def create_raster_layer(self, data, extent, cell_size, output_path, crs, mask=None, x=None, y=None):
         """Create and save interpolated raster layer."""
         try:
-            # Log input dimensions
-            self.log(f"Data shape: {data.shape}, Mask shape: {mask.shape if mask is not None else 'None'}")
-            
             # Apply mask if provided
             if mask is not None:
                 data = np.where(mask, data, np.nan)
             
             # Use the dimensions from the interpolated data
             height, width = data.shape
-            
-            # Log dimensions
-            self.log(f"Using dimensions from data - Width: {width}, Height: {height}")
             
             # Daten müssen nicht mehr geflippt werden, da y absteigend sortiert ist
             # data = np.flipud(data)
@@ -1207,9 +1190,6 @@ class IPlugIn:
             # --- Anpassung für erweitertes Grid (Buffer) ---
             # x und y werden jetzt explizit übergeben!
             if x is not None and y is not None:
-                # Debug-Log: Grid- und Extent-Koordinaten
-                self.log(f"Grid X: x[0]={x[0]}, x[-1]={x[-1]}, Y: y[0]={y[0]}, y[-1]={y[-1]}")
-                self.log(f"Extent: xmin={extent.xMinimum()}, xmax={extent.xMaximum()}, ymin={extent.yMinimum()}, ymax={extent.yMaximum()}")
                 x_origin = x[0] - InterpolationConfig.RASTER_PIXEL_OFFSET * cell_size
                 y_origin = y[0] + InterpolationConfig.RASTER_PIXEL_OFFSET * cell_size
                 dataset.SetGeoTransform((
@@ -1220,9 +1200,7 @@ class IPlugIn:
                     0,
                     -cell_size  # pixel height
                 ))
-                self.log(
-                    f"Raster-GeoTransform gesetzt auf: x_origin={x_origin}, y_origin={y_origin}, pixel_width={cell_size}, pixel_height={-cell_size}"
-                )
+                self.log(f"Raster erstellt: {width}x{height} Pixel")
             else:
                 self.log(
                     "WARNUNG: create_raster_layer wurde ohne explizite Übergabe von x/y aufgerufen! Das Raster kann versetzt sein.",
@@ -1285,7 +1263,6 @@ class IPlugIn:
             min_val = stats.minimumValue
             max_val = stats.maximumValue
             
-            self.log(f"Applying color ramp: min={min_val:.2f}, max={max_val:.2f}")
             
             # Erstelle Renderer mit Pseudo-Color
             renderer = QgsSingleBandPseudoColorRenderer(provider, 1)
@@ -1332,10 +1309,9 @@ class IPlugIn:
                     QgsColorRampShader.ColorRampItem(value, color, label)
                 )
                 
-                self.log(f"Class {i+1}: value={value:.2f}, color=RGB({color.red()},{color.green()},{color.blue()})")
             
             shader.setColorRampItemList(color_ramp_items)
-            self.log(f"Total color ramp items created: {len(color_ramp_items)}")
+            self.log(f"Farbrampe angewendet: {len(color_ramp_items)} Klassen ({min_val:.2f} - {max_val:.2f})")
             
             # WICHTIG: Setze Min/Max explizit
             shader.setMinimumValue(min_val)
@@ -1350,7 +1326,6 @@ class IPlugIn:
             layer.setRenderer(renderer)
             layer.triggerRepaint()
             
-            self.log("Color ramp applied successfully", Qgis.Success)
             return True
             
         except Exception as e:
@@ -1421,8 +1396,6 @@ class IPlugIn:
             provider.addFeatures(features)
             layer.updateExtents()
             
-            self.log(f"Created vector layer with {len(features)} points")
-            
             # Speichere als Shapefile
             error = QgsVectorFileWriter.writeAsVectorFormat(
                 layer,
@@ -1433,10 +1406,10 @@ class IPlugIn:
             )
             
             if error[0] == QgsVectorFileWriter.NoError:
-                self.log(f"Vector layer saved successfully: {output_path}", Qgis.Success)
+                self.log(f"Vector-Layer erstellt: {len(features)} Punkte", Qgis.Success)
                 return True
             else:
-                self.log(f"Error saving vector layer: {error}", Qgis.Warning)
+                self.log(f"Fehler beim Speichern des Vector-Layers: {error}", Qgis.Warning)
                 return False
                 
         except Exception as e:
@@ -1473,7 +1446,6 @@ class IPlugIn:
             min_val = layer.minimumValue(field_index)
             max_val = layer.maximumValue(field_index)
             
-            self.log(f"Applying graduated symbology: field={field_name}, min={min_val:.2f}, max={max_val:.2f}")
             
             # Erstelle Gradient Color Ramp (gleich wie beim Raster)
             # Verwende QGIS Standard RYG-Farben aus config.py mit 5 Stops
@@ -1532,7 +1504,6 @@ class IPlugIn:
             layer.setRenderer(renderer)
             layer.triggerRepaint()
             
-            self.log(f"Graduated symbology applied successfully with {num_classes} classes", Qgis.Success)
             return True
             
         except Exception as e:
@@ -1773,19 +1744,12 @@ class IPlugIn:
     def update_target_layer(self, target_layer, target_features, interpolated_values, field_name):
         """Aktualisiert den Ziel-Layer mit den interpolierten Werten."""
         try:
-            # Debug: Eingangswerte
-            self.log(f"Update Layer Start - Features: {len(target_features)}, Values: {len(interpolated_values)}")
-            
             # Starte Bearbeitung des Layers
             if not target_layer.startEditing():
                 raise ValueError("Konnte Layer nicht in Bearbeitungsmodus versetzen")
             
-            # Debug: Zeige Layer-Informationen
-            self.log(f"Layer Typ: {target_layer.type()}, Provider: {target_layer.dataProvider().name()}, CRS: {target_layer.crs().authid()}")
-            
-            # Debug: Zeige vorhandene Felder
+            # Hole vorhandene Felder
             fields = target_layer.fields()
-            self.log(f"Vorhandene Felder: {[field.name() for field in fields]}")
             
             # Generiere kurzen, eindeutigen Feldnamen (max. 10 Zeichen für Shapefile)
             base_field_name = InterpolationConfig.DEFAULT_FIELD_PREFIX
@@ -1795,7 +1759,6 @@ class IPlugIn:
                 field_name = f"{base_field_name[:InterpolationConfig.FIELD_NAME_TRUNCATE]}{counter}"
                 counter += 1
             
-            self.log(f"Verwende Feldnamen: {field_name}")
             
             # Erstelle ein neues Feld mit spezifischer Länge und Präzision für Shapefile
             new_field = QgsField(
@@ -1806,8 +1769,6 @@ class IPlugIn:
                 InterpolationConfig.FIELD_TYPE_DOUBLE_PRECISION
             )
             
-            # Debug: Zeige Feld-Details
-            self.log(f"Neues Feld Details - Name: {new_field.name()}, Typ: {new_field.type()}, TypeName: {new_field.typeName()}, Länge: {new_field.length()}, Präzision: {new_field.precision()}")
             
             # Starte Bearbeitung wenn nicht bereits im Bearbeitungsmodus
             if not target_layer.isEditable():
@@ -1832,16 +1793,10 @@ class IPlugIn:
             target_layer.updateFields()
             field_idx = target_layer.fields().indexOf(field_name)
             
-            self.log(f"Neues Feld '{field_name}' erstellt mit Index {field_idx}")
+            self.log(f"Feld '{field_name}' erstellt, aktualisiere {len(target_features)} Features...")
             
-            # Debug: Zeige erste 5 Änderungen
-            for i, (feature, value) in enumerate(list(zip(target_features, interpolated_values))[:5]):
-                self.log(f"Update #{i}: Feature ID {feature.id()}, Wert {value}")
-                if not target_layer.changeAttributeValue(feature.id(), field_idx, float(value)):
-                    raise ValueError(f"Fehler beim Aktualisieren von Feature {feature.id()}")
-            
-            # Rest der Werte
-            for feature, value in list(zip(target_features, interpolated_values))[5:]:
+            # Aktualisiere alle Features
+            for feature, value in zip(target_features, interpolated_values):
                 if not target_layer.changeAttributeValue(feature.id(), field_idx, float(value)):
                     raise ValueError(f"Fehler beim Aktualisieren von Feature {feature.id()}")
             
@@ -1850,7 +1805,7 @@ class IPlugIn:
                 raise ValueError("Fehler beim Speichern der Änderungen: " + 
                                ", ".join(target_layer.commitErrors()))
             
-            self.log(f"Ziel-Layer erfolgreich mit Feld '{field_name}' aktualisiert")
+            self.log(f"Layer aktualisiert: Feld '{field_name}' mit {len(target_features)} Werten", Qgis.Success)
             
         except Exception as e:
             self.log(f"Fehler beim Aktualisieren des Ziel-Layers: {str(e)}", Qgis.Critical)
@@ -2125,7 +2080,6 @@ class IPlugIn:
                             
                             QgsProject.instance().addMapLayer(vector_layer, False)
                             group.addLayer(vector_layer)
-                            self.log(f"Vector layer added to project: {layer_name}_points", Qgis.Success)
                     
                     # Get variogram info from params
                     variogram_info = params.get('variogram_info', {})
