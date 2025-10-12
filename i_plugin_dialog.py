@@ -68,6 +68,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Load saved settings
         self.load_settings()
+        
+        # Update UI state after initialization
+        self.update_ui_state()
 # UI COMPONENTEN WERDEN HIER AUFGESETZT 
     def setup_ui_components(self):
         """Setup UI components after loading."""
@@ -162,7 +165,6 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.pushButton_4.clicked.connect(self.target_layer_add)
         if hasattr(self, 'pushButton_2'):
             self.pushButton_2.clicked.connect(self.boundary_layer_add)
-        
 
 # VERBINDUNG DER SIGNAL
     def _validate_and_add_layer(self, layer_combo, field_combo=None, layer_type_name="Layer"):
@@ -275,10 +277,30 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def show_variogram_analysis_points(self):
         """Show variogram analysis dialog with current parameters for point interpolation."""
+        # Create progress dialog immediately
+        progress = QProgressDialog(
+            "Variogramm-Analyse läuft...",
+            "Abbrechen",
+            0,
+            0,
+            self
+        )
+        progress.setWindowTitle("I-PlugIn")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)  # Show immediately
+        progress.setAutoClose(True)
+        progress.setAutoReset(True)
+        progress.setCancelButton(None)  # No cancel button for variogram analysis
+        
         try:
+            # Show progress dialog immediately
+            progress.show()
+            QCoreApplication.processEvents()  # Force UI update
+            
             # Get current parameters for point interpolation
             params = self.get_point_interpolation_parameters()
             if not params:
+                progress.close()
                 return
 
             # Get input data for point interpolation
@@ -289,6 +311,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # Prepare data (x, y, z from covariate layer)
             x, y, z = self.plugin.prepare_data(covariate_layer, covariate_field, boundary)
             if x is None or len(x) == 0:
+                progress.close()
                 QgsMessageLog.logMessage(
                     "No valid data points found for point variogram analysis",
                     "I-PlugIn",
@@ -299,7 +322,11 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # Analyze variogram (using point params)
             results = self.plugin.analyze_variogram(x, y, z, params)
             if not results:
+                progress.close()
                 return
+
+            # Close progress dialog
+            progress.close()
 
             # Update dialog with optimized parameters for points
             self.update_variogram_parameters({
@@ -315,12 +342,16 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             dialog.exec_()
 
         except InterpolationCalculationError as e:
+            progress.close()
             QMessageBox.critical(self, "Variogramm-Analyse fehlgeschlagen", str(e))
         except DataValidationError as e:
+            progress.close()
             QMessageBox.warning(self, "Datenvalidierung", str(e))
         except InterpolationError as e:
+            progress.close()
             QMessageBox.critical(self, "Fehler", str(e))
         except Exception as e:
+            progress.close()
             QgsMessageLog.logMessage(
                 f"Unerwarteter Fehler bei Variogramm-Analyse: {str(e)}",
                 "I-PlugIn",
@@ -345,20 +376,29 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Connect variogram analysis button for point interpolation
         self.analyze_variogram_button_points.clicked.connect(self.show_variogram_analysis_points)
         
-        # Connect UI state updates
+        # Connect UI state updates for raster tab
         self.mMapLayerComboBox.layerChanged.connect(self.update_ui_state)
         self.mFieldComboBox.fieldChanged.connect(self.update_ui_state)
         self.comboBox_variogram.currentTextChanged.connect(self.update_ui_state)
-        # Add signal connections for point interpolation tab
+        self.comboBox_variogram.currentTextChanged.connect(self.reset_variogram_parameters_raster)
+        self.spinBox_lags.valueChanged.connect(self.update_ui_state)
+        
+        # Connect UI state updates for point interpolation tab
         self.mMapLayerComboBox_covariate_point.layerChanged.connect(self.update_ui_state)
         self.mFieldComboBox_covariate.fieldChanged.connect(self.update_ui_state)
         self.comboBox_variogram_point.currentTextChanged.connect(self.update_ui_state)
+        self.comboBox_variogram_point.currentTextChanged.connect(self.reset_variogram_parameters_point)
         self.spinBox_lags_point.valueChanged.connect(self.update_ui_state)
         
-        # Connect numeric input validation
+        # Connect numeric input validation for raster tab
         self.doubleSpinBox_nugget.valueChanged.connect(self.validate_variogram_parameters)
         self.doubleSpinBox_sill.valueChanged.connect(self.validate_variogram_parameters)
         self.doubleSpinBox_range.valueChanged.connect(self.validate_variogram_parameters)
+        
+        # Connect numeric input validation for point tab
+        self.doubleSpinBox_nugget_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        self.doubleSpinBox_sill_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        self.doubleSpinBox_range_point.valueChanged.connect(self.validate_variogram_parameters_point)
 
     def on_layer_changed(self, layer):
         """Handle layer change in the main data combobox."""
@@ -568,6 +608,17 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         """Load saved settings."""
         settings = QSettings()
         
+        # Block signals during loading to prevent cascade updates
+        widgets_to_block = [
+            self.mMapLayerComboBox, self.mFieldComboBox, self.mMapLayerComboBox_boundary,
+            self.doubleSpinBox_cellsize, self.comboBox_variogram,
+            self.doubleSpinBox_nugget, self.doubleSpinBox_range, self.doubleSpinBox_sill,
+            self.spinBox_lags
+        ]
+        for widget in widgets_to_block:
+            if widget:
+                widget.blockSignals(True)
+        
         # Load layer and field selections
         layer_id = settings.value("IPlugIn/input_layer", "")
         if layer_id:
@@ -611,6 +662,11 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.spinBox_lags.setValue(
             int(settings.value("lags", InterpolationConfig.DEFAULT_NLAGS))
         )
+        
+        # Unblock signals after loading
+        for widget in widgets_to_block:
+            if widget:
+                widget.blockSignals(False)
 
     def set_plugin_directory(self, directory):
         """Set the plugin output directory."""
@@ -802,10 +858,30 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def show_variogram_analysis(self):
         """Show variogram analysis dialog with current parameters."""
+        # Create progress dialog immediately
+        progress = QProgressDialog(
+            "Variogramm-Analyse läuft...",
+            "Abbrechen",
+            0,
+            0,
+            self
+        )
+        progress.setWindowTitle("I-PlugIn")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)  # Show immediately
+        progress.setAutoClose(True)
+        progress.setAutoReset(True)
+        progress.setCancelButton(None)  # No cancel button for variogram analysis
+        
         try:
+            # Show progress dialog immediately
+            progress.show()
+            QCoreApplication.processEvents()  # Force UI update
+            
             # Get current parameters
             params = self.get_kriging_parameters()
             if not params:
+                progress.close()
                 return
                 
             # Get input data
@@ -816,6 +892,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # Prepare data
             x, y, z = self.plugin.prepare_data(layer, field, boundary)
             if x is None or len(x) == 0:
+                progress.close()
                 QgsMessageLog.logMessage(
                     "No valid data points found for variogram analysis",
                     "I-PlugIn",
@@ -826,7 +903,11 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # Analyze variogram
             results = self.plugin.analyze_variogram(x, y, z, params)
             if not results:
+                progress.close()
                 return
+                
+            # Close progress dialog
+            progress.close()
                 
             # Update dialog with optimized parameters
             self.update_variogram_parameters({
@@ -842,12 +923,16 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             dialog.exec_()
             
         except InterpolationCalculationError as e:
+            progress.close()
             QMessageBox.critical(self, "Variogramm-Analyse fehlgeschlagen", str(e))
         except DataValidationError as e:
+            progress.close()
             QMessageBox.warning(self, "Datenvalidierung", str(e))
         except InterpolationError as e:
+            progress.close()
             QMessageBox.critical(self, "Fehler", str(e))
         except Exception as e:
+            progress.close()
             QgsMessageLog.logMessage(
                 f"Unerwarteter Fehler bei Variogramm-Analyse: {str(e)}",
                 "I-PlugIn",
@@ -858,7 +943,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
     def update_ui_state(self):
         """Update UI state based on current selections."""
         try:
-            # Check if we have valid input data
+            # Check if we have valid input data for raster tab
             has_valid_inputs = bool(
                 self.mMapLayerComboBox.currentLayer() is not None and
                 self.mFieldComboBox.currentField() and
@@ -868,7 +953,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # Enable analyze button if we have valid inputs
             self.analyze_variogram_button.setEnabled(has_valid_inputs)
 
-            # Enable analyze button for point interpolation if valid
+            # Check if we have valid input data for point interpolation tab
             has_valid_point_inputs = bool(
                 self.mMapLayerComboBox_covariate_point.currentLayer() is not None and
                 self.mFieldComboBox_covariate.currentField() and
@@ -876,18 +961,15 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             )
             self.analyze_variogram_button_points.setEnabled(has_valid_point_inputs)
 
-            # Enable parameter inputs if we have valid inputs
+            # Enable parameter inputs for raster tab
             self.doubleSpinBox_nugget.setEnabled(has_valid_inputs)
             self.doubleSpinBox_range.setEnabled(has_valid_inputs)
             self.doubleSpinBox_sill.setEnabled(has_valid_inputs)
-            # Enable parameter inputs for point interpolation if we have valid inputs
+            
+            # Enable parameter inputs for point interpolation tab
             self.doubleSpinBox_nugget_point.setEnabled(has_valid_point_inputs)
             self.doubleSpinBox_range_point.setEnabled(has_valid_point_inputs)
             self.doubleSpinBox_sill_point.setEnabled(has_valid_point_inputs)
-            
-            # Validate parameters if we have valid inputs
-            if has_valid_inputs:
-                self.validate_variogram_parameters()
                 
         except Exception as e:
             QgsMessageLog.logMessage(
@@ -896,8 +978,66 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 Qgis.Critical
             )
 
+    def reset_variogram_parameters_raster(self):
+        """Reset variogram parameters to defaults when model changes (raster tab)."""
+        try:
+            # Block signals to prevent triggering validation during reset
+            self.doubleSpinBox_nugget.blockSignals(True)
+            self.doubleSpinBox_range.blockSignals(True)
+            self.doubleSpinBox_sill.blockSignals(True)
+            
+            # Reset to default values
+            self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_range.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_sill.setValue(InterpolationConfig.DEFAULT_SILL)
+            
+            # Unblock signals
+            self.doubleSpinBox_nugget.blockSignals(False)
+            self.doubleSpinBox_range.blockSignals(False)
+            self.doubleSpinBox_sill.blockSignals(False)
+            
+            # Hide metrics label if it exists
+            if hasattr(self, 'metrics_label_raster'):
+                self.metrics_label_raster.setVisible(False)
+                
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Failed to reset variogram parameters (Raster): {str(e)}",
+                "I-PlugIn",
+                Qgis.Warning
+            )
+
+    def reset_variogram_parameters_point(self):
+        """Reset variogram parameters to defaults when model changes (point tab)."""
+        try:
+            # Block signals to prevent triggering validation during reset
+            self.doubleSpinBox_nugget_point.blockSignals(True)
+            self.doubleSpinBox_range_point.blockSignals(True)
+            self.doubleSpinBox_sill_point.blockSignals(True)
+            
+            # Reset to default values
+            self.doubleSpinBox_nugget_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_range_point.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_sill_point.setValue(InterpolationConfig.DEFAULT_SILL)
+            
+            # Unblock signals
+            self.doubleSpinBox_nugget_point.blockSignals(False)
+            self.doubleSpinBox_range_point.blockSignals(False)
+            self.doubleSpinBox_sill_point.blockSignals(False)
+            
+            # Hide metrics label if it exists
+            if hasattr(self, 'metrics_label_points'):
+                self.metrics_label_points.setVisible(False)
+                
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Failed to reset variogram parameters (Point): {str(e)}",
+                "I-PlugIn",
+                Qgis.Warning
+            )
+
     def validate_variogram_parameters(self):
-        """Validate variogram parameters and update UI state."""
+        """Validate variogram parameters for raster tab and update UI state."""
         try:
             nugget = self.doubleSpinBox_nugget.value()
             sill = self.doubleSpinBox_sill.value()
@@ -922,14 +1062,52 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if warnings:
                 warning_text = "\n".join(warnings)
                 QgsMessageLog.logMessage(
-                    f"Variogram Parameter Warnings:\n{warning_text}",
+                    f"Variogram Parameter Warnings (Raster):\n{warning_text}",
                     "I-PlugIn",
                     Qgis.Warning
                 )
             
         except Exception as e:
             QgsMessageLog.logMessage(
-                f"Parameter validation failed: {str(e)}",
+                f"Parameter validation failed (Raster): {str(e)}",
+                "I-PlugIn",
+                Qgis.Critical
+            )
+
+    def validate_variogram_parameters_point(self):
+        """Validate variogram parameters for point tab and update UI state."""
+        try:
+            nugget = self.doubleSpinBox_nugget_point.value()
+            sill = self.doubleSpinBox_sill_point.value()
+            range_ = self.doubleSpinBox_range_point.value()
+            
+            # Warn if parameters might be suboptimal
+            warnings = []
+            
+            if nugget < 0:
+                warnings.append("Nugget sollte nicht negativ sein")
+            
+            if range_ <= 0:
+                warnings.append("Range sollte größer als 0 sein")
+            
+            if sill <= 0:
+                warnings.append("Sill sollte größer als 0 sein")
+            
+            if nugget > sill:
+                warnings.append("Nugget sollte nicht größer als Sill sein")
+            
+            # Show warnings if any
+            if warnings:
+                warning_text = "\n".join(warnings)
+                QgsMessageLog.logMessage(
+                    f"Variogram Parameter Warnings (Point):\n{warning_text}",
+                    "I-PlugIn",
+                    Qgis.Warning
+                )
+            
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Parameter validation failed (Point): {str(e)}",
                 "I-PlugIn",
                 Qgis.Critical
             )
@@ -941,6 +1119,11 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 return
 
             if point_tab:
+                # Block signals to prevent cascade updates
+                self.doubleSpinBox_nugget_point.blockSignals(True)
+                self.doubleSpinBox_range_point.blockSignals(True)
+                self.doubleSpinBox_sill_point.blockSignals(True)
+                
                 # Update only point tab widgets
                 self.doubleSpinBox_nugget_point.setValue(
                     parameters.get('nugget', InterpolationConfig.DEFAULT_NUGGET)
@@ -951,6 +1134,12 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 self.doubleSpinBox_sill_point.setValue(
                     parameters.get('sill', InterpolationConfig.DEFAULT_SILL)
                 )
+                
+                # Unblock signals
+                self.doubleSpinBox_nugget_point.blockSignals(False)
+                self.doubleSpinBox_range_point.blockSignals(False)
+                self.doubleSpinBox_sill_point.blockSignals(False)
+                
                 # Use a dedicated metrics label for the point tab
                 if not hasattr(self, 'metrics_label_points'):
                     parent_widget = self.page_kriging_2 if hasattr(self, 'page_kriging_2') else self
@@ -962,6 +1151,11 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     layout.addWidget(self.metrics_label_points)
                 metrics_label = self.metrics_label_points
             else:
+                # Block signals to prevent cascade updates
+                self.doubleSpinBox_nugget.blockSignals(True)
+                self.doubleSpinBox_range.blockSignals(True)
+                self.doubleSpinBox_sill.blockSignals(True)
+                
                 # Update only raster tab widgets
                 self.doubleSpinBox_nugget.setValue(
                     parameters.get('nugget', InterpolationConfig.DEFAULT_NUGGET)
@@ -972,6 +1166,12 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 self.doubleSpinBox_sill.setValue(
                     parameters.get('sill', InterpolationConfig.DEFAULT_SILL)
                 )
+                
+                # Unblock signals
+                self.doubleSpinBox_nugget.blockSignals(False)
+                self.doubleSpinBox_range.blockSignals(False)
+                self.doubleSpinBox_sill.blockSignals(False)
+                
                 # Use a dedicated metrics label for the raster tab
                 if not hasattr(self, 'metrics_label_raster'):
                     parent_widget = self.page_kriging if hasattr(self, 'page_kriging') else self
