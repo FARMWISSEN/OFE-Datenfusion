@@ -32,7 +32,7 @@ from qgis.core import (QgsMapLayerProxyModel, QgsFieldProxyModel, QgsProject, Qg
                       QgsRasterLayer, QgsRectangle, QgsCoordinateReferenceSystem)
 
 from .variogram_dialog import VariogramDialog
-from .config import InterpolationConfig
+from .config import InterpolationConfig, InterpolationMethod
 from .exceptions import (
     InterpolationError,
     DataValidationError,
@@ -119,12 +119,62 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         )
         self.doubleSpinBox_nugget.setDecimals(3)
         
-        # Setup lags spinbox
+        # Setup lags spinbox (Raster tab)
         self.spinBox_lags.setValue(InterpolationConfig.DEFAULT_NLAGS)
         self.spinBox_lags.setRange(
             InterpolationConfig.MIN_LAGS, 
             InterpolationConfig.MAX_LAGS
         )
+        
+        # Setup point interpolation tab parameters
+        if hasattr(self, 'doubleSpinBox_sill_point'):
+            self.doubleSpinBox_sill_point.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_point.setRange(
+                InterpolationConfig.DEFAULT_SILL_MIN, 
+                InterpolationConfig.DEFAULT_SILL_MAX
+            )
+            self.doubleSpinBox_sill_point.setDecimals(3)
+        
+        if hasattr(self, 'doubleSpinBox_range_point'):
+            self.doubleSpinBox_range_point.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_point.setRange(
+                InterpolationConfig.DEFAULT_RANGE_MIN, 
+                InterpolationConfig.DEFAULT_RANGE_MAX
+            )
+            self.doubleSpinBox_range_point.setDecimals(2)
+        
+        if hasattr(self, 'doubleSpinBox_nugget_point'):
+            self.doubleSpinBox_nugget_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_point.setRange(
+                InterpolationConfig.DEFAULT_NUGGET_MIN, 
+                InterpolationConfig.DEFAULT_NUGGET_MAX
+            )
+            self.doubleSpinBox_nugget_point.setDecimals(3)
+        
+        if hasattr(self, 'spinBox_lags_point'):
+            self.spinBox_lags_point.setValue(InterpolationConfig.DEFAULT_NLAGS)
+            self.spinBox_lags_point.setRange(
+                InterpolationConfig.MIN_LAGS, 
+                InterpolationConfig.MAX_LAGS
+            )
+        
+        # Initialize interpolation method combo boxes with available methods
+        if hasattr(self, 'comboBox_method'):
+            self.comboBox_method.clear()
+            self.comboBox_method.addItems(InterpolationMethod.get_all_methods())
+            self.comboBox_method.setCurrentIndex(0)  # Default: Ordinary Kriging
+        
+        if hasattr(self, 'comboBox_method_point'):
+            self.comboBox_method_point.clear()
+            self.comboBox_method_point.addItems(InterpolationMethod.get_all_methods())
+            self.comboBox_method_point.setCurrentIndex(0)  # Default: Ordinary Kriging
+        
+        # Initialize stacked widgets to show Ordinary Kriging parameters (index 0)
+        if hasattr(self, 'stackedWidget_method_params'):
+            self.stackedWidget_method_params.setCurrentIndex(0)
+        
+        if hasattr(self, 'stackedWidget_method_params_point'):
+            self.stackedWidget_method_params_point.setCurrentIndex(0)
         
         # Load saved settings
         self.load_settings()
@@ -436,6 +486,11 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.mMapLayerComboBox.layerChanged.connect(self.sync_target_layer)
         self.mMapLayerComboBox_covariate_point.layerChanged.connect(self.on_covariate_layer_changed)
 
+        # Connect interpolation method changes to parameter widget switching
+        self.comboBox_method.currentTextChanged.connect(self.on_interpolation_method_changed_raster)
+        if hasattr(self, 'comboBox_method_point'):
+            self.comboBox_method_point.currentTextChanged.connect(self.on_interpolation_method_changed_point)
+        
         # Connect interpolation buttons
         #self.interpolate_button.clicked.connect(self.accept)
         self.button_interpolate_points.clicked.connect(self.interpolate_points)
@@ -482,6 +537,62 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         """Synchronize target layer with input layer."""
         if layer:
             self.mMapLayerComboBox_target_layer.setLayer(layer)
+
+    def on_interpolation_method_changed_raster(self, method_name):
+        """Handle interpolation method change for raster tab.
+        
+        Switches the visible parameter widget in the stacked widget based on
+        the selected interpolation method.
+        
+        Args:
+            method_name (str): Name of the selected interpolation method
+        """
+        if not hasattr(self, 'stackedWidget_method_params'):
+            return
+            
+        # Get the index for this method
+        method_index = InterpolationMethod.get_method_index(method_name)
+        
+        # Switch to the corresponding parameter page
+        self.stackedWidget_method_params.setCurrentIndex(method_index)
+        
+        # Log the change
+        QgsMessageLog.logMessage(
+            f"Raster tab: Switched to parameter page {method_index} for method '{method_name}'",
+            "I-PlugIn",
+            Qgis.Info
+        )
+        
+        # Update UI state to enable/disable buttons appropriately
+        self.update_ui_state()
+
+    def on_interpolation_method_changed_point(self, method_name):
+        """Handle interpolation method change for point tab.
+        
+        Switches the visible parameter widget in the stacked widget based on
+        the selected interpolation method.
+        
+        Args:
+            method_name (str): Name of the selected interpolation method
+        """
+        if not hasattr(self, 'stackedWidget_method_params_point'):
+            return
+            
+        # Get the index for this method
+        method_index = InterpolationMethod.get_method_index(method_name)
+        
+        # Switch to the corresponding parameter page
+        self.stackedWidget_method_params_point.setCurrentIndex(method_index)
+        
+        # Log the change
+        QgsMessageLog.logMessage(
+            f"Point tab: Switched to parameter page {method_index} for method '{method_name}'",
+            "I-PlugIn",
+            Qgis.Info
+        )
+        
+        # Update UI state to enable/disable buttons appropriately
+        self.update_ui_state()
 
     def get_point_interpolation_parameters(self):
         """Sammelt die Parameter für die Punkt-Interpolation."""

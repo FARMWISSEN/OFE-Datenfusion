@@ -922,6 +922,153 @@ temp_file.close()
 - Temporäre Dateien werden vom System aufgeräumt
 - Reduziert Speicherplatz-Verbrauch bei vielen Analysen
 
+### ✅ Dynamisches Parameter-System für Interpolationsmethoden (2025-10-14)
+
+**Problem**: Plugin unterstützte nur Ordinary Kriging, keine Erweiterbarkeit für neue Methoden
+
+**Lösung**: QStackedWidget-basiertes System mit methodenspezifischen Parameter-Pages
+
+#### **Implementierte Änderungen:**
+
+**1. `config.py` - Methoden-Registry:**
+```python
+class InterpolationMethod:
+    ORDINARY_KRIGING = "Ordinary Kriging"
+    NEAREST_NEIGHBOR = "Nearest Neighbor"  # Test-Methode
+    
+    @classmethod
+    def get_all_methods(cls):
+        return [cls.ORDINARY_KRIGING, cls.NEAREST_NEIGHBOR]
+    
+    @classmethod
+    def get_method_index(cls, method_name):
+        """Gibt Index für StackedWidget zurück"""
+        return cls.get_all_methods().index(method_name)
+```
+
+**2. `Optimierung.ui` - StackedWidget-Struktur:**
+
+**Raster Tab (`stackedWidget_method_params`):**
+- Höhe: 250px (statt 121px)
+- **Page 0: `page_ordinary_kriging`**
+  - Variogramm ComboBox
+  - Anzahl Lags SpinBox
+  - Sill, Range, Nugget SpinBoxes
+  - Variogram Analyse Button
+  - Optimierte Parameter Labels
+- **Page 1: `page_nearest_neighbor`**
+  - Info-Label "Test-Methode, noch nicht implementiert"
+
+**Punkt Tab (`stackedWidget_method_params_point`):**
+- Identische Struktur wie Raster Tab
+- Eigene Widgets mit `_point` Suffix
+
+**Wichtig**: Alle Variogramm-Parameter sind jetzt **innerhalb** des StackedWidgets, nicht mehr in separater GroupBox außerhalb!
+
+**3. `i_plugin_dialog.py` - Automatisches Switching:**
+
+**Initialisierung:**
+```python
+def setup_ui_components(self):
+    # ComboBoxen mit Methoden füllen
+    self.comboBox_method.addItems(InterpolationMethod.get_all_methods())
+    self.comboBox_method_point.addItems(InterpolationMethod.get_all_methods())
+    
+    # StackedWidgets auf Index 0 (Ordinary Kriging) setzen
+    self.stackedWidget_method_params.setCurrentIndex(0)
+    self.stackedWidget_method_params_point.setCurrentIndex(0)
+    
+    # Signal-Verbindungen
+    self.comboBox_method.currentTextChanged.connect(
+        self.on_interpolation_method_changed_raster
+    )
+    self.comboBox_method_point.currentTextChanged.connect(
+        self.on_interpolation_method_changed_point
+    )
+```
+
+**Handler:**
+```python
+def on_interpolation_method_changed_raster(self, method_name):
+    """Wechselt Parameter-Page bei Methoden-Änderung (Raster Tab)"""
+    index = InterpolationMethod.get_method_index(method_name)
+    self.stackedWidget_method_params.setCurrentIndex(index)
+
+def on_interpolation_method_changed_point(self, method_name):
+    """Wechselt Parameter-Page bei Methoden-Änderung (Punkt Tab)"""
+    index = InterpolationMethod.get_method_index(method_name)
+    self.stackedWidget_method_params_point.setCurrentIndex(index)
+```
+
+**Parameter-Initialisierung für Punkt-Tab hinzugefügt:**
+```python
+# Setup point interpolation tab parameters
+if hasattr(self, 'doubleSpinBox_sill_point'):
+    self.doubleSpinBox_sill_point.setValue(InterpolationConfig.DEFAULT_SILL)
+    # ... Range, Nugget, Lags analog
+```
+
+#### **Wie man neue Methoden hinzufügt (z.B. IDW):**
+
+**Schritt 1 - `config.py`:**
+```python
+class InterpolationMethod:
+    ORDINARY_KRIGING = "Ordinary Kriging"
+    NEAREST_NEIGHBOR = "Nearest Neighbor"
+    IDW = "Inverse Distance Weighting"  # NEU
+    
+    @classmethod
+    def get_all_methods(cls):
+        return [cls.ORDINARY_KRIGING, cls.NEAREST_NEIGHBOR, cls.IDW]
+```
+
+**Schritt 2 - `Optimierung.ui`:**
+```xml
+<!-- Page 2 in stackedWidget_method_params -->
+<widget class="QWidget" name="page_idw">
+  <widget class="QLabel" name="label_idw_power">
+    <property name="text"><string>Power Parameter:</string></property>
+  </widget>
+  <widget class="QDoubleSpinBox" name="doubleSpinBox_idw_power">
+    <property name="value"><double>2.0</double></property>
+  </widget>
+  <widget class="QDoubleSpinBox" name="doubleSpinBox_idw_radius"/>
+</widget>
+```
+
+**Schritt 3 - `i_plugin.py` Backend:**
+```python
+def interpolate_idw(self, x, y, z, grid_x, grid_y, power=2.0):
+    """Führt IDW Interpolation durch"""
+    # Implementierung...
+    pass
+```
+
+**Schritt 4 - `i_plugin_dialog.py` Parameter sammeln:**
+```python
+def get_parameters(self):
+    method = self.comboBox_method.currentText()
+    if method == InterpolationMethod.IDW:
+        return {
+            'method': 'idw',
+            'power': self.doubleSpinBox_idw_power.value(),
+            'radius': self.doubleSpinBox_idw_radius.value()
+        }
+```
+
+#### **Test-Methode "Nearest Neighbor" bereits implementiert:**
+- Zeigt als Beispiel, wie das System funktioniert
+- Noch keine Backend-Logik
+- Zeigt nur Info-Text im UI
+
+#### **Vorteile:**
+- ✅ **Erweiterbar**: Neue Methoden ohne große Refactorings
+- ✅ **Sauber getrennt**: Jede Methode hat eigene Parameter-Widgets
+- ✅ **Automatisch**: UI passt sich an gewählte Methode an
+- ✅ **Rückwärtskompatibel**: Ordinary Kriging bleibt Default (Index 0)
+- ✅ **Beide Tabs**: Raster und Punkt unabhängig voneinander
+- ✅ **Konsistent**: Alle Parameter innerhalb des StackedWidgets
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-14  

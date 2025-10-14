@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>586</width>
-    <height>759</height>
+    <height>731</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <x>0</x>
      <y>0</y>
      <width>571</width>
-     <height>710</height>
+     <height>661</height>
     </rect>
    </property>
    <property name="currentIndex">
@@ -233,238 +233,251 @@
       </property>
      </widget>
     </widget>
-    <widget class="QGroupBox" name="groupBox_3">
+    <widget class="QStackedWidget" name="stackedWidget_method_params">
      <property name="geometry">
       <rect>
        <x>10</x>
        <y>371</y>
        <width>551</width>
-       <height>121</height>
+       <height>250</height>
       </rect>
      </property>
-     <property name="title">
-      <string/>
+     <property name="currentIndex">
+      <number>0</number>
      </property>
-     <widget class="QComboBox" name="comboBox_variogram">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>30</y>
-        <width>240</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <item>
-       <property name="text">
-        <string>Linear</string>
+     <widget class="QWidget" name="page_ordinary_kriging">
+      <widget class="QComboBox" name="comboBox_variogram">
+       <property name="geometry">
+        <rect>
+         <x>140</x>
+         <y>10</y>
+         <width>240</width>
+         <height>29</height>
+        </rect>
        </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Spherical</string>
+       <item>
+        <property name="text">
+         <string>Linear</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Spherical</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Exponential</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLabel" name="label_variogram_2">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>10</y>
+         <width>121</width>
+         <height>29</height>
+        </rect>
        </property>
-      </item>
-      <item>
        <property name="text">
-        <string>Exponential</string>
+        <string>Variogramm</string>
        </property>
-      </item>
-      <item>
+      </widget>
+      <widget class="QSpinBox" name="spinBox_lags">
+       <property name="geometry">
+        <rect>
+         <x>140</x>
+         <y>50</y>
+         <width>80</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="minimum">
+        <number>3</number>
+       </property>
+       <property name="maximum">
+        <number>50</number>
+       </property>
+       <property name="value">
+        <number>15</number>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_lags_2">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>50</y>
+         <width>121</width>
+         <height>29</height>
+        </rect>
+       </property>
        <property name="text">
-        <string>Gaussian</string>
+        <string>Anzahl Lags</string>
        </property>
-      </item>
+      </widget>
+      <widget class="QLabel" name="label_sill_5">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>90</y>
+         <width>221</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Startwerte Variogramparameter:</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_sill_3">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>120</y>
+         <width>30</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Sill:</string>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_sill">
+       <property name="geometry">
+        <rect>
+         <x>150</x>
+         <y>120</y>
+         <width>80</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.100000000000000</double>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_range_3">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>150</y>
+         <width>61</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Range:</string>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_range">
+       <property name="geometry">
+        <rect>
+         <x>150</x>
+         <y>150</y>
+         <width>80</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="maximum">
+        <double>1000.000000000000000</double>
+       </property>
+       <property name="value">
+        <double>100.000000000000000</double>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_nugget_3">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>180</y>
+         <width>69</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Nugget:</string>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget">
+       <property name="geometry">
+        <rect>
+         <x>150</x>
+         <y>180</y>
+         <width>80</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.000000000000000</double>
+       </property>
+      </widget>
+      <widget class="QWidget" name="page_kriging" native="true">
+       <property name="geometry">
+        <rect>
+         <x>400</x>
+         <y>100</y>
+         <width>141</width>
+         <height>110</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QWidget" name="page_kriging_3" native="true">
+       <property name="geometry">
+        <rect>
+         <x>240</x>
+         <y>100</y>
+         <width>141</width>
+         <height>110</height>
+        </rect>
+       </property>
+      </widget>
      </widget>
-     <widget class="QLabel" name="label_variogram_2">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>30</y>
-        <width>121</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Variogramm</string>
-      </property>
-     </widget>
-     <widget class="QSpinBox" name="spinBox_lags">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>80</y>
-        <width>80</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="minimum">
-       <number>3</number>
-      </property>
-      <property name="maximum">
-       <number>50</number>
-      </property>
-      <property name="value">
-       <number>15</number>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_lags_2">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>80</y>
-        <width>121</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Anzahl Lags</string>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QGroupBox" name="groupBox">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>485</y>
-       <width>551</width>
-       <height>125</height>
-      </rect>
-     </property>
-     <property name="title">
-      <string/>
-     </property>
-     <widget class="QLabel" name="label_sill_3">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>30</y>
-        <width>30</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Sill:</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="doubleSpinBox_sill">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>30</y>
-        <width>80</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="decimals">
-       <number>3</number>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.100000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_range_3">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>60</y>
-        <width>61</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Range:</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="doubleSpinBox_range">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>60</y>
-        <width>80</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <double>1000.000000000000000</double>
-      </property>
-      <property name="value">
-       <double>100.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_nugget_3">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>90</y>
-        <width>69</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Nugget:</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>90</y>
-        <width>80</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="decimals">
-       <number>3</number>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QWidget" name="page_kriging" native="true">
-      <property name="geometry">
-       <rect>
-        <x>400</x>
-        <y>10</y>
-        <width>141</width>
-        <height>110</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QWidget" name="page_kriging_3" native="true">
-      <property name="geometry">
-       <rect>
-        <x>240</x>
-        <y>10</y>
-        <width>141</width>
-        <height>110</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_sill_5">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>5</y>
-        <width>221</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Startwerte Variogramparameter:</string>
-      </property>
+     <widget class="QWidget" name="page_nearest_neighbor">
+      <widget class="QLabel" name="label_nn_info">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>20</y>
+         <width>531</width>
+         <height>81</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Nearest Neighbor Interpolation (Test-Methode)
+
+Diese Methode ist noch nicht vollständig implementiert.
+Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+      </widget>
      </widget>
     </widget>
     <widget class="QPushButton" name="button_interpolate_points_2">
      <property name="geometry">
       <rect>
-       <x>20</x>
-       <y>631</y>
+       <x>30</x>
+       <y>590</y>
        <width>510</width>
        <height>29</height>
       </rect>
@@ -478,19 +491,6 @@
       <rect>
        <x>10</x>
        <y>369</y>
-       <width>551</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-    <widget class="Line" name="line_2">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>483</y>
        <width>551</width>
        <height>16</height>
       </rect>
@@ -637,7 +637,7 @@
      <property name="title">
       <string>Interpolation</string>
      </property>
-     <widget class="QComboBox" name="comboBox_method">
+     <widget class="QComboBox" name="comboBox_method_point">
       <property name="geometry">
        <rect>
         <x>150</x>
@@ -679,257 +679,257 @@
       </property>
      </widget>
     </widget>
-    <widget class="QGroupBox" name="groupBox_4">
+    <widget class="QStackedWidget" name="stackedWidget_method_params_point">
      <property name="geometry">
       <rect>
        <x>10</x>
        <y>371</y>
        <width>551</width>
-       <height>121</height>
+       <height>250</height>
       </rect>
      </property>
-     <property name="title">
-      <string/>
+     <property name="currentIndex">
+      <number>0</number>
      </property>
-     <widget class="QComboBox" name="comboBox_variogram_point">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>30</y>
-        <width>240</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <item>
-       <property name="text">
-        <string>Linear</string>
+     <widget class="QWidget" name="page_ordinary_kriging_point">
+      <widget class="QComboBox" name="comboBox_variogram_point">
+       <property name="geometry">
+        <rect>
+         <x>140</x>
+         <y>10</y>
+         <width>240</width>
+         <height>29</height>
+        </rect>
        </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Spherical</string>
+       <item>
+        <property name="text">
+         <string>Linear</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Spherical</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Exponential</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Gaussian</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLabel" name="label_variogram_4">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>10</y>
+         <width>121</width>
+         <height>29</height>
+        </rect>
        </property>
-      </item>
-      <item>
        <property name="text">
-        <string>Exponential</string>
+        <string>Variogramm</string>
        </property>
-      </item>
-      <item>
+      </widget>
+      <widget class="QSpinBox" name="spinBox_lags_point">
+       <property name="geometry">
+        <rect>
+         <x>140</x>
+         <y>50</y>
+         <width>80</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="minimum">
+        <number>3</number>
+       </property>
+       <property name="maximum">
+        <number>50</number>
+       </property>
+       <property name="value">
+        <number>15</number>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_lags_4">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>50</y>
+         <width>121</width>
+         <height>29</height>
+        </rect>
+       </property>
        <property name="text">
-        <string>Gaussian</string>
+        <string>Anzahl Lags</string>
        </property>
-      </item>
+      </widget>
+      <widget class="QLabel" name="label_sill_6">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>90</y>
+         <width>231</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Startwerte Variogramparameter:</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_sill_4">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>120</y>
+         <width>30</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Sill:</string>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_point">
+       <property name="geometry">
+        <rect>
+         <x>150</x>
+         <y>120</y>
+         <width>80</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.100000000000000</double>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_range_4">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>150</y>
+         <width>61</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Range:</string>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_range_point">
+       <property name="geometry">
+        <rect>
+         <x>150</x>
+         <y>150</y>
+         <width>80</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="maximum">
+        <double>1000.000000000000000</double>
+       </property>
+       <property name="value">
+        <double>100.000000000000000</double>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_nugget_4">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>180</y>
+         <width>69</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Nugget:</string>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_point">
+       <property name="geometry">
+        <rect>
+         <x>150</x>
+         <y>180</y>
+         <width>80</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.000000000000000</double>
+       </property>
+      </widget>
+      <widget class="QWidget" name="page_kriging_2" native="true">
+       <property name="geometry">
+        <rect>
+         <x>400</x>
+         <y>100</y>
+         <width>141</width>
+         <height>110</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QWidget" name="page_kriging_4" native="true">
+       <property name="geometry">
+        <rect>
+         <x>240</x>
+         <y>100</y>
+         <width>141</width>
+         <height>110</height>
+        </rect>
+       </property>
+      </widget>
      </widget>
-     <widget class="QLabel" name="label_variogram_4">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>30</y>
-        <width>121</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Variogramm</string>
-      </property>
-     </widget>
-     <widget class="QSpinBox" name="spinBox_lags_point">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>80</y>
-        <width>80</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="minimum">
-       <number>3</number>
-      </property>
-      <property name="maximum">
-       <number>50</number>
-      </property>
-      <property name="value">
-       <number>15</number>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_lags_4">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>80</y>
-        <width>121</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Anzahl Lags</string>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QGroupBox" name="groupBox_2">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>485</y>
-       <width>551</width>
-       <height>125</height>
-      </rect>
-     </property>
-     <property name="title">
-      <string/>
-     </property>
-     <widget class="QLabel" name="label_sill_4">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>30</y>
-        <width>30</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Sill:</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_point">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>30</y>
-        <width>80</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="decimals">
-       <number>3</number>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.100000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_range_4">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>60</y>
-        <width>61</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Range:</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_point">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>90</y>
-        <width>80</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="decimals">
-       <number>3</number>
-      </property>
-      <property name="singleStep">
-       <double>0.100000000000000</double>
-      </property>
-      <property name="value">
-       <double>0.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_nugget_4">
-      <property name="geometry">
-       <rect>
-        <x>20</x>
-        <y>90</y>
-        <width>69</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Nugget:</string>
-      </property>
-     </widget>
-     <widget class="QDoubleSpinBox" name="doubleSpinBox_range_point">
-      <property name="geometry">
-       <rect>
-        <x>150</x>
-        <y>60</y>
-        <width>80</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="maximum">
-       <double>1000.000000000000000</double>
-      </property>
-      <property name="value">
-       <double>100.000000000000000</double>
-      </property>
-     </widget>
-     <widget class="QWidget" name="page_kriging_2" native="true">
-      <property name="geometry">
-       <rect>
-        <x>400</x>
-        <y>10</y>
-        <width>141</width>
-        <height>110</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QWidget" name="page_kriging_4" native="true">
-      <property name="geometry">
-       <rect>
-        <x>240</x>
-        <y>10</y>
-        <width>141</width>
-        <height>110</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_sill_6">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>5</y>
-        <width>231</width>
-        <height>29</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Startwerte Variogramparameter:</string>
-      </property>
+     <widget class="QWidget" name="page_nearest_neighbor_point">
+      <widget class="QLabel" name="label_nn_info_point">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>20</y>
+         <width>531</width>
+         <height>81</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Nearest Neighbor Interpolation (Test-Methode)
+
+Diese Methode ist noch nicht vollständig implementiert.
+Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+      </widget>
      </widget>
     </widget>
     <widget class="QPushButton" name="button_interpolate_points">
      <property name="geometry">
       <rect>
-       <x>20</x>
-       <y>631</y>
+       <x>30</x>
+       <y>590</y>
        <width>510</width>
        <height>29</height>
       </rect>
      </property>
      <property name="text">
       <string>Punkte Interpolieren</string>
-     </property>
-    </widget>
-    <widget class="Line" name="line_5">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>483</y>
-       <width>551</width>
-       <height>16</height>
-      </rect>
-     </property>
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
      </property>
     </widget>
     <widget class="Line" name="line_6">
@@ -950,8 +950,8 @@
   <widget class="QDialogButtonBox" name="button_box">
    <property name="geometry">
     <rect>
-     <x>360</x>
-     <y>720</y>
+     <x>370</x>
+     <y>670</y>
      <width>200</width>
      <height>32</height>
     </rect>
