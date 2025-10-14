@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>590</width>
-    <height>765</height>
+    <width>586</width>
+    <height>759</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,7 +23,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>1</number>
    </property>
    <widget class="QWidget" name="tab_input">
     <attribute name="title">
@@ -337,7 +337,7 @@
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>12</y>
+        <y>30</y>
         <width>30</width>
         <height>29</height>
        </rect>
@@ -350,10 +350,13 @@
       <property name="geometry">
        <rect>
         <x>150</x>
-        <y>12</y>
+        <y>30</y>
         <width>80</width>
         <height>29</height>
        </rect>
+      </property>
+      <property name="decimals">
+       <number>3</number>
       </property>
       <property name="singleStep">
        <double>0.100000000000000</double>
@@ -366,7 +369,7 @@
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>48</y>
+        <y>60</y>
         <width>61</width>
         <height>29</height>
        </rect>
@@ -379,20 +382,23 @@
       <property name="geometry">
        <rect>
         <x>150</x>
-        <y>48</y>
+        <y>60</y>
         <width>80</width>
         <height>29</height>
        </rect>
       </property>
+      <property name="maximum">
+       <double>1000.000000000000000</double>
+      </property>
       <property name="value">
-       <double>99.989999999999995</double>
+       <double>100.000000000000000</double>
       </property>
      </widget>
      <widget class="QLabel" name="label_nugget_3">
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>84</y>
+        <y>90</y>
         <width>69</width>
         <height>29</height>
        </rect>
@@ -405,10 +411,13 @@
       <property name="geometry">
        <rect>
         <x>150</x>
-        <y>84</y>
+        <y>90</y>
         <width>80</width>
         <height>29</height>
        </rect>
+      </property>
+      <property name="decimals">
+       <number>3</number>
       </property>
       <property name="singleStep">
        <double>0.100000000000000</double>
@@ -420,11 +429,34 @@
      <widget class="QWidget" name="page_kriging" native="true">
       <property name="geometry">
        <rect>
-        <x>368</x>
-        <y>12</y>
-        <width>171</width>
-        <height>101</height>
+        <x>400</x>
+        <y>10</y>
+        <width>141</width>
+        <height>110</height>
        </rect>
+      </property>
+     </widget>
+     <widget class="QWidget" name="page_kriging_3" native="true">
+      <property name="geometry">
+       <rect>
+        <x>240</x>
+        <y>10</y>
+        <width>141</width>
+        <height>110</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_sill_5">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>5</y>
+        <width>221</width>
+        <height>29</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Startwerte Variogramparameter:</string>
       </property>
      </widget>
     </widget>
@@ -751,7 +783,7 @@
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>12</y>
+        <y>30</y>
         <width>30</width>
         <height>29</height>
        </rect>
@@ -764,10 +796,13 @@
       <property name="geometry">
        <rect>
         <x>150</x>
-        <y>12</y>
+        <y>30</y>
         <width>80</width>
         <height>29</height>
        </rect>
+      </property>
+      <property name="decimals">
+       <number>3</number>
       </property>
       <property name="singleStep">
        <double>0.100000000000000</double>
@@ -780,7 +815,7 @@
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>48</y>
+        <y>60</y>
         <width>61</width>
         <height>29</height>
        </rect>
@@ -793,10 +828,13 @@
       <property name="geometry">
        <rect>
         <x>150</x>
-        <y>84</y>
+        <y>90</y>
         <width>80</width>
         <height>29</height>
        </rect>
+      </property>
+      <property name="decimals">
+       <number>3</number>
       </property>
       <property name="singleStep">
        <double>0.100000000000000</double>
@@ -809,7 +847,7 @@
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>84</y>
+        <y>90</y>
         <width>69</width>
         <height>29</height>
        </rect>
@@ -822,23 +860,49 @@
       <property name="geometry">
        <rect>
         <x>150</x>
-        <y>48</y>
+        <y>60</y>
         <width>80</width>
         <height>29</height>
        </rect>
       </property>
+      <property name="maximum">
+       <double>1000.000000000000000</double>
+      </property>
       <property name="value">
-       <double>99.989999999999995</double>
+       <double>100.000000000000000</double>
       </property>
      </widget>
      <widget class="QWidget" name="page_kriging_2" native="true">
       <property name="geometry">
        <rect>
-        <x>368</x>
-        <y>12</y>
-        <width>171</width>
-        <height>101</height>
+        <x>400</x>
+        <y>10</y>
+        <width>141</width>
+        <height>110</height>
        </rect>
+      </property>
+     </widget>
+     <widget class="QWidget" name="page_kriging_4" native="true">
+      <property name="geometry">
+       <rect>
+        <x>240</x>
+        <y>10</y>
+        <width>141</width>
+        <height>110</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_sill_6">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>5</y>
+        <width>231</width>
+        <height>29</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Startwerte Variogramparameter:</string>
       </property>
      </widget>
     </widget>

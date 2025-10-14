@@ -668,7 +668,150 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 - ✅ Keine Signal-Kaskaden mehr
 - ✅ Professional User-Experience
 
+### ✅ Variogramm-Parameter nicht mehr persistent (2025-10-13)
+
+**Problem**: Nach Schließen und Wiederöffnen des Plugins standen die optimierten Werte der letzten Analyse in den SpinBoxen, nicht die Default-Werte
+- `save_settings()` speicherte nugget, range, sill, lags (Zeilen 602-605)
+- `load_settings()` lud diese Werte beim nächsten Öffnen
+- User erwartete Default-Werte, nicht alte Analyse-Ergebnisse
+
+**Lösung**:
+1. `save_settings()`: Variogramm-Parameter werden **nicht mehr gespeichert** (Zeile 600-602)
+   - Nur das Variogramm-Modell (Index) wird gespeichert
+   - nugget, range, sill, lags werden übersprungen
+2. `load_settings()`: Verwendet **immer** Default-Werte aus `InterpolationConfig` (Zeilen 650-655)
+   - `DEFAULT_NUGGET = 0.0`
+   - `DEFAULT_RANGE = 100.0`
+   - `DEFAULT_SILL = 0.1`
+   - `DEFAULT_NLAGS = 10`
+
+**Begründung**:
+- Variogramm-Parameter sind **modellspezifisch** und sollten nicht über Sessions hinweg persistent sein
+- Optimierte Werte von einem Modell sind nicht für ein anderes Modell geeignet
+- User erwartet "sauberen Zustand" beim Plugin-Start
+- Variogramm-Analyse kann jederzeit neu durchgeführt werden
+
+**Ergebnis**:
+- ✅ Plugin startet immer mit Default-Werten
+- ✅ Keine Verwirrung durch alte Analyse-Werte
+- ✅ Konsistentes Verhalten über Sessions hinweg
+- ✅ Variogramm-Modell-Auswahl bleibt erhalten (nützlich)
+
+### ✅ Trennung von Input- und Output-Parametern (2025-10-14)
+
+**Problem**: SpinBoxen wurden nach Variogramm-Analyse mit optimierten Werten überschrieben
+- User konnte nicht mehr sehen, welche Startwerte verwendet wurden
+- Kein Vergleich zwischen Start- und optimierten Werten möglich
+- SpinBoxen dienten sowohl als Input als auch als Output (verwirrend)
+
+**Lösung: Separate Anzeige für optimierte Werte**
+
+#### **1. UI-Änderungen (`Optimierung.ui`)**
+- **Label hinzugefügt**: "Startwerte Variogramparameter:" für beide Tabs
+- **Layout optimiert**: Alle Widgets um 18px nach unten verschoben für bessere Übersicht
+- **Präzision erhöht**: 
+  - Nugget und Sill: 3 Dezimalstellen (vorher 2)
+  - Range Maximum: 1000 (vorher 100) für größere Datensätze
+- **Platzhalter-Widgets**: `page_kriging_3` (Raster) und `page_kriging_4` (Punkt) für optimierte Parameter
+
+#### **2. Code-Änderungen (`i_plugin_dialog.py`)**
+
+**Neue Methoden (Zeilen 175-237):**
+```python
+def create_optimized_parameter_labels_raster(self):
+    """Create labels to display optimized variogram parameters for raster tab."""
+    # Erstellt GroupBox "Optimierte Werte:" mit grünen Labels
+    # Initial versteckt, wird nach Analyse angezeigt
+    
+def create_optimized_parameter_labels_point(self):
+    """Create labels to display optimized variogram parameters for point tab."""
+    # Gleiche Funktionalität für Punkt-Tab
+```
+
+**Features:**
+- GroupBox mit FormLayout für strukturierte Anzeige
+- Labels in grüner Farbe (`#2E7D32`, bold) zur visuellen Unterscheidung
+- Initial versteckt (`setVisible(False)`)
+- Wird in `page_kriging_3` bzw. `page_kriging_4` eingefügt
+
+**`update_variogram_parameters()` komplett umgeschrieben (Zeilen 1182-1240):**
+
+**Vorher:**
+```python
+# Überschrieb SpinBox-Werte (❌ User-Input ging verloren)
+self.doubleSpinBox_nugget.blockSignals(True)
+self.doubleSpinBox_nugget.setValue(parameters.get('nugget'))
+self.doubleSpinBox_nugget.blockSignals(False)
+```
+
+**Jetzt:**
+```python
+# Aktualisiert nur Labels (✅ User-Input bleibt erhalten)
+nugget = parameters.get('nugget', InterpolationConfig.DEFAULT_NUGGET)
+self.label_optimized_nugget_raster.setText(f"{nugget:.3f}")
+self.optimized_params_group_raster.setVisible(True)
+```
+
+**Konzept:**
+- **SpinBoxen** = Input (User-Startwerte, bleiben unverändert)
+- **Labels** = Output (Optimierte Werte, grün dargestellt)
+- Kein `blockSignals()` mehr nötig, da SpinBoxen nicht verändert werden
+
+**`reset_variogram_parameters_*()` erweitert (Zeilen 1060-1062, 1093-1095):**
+```python
+# Versteckt GroupBox mit optimierten Werten bei Modell-Wechsel
+if hasattr(self, 'optimized_params_group_raster'):
+    self.optimized_params_group_raster.setVisible(False)
+```
+
+#### **3. Config-Änderung (`config.py`)**
+```python
+DEFAULT_NLAGS = 15  # vorher: 10
+```
+- Mehr Lags für bessere Variogramm-Schätzung bei größeren Datensätzen
+
+#### **4. UI-Layout nach Analyse:**
+```
+┌─────────────────────────────────────────────┐
+│ Variogramm Modell: [spherical ▼]           │
+│                                             │
+│ Startwerte Variogramparameter:             │
+│ Sill:    [0.100]  ← User Input (bleibt)    │
+│ Range:   [100.0]                            │
+│ Nugget:  [0.000]                            │
+│                                             │
+│ ┌─ Optimierte Werte: ─────────────────────┐│
+│ │ Sill:    2.145  ← Grün, Bold            ││
+│ │ Range:   245.8                           ││
+│ │ Nugget:  0.523                           ││
+│ └──────────────────────────────────────────┘│
+│                                             │
+│ Variogramm Metriken:                        │
+│ RMSE: 0.234                                 │
+│ R²: 0.892                                   │
+└─────────────────────────────────────────────┘
+```
+
+**Vorteile**:
+- ✅ **Klare Trennung**: Input (SpinBoxen) vs. Output (Labels)
+- ✅ **Vergleichbarkeit**: User sieht Unterschied zwischen Start und Optimiert
+- ✅ **Wiederholbarkeit**: Gleiche Startwerte für mehrere Analysen möglich
+- ✅ **Professional UX**: Standard-Pattern für Optimierungs-Tools (z.B. Solver, Optimizer)
+- ✅ **Keine Überschreibung**: User-Input bleibt erhalten
+- ✅ **Visuelle Unterscheidung**: Grüne Labels = Optimierte Werte, Schwarz = Input
+- ✅ **Einfachere Logik**: Kein `blockSignals()` mehr nötig in `update_variogram_parameters()`
+
+**Workflow**:
+1. User setzt Startwerte in SpinBoxen (z.B. sill=0.1, range=100.0, nugget=0.0)
+2. User klickt "Variogram Analyse"
+3. Progress-Dialog erscheint
+4. Nach Analyse: GroupBox "Optimierte Werte:" erscheint mit grünen Labels
+5. SpinBoxen bleiben unverändert (0.1, 100.0, 0.0) ✓
+6. Labels zeigen optimierte Werte (2.145, 245.8, 0.523) ✓
+7. User kann Startwerte anpassen und erneut analysieren
+8. Bei Modell-Wechsel: GroupBox wird versteckt, SpinBoxen auf Defaults zurückgesetzt
+
 ---
 
-**Letzte Aktualisierung**: 2025-10-12  
+**Letzte Aktualisierung**: 2025-10-14  
 **Für**: Schneller Kontext-Aufbau bei Entwicklung/Debugging

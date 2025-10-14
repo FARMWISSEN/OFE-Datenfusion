@@ -16,7 +16,7 @@
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
+ *   the Free Software Foundation; either version 2 of the License, or     *i
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
@@ -156,6 +156,12 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         elif hasattr(self, 'page_kriging_2'):
             self.analyze_variogram_button_points.setParent(self.page_kriging_2)
 
+        # Create labels for optimized variogram parameters (Raster tab)
+        self.create_optimized_parameter_labels_raster()
+        
+        # Create labels for optimized variogram parameters (Point tab)
+        self.create_optimized_parameter_labels_point()
+
         # --- Optimierung: Hinzufügen-Button anbinden ---
         if hasattr(self, 'pushButton'):
             self.pushButton.clicked.connect(self.raster_interpolation_layer_add)
@@ -165,6 +171,70 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.pushButton_4.clicked.connect(self.target_layer_add)
         if hasattr(self, 'pushButton_2'):
             self.pushButton_2.clicked.connect(self.boundary_layer_add)
+
+    def create_optimized_parameter_labels_raster(self):
+        """Create labels to display optimized variogram parameters for raster tab."""
+        parent_widget = self.page_kriging_3 if hasattr(self, 'page_kriging_3') else self
+        
+        # Create a group box for optimized parameters
+        self.optimized_params_group_raster = QtWidgets.QGroupBox("Optimierte Werte:", parent_widget)
+        self.optimized_params_group_raster.setVisible(False)  # Hidden initially
+        
+        # Create layout for the group box
+        params_layout = QtWidgets.QFormLayout()
+        
+        # Create labels for optimized values
+        self.label_optimized_nugget_raster = QtWidgets.QLabel("—")
+        self.label_optimized_range_raster = QtWidgets.QLabel("—")
+        self.label_optimized_sill_raster = QtWidgets.QLabel("—")
+        
+        # Style labels
+        for label in [self.label_optimized_nugget_raster, self.label_optimized_range_raster, self.label_optimized_sill_raster]:
+            label.setStyleSheet("QLabel { color: #2E7D32; font-weight: bold; }")
+        
+        # Add to layout
+        params_layout.addRow("Sill:", self.label_optimized_sill_raster)
+        params_layout.addRow("Range:", self.label_optimized_range_raster)
+        params_layout.addRow("Nugget:", self.label_optimized_nugget_raster)
+        
+        self.optimized_params_group_raster.setLayout(params_layout)
+        
+        # Add to page layout
+        layout = parent_widget.layout()
+        if layout:
+            layout.addWidget(self.optimized_params_group_raster)
+
+    def create_optimized_parameter_labels_point(self):
+        """Create labels to display optimized variogram parameters for point tab."""
+        parent_widget = self.page_kriging_4 if hasattr(self, 'page_kriging_4') else self
+        
+        # Create a group box for optimized parameters
+        self.optimized_params_group_point = QtWidgets.QGroupBox("Optimierte Werte:", parent_widget)
+        self.optimized_params_group_point.setVisible(False)  # Hidden initially
+        
+        # Create layout for the group box
+        params_layout = QtWidgets.QFormLayout()
+        
+        # Create labels for optimized values
+        self.label_optimized_nugget_point = QtWidgets.QLabel("—")
+        self.label_optimized_range_point = QtWidgets.QLabel("—")
+        self.label_optimized_sill_point = QtWidgets.QLabel("—")
+        
+        # Style labels
+        for label in [self.label_optimized_nugget_point, self.label_optimized_range_point, self.label_optimized_sill_point]:
+            label.setStyleSheet("QLabel { color: #2E7D32; font-weight: bold; }")
+        
+        # Add to layout
+        params_layout.addRow("Sill:", self.label_optimized_sill_point)
+        params_layout.addRow("Range:", self.label_optimized_range_point)
+        params_layout.addRow("Nugget:", self.label_optimized_nugget_point)
+        
+        self.optimized_params_group_point.setLayout(params_layout)
+        
+        # Add to page layout
+        layout = parent_widget.layout()
+        if layout:
+            layout.addWidget(self.optimized_params_group_point)
 
 # VERBINDUNG DER SIGNAL
     def _validate_and_add_layer(self, layer_combo, field_combo=None, layer_type_name="Layer"):
@@ -597,12 +667,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Save interpolation settings
         settings.setValue("IPlugIn/cell_size", self.doubleSpinBox_cellsize.value())
         
-        # Save kriging parameters - store index for combobox
+        # Save variogram model selection (but NOT the parameters - they should always start with defaults)
         settings.setValue("IPlugIn/variogram_model", self.comboBox_variogram.currentIndex())
-        settings.setValue("nugget", self.doubleSpinBox_nugget.value())
-        settings.setValue("range", self.doubleSpinBox_range.value())
-        settings.setValue("sill", self.doubleSpinBox_sill.value())
-        settings.setValue("lags", self.spinBox_lags.value())
+        # Note: nugget, range, sill, lags are NOT saved - they reset to defaults on each plugin open
 
     def load_settings(self):
         """Load saved settings."""
@@ -641,7 +708,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             float(settings.value("IPlugIn/cell_size", InterpolationConfig.DEFAULT_CELL_SIZE))
         )
         
-        # Load kriging parameters
+        # Load variogram model selection
         try:
             variogram_idx = int(settings.value("IPlugIn/variogram_model", 0))
             if 0 <= variogram_idx < self.comboBox_variogram.count():
@@ -650,18 +717,12 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # If there's an error, just set to first item
             self.comboBox_variogram.setCurrentIndex(0)
             
-        self.doubleSpinBox_nugget.setValue(
-            float(settings.value("nugget", InterpolationConfig.DEFAULT_NUGGET))
-        )
-        self.doubleSpinBox_range.setValue(
-            float(settings.value("range", InterpolationConfig.DEFAULT_RANGE))
-        )
-        self.doubleSpinBox_sill.setValue(
-            float(settings.value("sill", InterpolationConfig.DEFAULT_SILL))
-        )
-        self.spinBox_lags.setValue(
-            int(settings.value("lags", InterpolationConfig.DEFAULT_NLAGS))
-        )
+        # Always use default values for variogram parameters (not loaded from settings)
+        # This ensures parameters start fresh on each plugin open
+        self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET)
+        self.doubleSpinBox_range.setValue(InterpolationConfig.DEFAULT_RANGE)
+        self.doubleSpinBox_sill.setValue(InterpolationConfig.DEFAULT_SILL)
+        self.spinBox_lags.setValue(InterpolationConfig.DEFAULT_NLAGS)
         
         # Unblock signals after loading
         for widget in widgets_to_block:
@@ -996,6 +1057,10 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_range.blockSignals(False)
             self.doubleSpinBox_sill.blockSignals(False)
             
+            # Hide optimized parameters group box
+            if hasattr(self, 'optimized_params_group_raster'):
+                self.optimized_params_group_raster.setVisible(False)
+            
             # Hide metrics label if it exists
             if hasattr(self, 'metrics_label_raster'):
                 self.metrics_label_raster.setVisible(False)
@@ -1024,6 +1089,10 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_nugget_point.blockSignals(False)
             self.doubleSpinBox_range_point.blockSignals(False)
             self.doubleSpinBox_sill_point.blockSignals(False)
+            
+            # Hide optimized parameters group box
+            if hasattr(self, 'optimized_params_group_point'):
+                self.optimized_params_group_point.setVisible(False)
             
             # Hide metrics label if it exists
             if hasattr(self, 'metrics_label_points'):
@@ -1113,32 +1182,23 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             )
 
     def update_variogram_parameters(self, parameters, point_tab=False):
-        """Update variogram parameters in the UI (raster or point tab, strictly separated)."""
+        """Update optimized variogram parameters in labels (NOT spinboxes - those remain as user input)."""
         try:
             if not parameters:
                 return
 
             if point_tab:
-                # Block signals to prevent cascade updates
-                self.doubleSpinBox_nugget_point.blockSignals(True)
-                self.doubleSpinBox_range_point.blockSignals(True)
-                self.doubleSpinBox_sill_point.blockSignals(True)
+                # Update optimized parameter labels for point tab
+                nugget = parameters.get('nugget', InterpolationConfig.DEFAULT_NUGGET)
+                range_val = parameters.get('range', InterpolationConfig.DEFAULT_RANGE)
+                sill = parameters.get('sill', InterpolationConfig.DEFAULT_SILL)
                 
-                # Update only point tab widgets
-                self.doubleSpinBox_nugget_point.setValue(
-                    parameters.get('nugget', InterpolationConfig.DEFAULT_NUGGET)
-                )
-                self.doubleSpinBox_range_point.setValue(
-                    parameters.get('range', InterpolationConfig.DEFAULT_RANGE)
-                )
-                self.doubleSpinBox_sill_point.setValue(
-                    parameters.get('sill', InterpolationConfig.DEFAULT_SILL)
-                )
+                self.label_optimized_nugget_point.setText(f"{nugget:.3f}")
+                self.label_optimized_range_point.setText(f"{range_val:.2f}")
+                self.label_optimized_sill_point.setText(f"{sill:.3f}")
                 
-                # Unblock signals
-                self.doubleSpinBox_nugget_point.blockSignals(False)
-                self.doubleSpinBox_range_point.blockSignals(False)
-                self.doubleSpinBox_sill_point.blockSignals(False)
+                # Show the optimized parameters group box
+                self.optimized_params_group_point.setVisible(True)
                 
                 # Use a dedicated metrics label for the point tab
                 if not hasattr(self, 'metrics_label_points'):
@@ -1151,26 +1211,17 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     layout.addWidget(self.metrics_label_points)
                 metrics_label = self.metrics_label_points
             else:
-                # Block signals to prevent cascade updates
-                self.doubleSpinBox_nugget.blockSignals(True)
-                self.doubleSpinBox_range.blockSignals(True)
-                self.doubleSpinBox_sill.blockSignals(True)
+                # Update optimized parameter labels for raster tab
+                nugget = parameters.get('nugget', InterpolationConfig.DEFAULT_NUGGET)
+                range_val = parameters.get('range', InterpolationConfig.DEFAULT_RANGE)
+                sill = parameters.get('sill', InterpolationConfig.DEFAULT_SILL)
                 
-                # Update only raster tab widgets
-                self.doubleSpinBox_nugget.setValue(
-                    parameters.get('nugget', InterpolationConfig.DEFAULT_NUGGET)
-                )
-                self.doubleSpinBox_range.setValue(
-                    parameters.get('range', InterpolationConfig.DEFAULT_RANGE)
-                )
-                self.doubleSpinBox_sill.setValue(
-                    parameters.get('sill', InterpolationConfig.DEFAULT_SILL)
-                )
+                self.label_optimized_nugget_raster.setText(f"{nugget:.3f}")
+                self.label_optimized_range_raster.setText(f"{range_val:.2f}")
+                self.label_optimized_sill_raster.setText(f"{sill:.3f}")
                 
-                # Unblock signals
-                self.doubleSpinBox_nugget.blockSignals(False)
-                self.doubleSpinBox_range.blockSignals(False)
-                self.doubleSpinBox_sill.blockSignals(False)
+                # Show the optimized parameters group box
+                self.optimized_params_group_raster.setVisible(True)
                 
                 # Use a dedicated metrics label for the raster tab
                 if not hasattr(self, 'metrics_label_raster'):

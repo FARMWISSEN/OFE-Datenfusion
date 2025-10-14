@@ -64,7 +64,7 @@ class InterpolationConfig:
     DEFAULT_NUGGET = 0.0
     DEFAULT_NUGGET_MIN = 0.0
     DEFAULT_NUGGET_MAX = 10000.0
-    DEFAULT_NLAGS = 10
+    DEFAULT_NLAGS = 15
     
     # Output-Verzeichnisse
     OUTPUT_DIR_NAME = "i_plugin_outputs"
