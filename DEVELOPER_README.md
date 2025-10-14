@@ -811,6 +811,117 @@ DEFAULT_NLAGS = 15  # vorher: 10
 7. User kann Startwerte anpassen und erneut analysieren
 8. Bei Modell-Wechsel: GroupBox wird versteckt, SpinBoxen auf Defaults zurückgesetzt
 
+### ✅ Export-Funktion für Variogramm-Plots (2025-10-14)
+
+**Problem**: User konnte Variogramm-Plots nicht für Dokumentation/Berichte speichern
+- Plots wurden nur temporär angezeigt
+- Keine Möglichkeit, Plots ins Projektverzeichnis zu exportieren
+
+**Lösung: Export-Button im Variogramm-Dialog**
+
+#### **Änderungen in `variogram_dialog.py`:**
+
+**1. Neue Imports (Zeilen 1-6):**
+```python
+from PyQt5.QtWidgets import QHBoxLayout, QMessageBox
+import shutil
+import os
+from datetime import datetime
+```
+
+**2. Plot-Path speichern (Zeile 30, 85):**
+```python
+self.plot_path = None  # In __init__
+self.plot_path = plot_path  # In display_results()
+```
+
+**3. Export-Button hinzugefügt (Zeilen 55-69):**
+```python
+# Button layout (horizontal)
+button_layout = QHBoxLayout()
+
+# Export button
+self.export_button = QPushButton("Export")
+self.export_button.setEnabled(False)  # Disabled until plot is loaded
+self.export_button.clicked.connect(self.export_plot)
+button_layout.addWidget(self.export_button)
+
+# Close button
+close_button = QPushButton("Close")
+close_button.clicked.connect(self.accept)
+button_layout.addWidget(close_button)
+```
+
+**4. Export-Methode (Zeilen 118-162):**
+```python
+def export_plot(self):
+    """Export the variogram plot to the project directory."""
+    # 1. Validierung: Plot vorhanden?
+    # 2. QGIS-Projektverzeichnis ermitteln
+    # 3. Dateiname mit Timestamp erstellen
+    # 4. Plot kopieren
+    # 5. Success-Nachricht anzeigen
+```
+
+**Features:**
+- **Automatischer Dateiname**: `variogram_plot_YYYYMMDD_HHMMSS.png`
+- **Timestamp**: Verhindert Überschreibung bei mehreren Exporten
+- **Projektverzeichnis**: Speichert direkt im QGIS-Projektordner
+- **Validierung**: Prüft ob Projekt geöffnet und Plot vorhanden
+- **User-Feedback**: Success/Error-Dialoge mit vollständigem Pfad
+
+**Workflow:**
+1. User führt Variogramm-Analyse durch
+2. Variogramm-Dialog öffnet mit Plot und Metriken
+3. Export-Button ist aktiviert
+4. User klickt "Export"
+5. Plot wird ins Projektverzeichnis kopiert (z.B. `variogram_plot_20251014_210830.png`)
+6. Success-Dialog zeigt vollständigen Pfad
+7. User kann Dialog schließen oder erneut exportieren
+
+**Error-Handling:**
+- ❌ Kein Plot vorhanden → Warning-Dialog
+- ❌ Kein Projekt geöffnet → Warning mit Hinweis "Projekt speichern"
+- ❌ Fehler beim Kopieren → Critical-Dialog mit Fehlermeldung
+
+**Vorteile:**
+- ✅ Plots können für Dokumentation verwendet werden
+- ✅ Mehrere Analysen können verglichen werden (Timestamp)
+- ✅ Plots bleiben im Projektkontext (nicht in temp-Ordner)
+- ✅ Einfache Bedienung (ein Klick)
+- ✅ Klare Fehlermeldungen
+
+#### **Änderungen in `i_plugin.py`:**
+
+**Temporäre Plot-Speicherung statt permanente (Zeilen 1030-1050):**
+
+**Vorher:**
+```python
+# Plot wurde automatisch im Output-Verzeichnis gespeichert
+output_dir = params.get('output_dir')
+save_path = os.path.join(output_dir, f'{base_name}_variogram.png')
+```
+
+**Jetzt:**
+```python
+# Plot wird nur temporär erstellt (User entscheidet über Export)
+import tempfile
+
+temp_file = tempfile.NamedTemporaryFile(
+    suffix='_variogram.png',
+    delete=False,
+    dir=tempfile.gettempdir()
+)
+save_path = temp_file.name
+temp_file.close()
+```
+
+**Begründung:**
+- User hat jetzt volle Kontrolle über Export (via Export-Button)
+- Keine ungewollten Dateien im Output-Verzeichnis
+- Temporäre Dateien werden vom System aufgeräumt
+- Reduziert Speicherplatz-Verbrauch bei vielen Analysen
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-14  
