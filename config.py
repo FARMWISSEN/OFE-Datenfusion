@@ -93,6 +93,9 @@ class InterpolationConfig:
     DEFAULT_NUGGET = 0.0
     DEFAULT_NUGGET_MIN = 0.0
     DEFAULT_NUGGET_MAX = 10000.0
+    DEFAULT_SLOPE = 0.001  # Slope für Linear-Variogramm (Semivarianz pro Distanzeinheit)
+    DEFAULT_SLOPE_MIN = 0.0
+    DEFAULT_SLOPE_MAX = 1.0
     DEFAULT_NLAGS = 15
     
     # Output-Verzeichnisse
