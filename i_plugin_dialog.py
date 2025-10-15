@@ -179,6 +179,16 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Load saved settings
         self.load_settings()
         
+        # Initialize range parameter visibility based on LOADED variogram model
+        # This must happen AFTER load_settings() to respect saved preferences
+        if hasattr(self, 'comboBox_variogram'):
+            current_model = self.comboBox_variogram.currentText()
+            self.on_variogram_model_changed_raster(current_model)
+        
+        if hasattr(self, 'comboBox_variogram_point'):
+            current_model_point = self.comboBox_variogram_point.currentText()
+            self.on_variogram_model_changed_point(current_model_point)
+        
         # Hide progress bar initially
         if hasattr(self, 'progressBar'):
             self.progressBar.hide()
@@ -227,8 +237,10 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         parent_widget = self.page_kriging_3 if hasattr(self, 'page_kriging_3') else self
         
         # Create a group box for optimized parameters
-        self.optimized_params_group_raster = QtWidgets.QGroupBox("Optimierte Werte:", parent_widget)
+        self.optimized_params_group_raster = QtWidgets.QGroupBox("Optimierte Parameter:", parent_widget)
         self.optimized_params_group_raster.setVisible(False)  # Hidden initially
+        self.optimized_params_group_raster.setFixedHeight(110)  # Feste Höhe
+        self.optimized_params_group_raster.setFixedWidth(250)  # Feste Breite
         
         # Create layout for the group box
         params_layout = QtWidgets.QFormLayout()
@@ -238,13 +250,16 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.label_optimized_range_raster = QtWidgets.QLabel("—")
         self.label_optimized_sill_raster = QtWidgets.QLabel("—")
         
+        # Create label for range row (to be able to hide it)
+        self.label_optimized_range_label_raster = QtWidgets.QLabel("Range:")
+        
         # Style labels
         for label in [self.label_optimized_nugget_raster, self.label_optimized_range_raster, self.label_optimized_sill_raster]:
             label.setStyleSheet("QLabel { color: #2E7D32; font-weight: bold; }")
         
         # Add to layout
         params_layout.addRow("Sill:", self.label_optimized_sill_raster)
-        params_layout.addRow("Range:", self.label_optimized_range_raster)
+        params_layout.addRow(self.label_optimized_range_label_raster, self.label_optimized_range_raster)
         params_layout.addRow("Nugget:", self.label_optimized_nugget_raster)
         
         self.optimized_params_group_raster.setLayout(params_layout)
@@ -259,9 +274,10 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         parent_widget = self.page_kriging_4 if hasattr(self, 'page_kriging_4') else self
         
         # Create a group box for optimized parameters
-        self.optimized_params_group_point = QtWidgets.QGroupBox("Optimierte Werte:", parent_widget)
+        self.optimized_params_group_point = QtWidgets.QGroupBox("Optimierte Parameter:", parent_widget)
         self.optimized_params_group_point.setVisible(False)  # Hidden initially
-        
+        self.optimized_params_group_point.setFixedHeight(110)  # Feste Höhe
+        self.optimized_params_group_point.setFixedWidth(250)  # Feste Breite        
         # Create layout for the group box
         params_layout = QtWidgets.QFormLayout()
         
@@ -270,13 +286,16 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.label_optimized_range_point = QtWidgets.QLabel("—")
         self.label_optimized_sill_point = QtWidgets.QLabel("—")
         
+        # Create label for range row (to be able to hide it)
+        self.label_optimized_range_label_point = QtWidgets.QLabel("Range:")
+        
         # Style labels
         for label in [self.label_optimized_nugget_point, self.label_optimized_range_point, self.label_optimized_sill_point]:
             label.setStyleSheet("QLabel { color: #2E7D32; font-weight: bold; }")
         
         # Add to layout
         params_layout.addRow("Sill:", self.label_optimized_sill_point)
-        params_layout.addRow("Range:", self.label_optimized_range_point)
+        params_layout.addRow(self.label_optimized_range_label_point, self.label_optimized_range_point)
         params_layout.addRow("Nugget:", self.label_optimized_nugget_point)
         
         self.optimized_params_group_point.setLayout(params_layout)
@@ -506,6 +525,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.mFieldComboBox.fieldChanged.connect(self.update_ui_state)
         self.comboBox_variogram.currentTextChanged.connect(self.update_ui_state)
         self.comboBox_variogram.currentTextChanged.connect(self.reset_variogram_parameters_raster)
+        self.comboBox_variogram.currentTextChanged.connect(self.on_variogram_model_changed_raster)
         self.spinBox_lags.valueChanged.connect(self.update_ui_state)
         
         # Connect UI state updates for point interpolation tab
@@ -513,6 +533,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.mFieldComboBox_covariate.fieldChanged.connect(self.update_ui_state)
         self.comboBox_variogram_point.currentTextChanged.connect(self.update_ui_state)
         self.comboBox_variogram_point.currentTextChanged.connect(self.reset_variogram_parameters_point)
+        self.comboBox_variogram_point.currentTextChanged.connect(self.on_variogram_model_changed_point)
         self.spinBox_lags_point.valueChanged.connect(self.update_ui_state)
         
         # Connect numeric input validation for raster tab
@@ -593,6 +614,66 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Update UI state to enable/disable buttons appropriately
         self.update_ui_state()
+
+    def on_variogram_model_changed_raster(self, model_name):
+        """Handle variogram model change for raster tab.
+        
+        Shows/hides the range parameter based on the selected variogram model.
+        Linear models don't have a range parameter (unbounded growth).
+        
+        Args:
+            model_name (str): Name of the selected variogram model
+        """
+        is_linear = (model_name == "Linear")
+        
+        # Hide range parameter for Linear model (input parameters)
+        if hasattr(self, 'label_range_3'):
+            self.label_range_3.setVisible(not is_linear)
+        if hasattr(self, 'doubleSpinBox_range'):
+            self.doubleSpinBox_range.setVisible(not is_linear)
+        
+        # Hide range parameter in optimized parameters display
+        if hasattr(self, 'label_optimized_range_label_raster'):
+            self.label_optimized_range_label_raster.setVisible(not is_linear)
+        if hasattr(self, 'label_optimized_range_raster'):
+            self.label_optimized_range_raster.setVisible(not is_linear)
+        
+        # Log the change
+        QgsMessageLog.logMessage(
+            f"Raster tab: Range parameter {'hidden' if is_linear else 'visible'} for model '{model_name}'",
+            "I-PlugIn",
+            Qgis.Info
+        )
+
+    def on_variogram_model_changed_point(self, model_name):
+        """Handle variogram model change for point tab.
+        
+        Shows/hides the range parameter based on the selected variogram model.
+        Linear models don't have a range parameter (unbounded growth).
+        
+        Args:
+            model_name (str): Name of the selected variogram model
+        """
+        is_linear = (model_name == "Linear")
+        
+        # Hide range parameter for Linear model (input parameters)
+        if hasattr(self, 'label_range_4'):
+            self.label_range_4.setVisible(not is_linear)
+        if hasattr(self, 'doubleSpinBox_range_point'):
+            self.doubleSpinBox_range_point.setVisible(not is_linear)
+        
+        # Hide range parameter in optimized parameters display
+        if hasattr(self, 'label_optimized_range_label_point'):
+            self.label_optimized_range_label_point.setVisible(not is_linear)
+        if hasattr(self, 'label_optimized_range_point'):
+            self.label_optimized_range_point.setVisible(not is_linear)
+        
+        # Log the change
+        QgsMessageLog.logMessage(
+            f"Point tab: Range parameter {'hidden' if is_linear else 'visible'} for model '{model_name}'",
+            "I-PlugIn",
+            Qgis.Info
+        )
 
     def get_point_interpolation_parameters(self):
         """Sammelt die Parameter für die Punkt-Interpolation."""

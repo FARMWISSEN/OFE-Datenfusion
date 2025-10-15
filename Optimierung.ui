@@ -325,7 +325,7 @@
        <property name="geometry">
         <rect>
          <x>20</x>
-         <y>90</y>
+         <y>93</y>
          <width>221</width>
          <height>29</height>
         </rect>
@@ -350,7 +350,7 @@
       <widget class="QDoubleSpinBox" name="doubleSpinBox_sill">
        <property name="geometry">
         <rect>
-         <x>150</x>
+         <x>140</x>
          <y>120</y>
          <width>80</width>
          <height>29</height>
@@ -382,7 +382,7 @@
       <widget class="QDoubleSpinBox" name="doubleSpinBox_range">
        <property name="geometry">
         <rect>
-         <x>150</x>
+         <x>140</x>
          <y>150</y>
          <width>80</width>
          <height>29</height>
@@ -411,7 +411,7 @@
       <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget">
        <property name="geometry">
         <rect>
-         <x>150</x>
+         <x>140</x>
          <y>180</y>
          <width>80</width>
          <height>29</height>
@@ -430,20 +430,20 @@
       <widget class="QWidget" name="page_kriging" native="true">
        <property name="geometry">
         <rect>
-         <x>400</x>
-         <y>100</y>
-         <width>141</width>
-         <height>110</height>
+         <x>390</x>
+         <y>99</y>
+         <width>151</width>
+         <height>111</height>
         </rect>
        </property>
       </widget>
       <widget class="QWidget" name="page_kriging_3" native="true">
        <property name="geometry">
         <rect>
-         <x>240</x>
-         <y>100</y>
-         <width>141</width>
-         <height>110</height>
+         <x>230</x>
+         <y>99</y>
+         <width>151</width>
+         <height>111</height>
         </rect>
        </property>
       </widget>
@@ -771,7 +771,7 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
        <property name="geometry">
         <rect>
          <x>20</x>
-         <y>90</y>
+         <y>95</y>
          <width>231</width>
          <height>29</height>
         </rect>
@@ -796,7 +796,7 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
       <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_point">
        <property name="geometry">
         <rect>
-         <x>150</x>
+         <x>140</x>
          <y>120</y>
          <width>80</width>
          <height>29</height>
@@ -828,7 +828,7 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
       <widget class="QDoubleSpinBox" name="doubleSpinBox_range_point">
        <property name="geometry">
         <rect>
-         <x>150</x>
+         <x>140</x>
          <y>150</y>
          <width>80</width>
          <height>29</height>
@@ -857,7 +857,7 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
       <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_point">
        <property name="geometry">
         <rect>
-         <x>150</x>
+         <x>140</x>
          <y>180</y>
          <width>80</width>
          <height>29</height>
@@ -877,19 +877,19 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
        <property name="geometry">
         <rect>
          <x>400</x>
-         <y>100</y>
+         <y>99</y>
          <width>141</width>
-         <height>110</height>
+         <height>111</height>
         </rect>
        </property>
       </widget>
       <widget class="QWidget" name="page_kriging_4" native="true">
        <property name="geometry">
         <rect>
-         <x>240</x>
-         <y>100</y>
-         <width>141</width>
-         <height>110</height>
+         <x>230</x>
+         <y>99</y>
+         <width>161</width>
+         <height>111</height>
         </rect>
        </property>
       </widget>
