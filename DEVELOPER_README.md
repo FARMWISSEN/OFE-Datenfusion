@@ -958,6 +958,118 @@ temp_file.close()
 
 **Verhalten**: Linear = Range ausgeblendet | Spherical/Exponential/Gaussian = Range sichtbar
 
+### ✅ Slope-Parameter für Linear-Variogramm (2025-10-15)
+
+**Problem**: Linear-Variogramm verwendete `range` zur Berechnung von Slope, was konzeptionell falsch ist
+
+**Lösung**: Direkte Verwendung von `slope` als Parameter für Linear-Modell
+
+**Komponenten:**
+
+1. **`variogram_models.py`**:
+   - `linear_variogram_model()`: Akzeptiert jetzt `slope` direkt statt `range` (γ(h) = nugget + slope * h)
+   - `optimize_variogram_parameters()`: Unterscheidet Linear (2 Parameter: nugget, slope) vs. andere (3 Parameter: nugget, range, sill)
+   - Robuste Slope-Schätzung: `slope = np.mean((gamma - nugget) / lags)` statt nur erste/letzte Punkte
+
+2. **`config.py`**:
+   - `DEFAULT_SLOPE = 0.001` (statt hardcoded 0.01)
+   - `DEFAULT_SLOPE_MIN = 0.0`, `DEFAULT_SLOPE_MAX = 1.0`
+
+3. **`i_plugin.py`**:
+   - `analyze_variogram()`: Erstellt Parameter-Dictionary mit `slope` für Linear, `range`/`sill` für andere
+   - `interpolate_ordinary_kriging()`: Verwendet `slope` für Linear-Modell
+   - `save_metadata()`: Speichert `slope` statt `range`/`sill` für Linear
+   - Success-Message: Zeigt `slope` für Linear, `range`/`sill` für andere
+
+4. **`i_plugin_dialog.py`**:
+   - `update_variogram_parameters()`: Zeigt "Slope: X.XXXXXX" für Linear, "Range: XX.XX" für andere
+   - `get_parameters()`: Fügt `variogram_info` hinzu (enthält optimierte Parameter)
+   - `get_point_interpolation_parameters()`: Analog für Punkt-Interpolation
+
+**Parameter-Struktur:**
+
+Linear-Modell:
+```python
+{
+    'nugget': 0.123,
+    'slope': 0.001234,
+    'range': None,
+    'sill': None
+}
+```
+
+Andere Modelle:
+```python
+{
+    'nugget': 0.523,
+    'slope': None,
+    'range': 245.8,
+    'sill': 2.145
+}
+```
+
+### ✅ Optimierte Variogramm-Parameter in Metadaten (2025-10-15)
+
+**Problem**: Metadaten enthielten Startwerte aus UI statt optimierte Werte aus Variogramm-Analyse
+
+**Lösung**: Speichere `variogram_info` als Instanzvariable und füge zu `params` hinzu
+
+**Implementierung:**
+
+1. **`i_plugin_dialog.py`**:
+   - Instanzvariablen: `self.variogram_info_raster`, `self.variogram_info_point`
+   - `show_variogram_analysis()`: Speichert Analyse-Ergebnisse in `self.variogram_info_raster`
+   - `show_variogram_analysis_points()`: Speichert in `self.variogram_info_point`
+   - `get_parameters()`: Fügt `variogram_info` zu `params` hinzu falls vorhanden
+   - `get_point_interpolation_parameters()`: Analog für Punkt-Interpolation
+
+2. **`i_plugin.py`**:
+   - `save_metadata()`: Prüft ob `variogram_info` vorhanden und verwendet optimierte Parameter
+   - Markiert mit `"optimized": true/false`
+   - Fügt Metriken (RMSE, R², AIC) hinzu
+
+**Metadaten-Struktur (optimiert):**
+```json
+{
+  "kriging_parameters": {
+    "variogram_model": "Spherical",
+    "nlags": 15,
+    "nugget": 0.523,
+    "range": 245.8,
+    "sill": 2.145,
+    "optimized": true,
+    "metrics": {
+      "rmse": 0.234,
+      "r2": 0.892,
+      "aic": 45.2
+    }
+  }
+}
+```
+
+### ✅ Robuste None-Wert-Formatierung (2025-10-15)
+
+**Problem**: `NoneType.__format__` Fehler bei Formatierung von None-Werten
+
+**Lösung**: Explizite None-Prüfung vor Formatierung
+
+**Betroffene Stellen:**
+- `i_plugin_dialog.py`: `update_variogram_parameters()` - alle Parameter und Metriken
+- `i_plugin.py`: Success-Message nach Interpolation
+
+**Pattern:**
+```python
+# ❌ Vorher (crasht bei None)
+value = params.get('range', DEFAULT)
+f"{value:.2f}"
+
+# ✅ Jetzt (sicher)
+value = params.get('range')
+value_str = f"{value:.2f}" if value is not None else "N/A"
+```
+
+**Grund**: Dictionary kann explizit `None`-Werte enthalten, `.get()` mit Default hilft dann nicht!
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-15  

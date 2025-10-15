@@ -1000,27 +1000,59 @@ class IPlugIn:
             lags = ok.lags
             experimental = ok.semivariance
             
+            # Linear-Modell hat andere Parameter (nugget, slope) statt (nugget, range, sill)
+            is_linear = model_type.lower() == 'linear'
+            
             # Initiale Schätzung der Parameter
-            initial_guess = [
-                params.get('nugget', 0),  # Nugget sollte nicht negativ sein
-                params.get('range', np.median(lags)),  # Range etwa in der Mitte der Distanzen
-                params.get('sill', np.max(experimental))  # Sill etwa beim Maximum der Semivarianz
-            ]
+            if is_linear:
+                # Linear: [nugget, slope]
+                # Robuste Slope-Schätzung: mittlere Steigung über alle Lags
+                nugget_est = params.get('nugget', experimental[0] if len(experimental) > 0 else 0)
+                if len(lags) > 1 and len(experimental) > 1:
+                    # Entferne Nugget-Effekt für bessere Slope-Schätzung
+                    gamma_adjusted = experimental - nugget_est
+                    # Berechne Slope als mittlere Änderungsrate
+                    slope_estimate = np.mean(gamma_adjusted / lags) if np.all(lags > 0) else InterpolationConfig.DEFAULT_SLOPE
+                    # Stelle sicher dass Slope positiv und vernünftig ist
+                    slope_estimate = max(slope_estimate, InterpolationConfig.DEFAULT_SLOPE)
+                else:
+                    slope_estimate = InterpolationConfig.DEFAULT_SLOPE
+                    
+                initial_guess = [
+                    nugget_est,
+                    params.get('slope', slope_estimate)
+                ]
+            else:
+                # Andere Modelle: [nugget, range, sill]
+                initial_guess = [
+                    params.get('nugget', 0),
+                    params.get('range', np.median(lags)),
+                    params.get('sill', np.max(experimental))
+                ]
             
             # Optimiere Parameter
             opt_params, metrics = optimize_variogram_parameters(
                 lags, experimental, model_type, initial_guess
             )
             
-            # Extrahiere optimierte Parameter
-            nugget, range_, sill = opt_params
+            # Extrahiere optimierte Parameter (unterschiedlich für linear vs. andere)
+            if is_linear:
+                nugget, slope = opt_params
+                range_ = None  # Linear hat keinen Range
+                sill = None    # Linear hat keinen Sill
+            else:
+                nugget, range_, sill = opt_params
+                slope = None   # Andere Modelle haben keinen Slope
             
             # Berechne theoretisches Variogramm
             model_func = VARIOGRAM_MODELS[model_type]
-            model_values = model_func(lags, nugget, range_, sill)
+            if is_linear:
+                model_values = model_func(lags, nugget, slope)
+            else:
+                model_values = model_func(lags, nugget, range_, sill)
             
             # Berechne zusätzliche Metriken
-            n_params = 3  # Nugget, Range, Sill
+            n_params = 2 if is_linear else 3  # Linear: 2 Parameter, Andere: 3 Parameter
             n_points = len(lags)
             mse = metrics['rmse'] ** 2  # MSE aus RMSE berechnen
             aic = n_points * np.log(mse) + 2 * n_params  # Akaike Information Criterion
@@ -1039,32 +1071,60 @@ class IPlugIn:
             save_path = temp_file.name
             temp_file.close()
             
-            plotter.plot_variogram(
-                lags, experimental,
-                model_type,
-                nugget, range_, sill,
-                title=f'Variogramm-Analyse\nRMSE: {metrics["rmse"]:.3f}, R²: {metrics["r2"]:.3f}, AIC: {aic:.1f}',
-                save_path=save_path,
-                show=False
-            )
+            # Plot mit korrekten Parametern
+            if is_linear:
+                plotter.plot_variogram(
+                    lags, experimental,
+                    model_type,
+                    nugget, slope, None,  # slope statt range, kein sill
+                    title=f'Variogramm-Analyse\nRMSE: {metrics["rmse"]:.3f}, R²: {metrics["r2"]:.3f}, AIC: {aic:.1f}',
+                    save_path=save_path,
+                    show=False
+                )
+            else:
+                plotter.plot_variogram(
+                    lags, experimental,
+                    model_type,
+                    nugget, range_, sill,
+                    title=f'Variogramm-Analyse\nRMSE: {metrics["rmse"]:.3f}, R²: {metrics["r2"]:.3f}, AIC: {aic:.1f}',
+                    save_path=save_path,
+                    show=False
+                )
             plotter.close()
             
             # Logging der Ergebnisse
-            self.log(
-                f"Variogram Analysis Results:\n"
-                f"Model: {model_type}\n"
-                f"Parameters - Nugget: {nugget:.3f}, Range: {range_:.3f}, Sill: {sill:.3f}\n"
-                f"Metrics - RMSE: {metrics['rmse']:.3f}, R²: {metrics['r2']:.3f}, AIC: {aic:.1f}"
-            )
+            if is_linear:
+                self.log(
+                    f"Variogram Analysis Results:\n"
+                    f"Model: {model_type}\n"
+                    f"Parameters - Nugget: {nugget:.3f}, Slope: {slope:.6f}\n"
+                    f"Metrics - RMSE: {metrics['rmse']:.3f}, R²: {metrics['r2']:.3f}, AIC: {aic:.1f}"
+                )
+            else:
+                self.log(
+                    f"Variogram Analysis Results:\n"
+                    f"Model: {model_type}\n"
+                    f"Parameters - Nugget: {nugget:.3f}, Range: {range_:.3f}, Sill: {sill:.3f}\n"
+                    f"Metrics - RMSE: {metrics['rmse']:.3f}, R²: {metrics['r2']:.3f}, AIC: {aic:.1f}"
+                )
+            
+            # Erstelle Parameter-Dictionary (mit None für nicht verwendete Parameter)
+            parameters = {
+                'nugget': nugget,
+                'model_type': model_type
+            }
+            if is_linear:
+                parameters['slope'] = slope
+                parameters['range'] = None
+                parameters['sill'] = None
+            else:
+                parameters['slope'] = None
+                parameters['range'] = range_
+                parameters['sill'] = sill
             
             return {
                 'metrics': metrics,
-                'parameters': {
-                    'nugget': nugget,
-                    'range': range_,
-                    'sill': sill,
-                    'model_type': model_type
-                },
+                'parameters': parameters,
                 'experimental': {
                     'lags': lags.tolist(),
                     'semivariance': experimental.tolist()
@@ -1125,13 +1185,17 @@ class IPlugIn:
         """
         try:
             # Modellabhängige Variogramm-Parameter
-            if params['variogram_model'].lower() == 'linear':
+            is_linear = params['variogram_model'].lower() == 'linear'
+            
+            if is_linear:
+                # Linear-Modell: verwendet slope statt range/sill
                 variogram_params = {
-                    "slope": params.get('slope', params.get('range', 1.0)),  # Fallback auf range
+                    "slope": params.get('slope', InterpolationConfig.DEFAULT_SLOPE),  # Slope-Parameter
                     "nugget": params['nugget'],
                     "nlags": params['nlags']
                 }
             else:
+                # Andere Modelle: verwenden range und sill
                 variogram_params = {
                     "sill": params['sill'],
                     "range": params['range'],
@@ -1569,18 +1633,62 @@ class IPlugIn:
             str: Pfad zur erstellten Metadaten-Datei oder None bei Fehler
         """
         try:
+            # Prüfe ob optimierte Variogramm-Parameter vorhanden sind
+            variogram_info = params.get('variogram_info', {})
+            optimized_params = variogram_info.get('parameters', {})
+            
+            # Verwende optimierte Parameter falls vorhanden, sonst Startwerte
+            if optimized_params:
+                model_type = params.get("variogram_model", "").lower()
+                is_linear = model_type == 'linear'
+                
+                kriging_params = {
+                    "variogram_model": params.get("variogram_model"),
+                    "nlags": params.get("nlags"),
+                    "nugget": optimized_params.get("nugget"),
+                    "optimized": True  # Markierung dass diese Werte optimiert sind
+                }
+                
+                # Linear-Modell: slope statt range/sill
+                if is_linear:
+                    kriging_params["slope"] = optimized_params.get("slope")
+                else:
+                    kriging_params["sill"] = optimized_params.get("sill")
+                    kriging_params["range"] = optimized_params.get("range")
+                
+                # Füge Metriken hinzu falls vorhanden
+                metrics = variogram_info.get('metrics', {})
+                if metrics:
+                    kriging_params["metrics"] = {
+                        "rmse": metrics.get("rmse"),
+                        "r2": metrics.get("r2"),
+                        "aic": metrics.get("aic")
+                    }
+            else:
+                # Fallback: Startwerte aus UI
+                model_type = params.get("variogram_model", "").lower()
+                is_linear = model_type == 'linear'
+                
+                kriging_params = {
+                    "variogram_model": params.get("variogram_model"),
+                    "nlags": params.get("nlags"),
+                    "nugget": params.get("nugget"),
+                    "optimized": False  # Markierung dass diese Werte NICHT optimiert sind
+                }
+                
+                # Linear-Modell: slope statt range/sill
+                if is_linear:
+                    kriging_params["slope"] = params.get("slope", InterpolationConfig.DEFAULT_SLOPE)
+                else:
+                    kriging_params["sill"] = params.get("sill")
+                    kriging_params["range"] = params.get("range")
+            
             # Basis-Metadaten (für beide Typen gleich)
             metadata = {
                 "interpolation_type": interpolation_type,
                 "timestamp": datetime.now().isoformat(),
                 "method": params.get("method", "ordinary_kriging"),
-                "kriging_parameters": {
-                    "variogram_model": params.get("variogram_model"),
-                    "nlags": params.get("nlags"),
-                    "sill": params.get("sill"),
-                    "range": params.get("range"),
-                    "nugget": params.get("nugget")
-                }
+                "kriging_parameters": kriging_params
             }
             
             # Typ-spezifische Metadaten
@@ -2090,15 +2198,47 @@ class IPlugIn:
                     if variogram_info:
                         metrics = variogram_info.get('metrics', {})
                         parameters = variogram_info.get('parameters', {})
-                        success_msg = (
-                            f"Interpolation erfolgreich abgeschlossen: {layer_name}\n"
-                            f"Variogramm Modell: {params['variogram_model']}\n"
-                            f"RMSE: {metrics.get('rmse', 'N/A'):.3f}\n"
-                            f"R²: {metrics.get('r2', 'N/A'):.3f}\n"
-                            f"Range: {parameters.get('range', 'N/A'):.2f}\n"
-                            f"Sill: {parameters.get('sill', 'N/A'):.2f}\n"
-                            f"Nugget: {parameters.get('nugget', 'N/A'):.2f}"
-                        )
+                        
+                        # Format values safely
+                        rmse = metrics.get('rmse')
+                        r2 = metrics.get('r2')
+                        nugget = parameters.get('nugget')
+                        
+                        rmse_str = f"{rmse:.3f}" if rmse is not None else "N/A"
+                        r2_str = f"{r2:.3f}" if r2 is not None else "N/A"
+                        nugget_str = f"{nugget:.2f}" if nugget is not None else "N/A"
+                        
+                        # Check if linear model (has slope instead of range/sill)
+                        is_linear = parameters.get('slope') is not None and parameters.get('range') is None
+                        
+                        if is_linear:
+                            slope = parameters.get('slope')
+                            slope_str = f"{slope:.6f}" if slope is not None else "N/A"
+                            
+                            success_msg = (
+                                f"Interpolation erfolgreich abgeschlossen: {layer_name}\n"
+                                f"Variogramm Modell: {params['variogram_model']}\n"
+                                f"RMSE: {rmse_str}\n"
+                                f"R²: {r2_str}\n"
+                                f"Slope: {slope_str}\n"
+                                f"Nugget: {nugget_str}"
+                            )
+                        else:
+                            range_val = parameters.get('range')
+                            sill = parameters.get('sill')
+                            
+                            range_str = f"{range_val:.2f}" if range_val is not None else "N/A"
+                            sill_str = f"{sill:.2f}" if sill is not None else "N/A"
+                            
+                            success_msg = (
+                                f"Interpolation erfolgreich abgeschlossen: {layer_name}\n"
+                                f"Variogramm Modell: {params['variogram_model']}\n"
+                                f"RMSE: {rmse_str}\n"
+                                f"R²: {r2_str}\n"
+                                f"Range: {range_str}\n"
+                                f"Sill: {sill_str}\n"
+                                f"Nugget: {nugget_str}"
+                            )
                     else:
                         success_msg = f"Interpolation erfolgreich abgeschlossen: {layer_name}"
                     

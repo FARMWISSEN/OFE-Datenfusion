@@ -179,16 +179,6 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Load saved settings
         self.load_settings()
         
-        # Initialize range parameter visibility based on LOADED variogram model
-        # This must happen AFTER load_settings() to respect saved preferences
-        if hasattr(self, 'comboBox_variogram'):
-            current_model = self.comboBox_variogram.currentText()
-            self.on_variogram_model_changed_raster(current_model)
-        
-        if hasattr(self, 'comboBox_variogram_point'):
-            current_model_point = self.comboBox_variogram_point.currentText()
-            self.on_variogram_model_changed_point(current_model_point)
-        
         # Hide progress bar initially
         if hasattr(self, 'progressBar'):
             self.progressBar.hide()
@@ -219,8 +209,22 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Create labels for optimized variogram parameters (Raster tab)
         self.create_optimized_parameter_labels_raster()
         
+        # Initialize variogram_info storage for both tabs
+        self.variogram_info_raster = None
+        self.variogram_info_point = None
+        
         # Create labels for optimized variogram parameters (Point tab)
         self.create_optimized_parameter_labels_point()
+        
+        # Initialize range parameter visibility based on LOADED variogram model
+        # This must happen AFTER creating optimized parameter labels
+        if hasattr(self, 'comboBox_variogram'):
+            current_model = self.comboBox_variogram.currentText()
+            self.on_variogram_model_changed_raster(current_model)
+        
+        if hasattr(self, 'comboBox_variogram_point'):
+            current_model_point = self.comboBox_variogram_point.currentText()
+            self.on_variogram_model_changed_point(current_model_point)
 
         # --- Optimierung: Hinzufügen-Button anbinden ---
         if hasattr(self, 'pushButton'):
@@ -463,6 +467,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if not results:
                 progress.close()
                 return
+                
+            # Store variogram_info for later use
+            self.variogram_info_point = results
 
             # Close progress dialog
             progress.close()
@@ -688,8 +695,12 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             'nugget': self.doubleSpinBox_nugget_point.value(),
             'nlags': self.spinBox_lags_point.value()
         }
-        # Inject variogram_info if not already present (i.e., if no analysis was performed)
-        if 'variogram_info' not in params:
+        
+        # Use stored variogram_info if available from analysis, otherwise create fallback
+        if self.variogram_info_point:
+            params['variogram_info'] = self.variogram_info_point
+        else:
+            # Fallback: Create variogram_info with UI values (no analysis performed)
             params['variogram_info'] = {
                 'metrics': {},
                 'parameters': {
@@ -940,6 +951,10 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             'nlags': self.spinBox_lags.value()
         }
         
+        # Add variogram_info if available from analysis
+        if self.variogram_info_raster:
+            params['variogram_info'] = self.variogram_info_raster
+        
         return params
 
     def get_kriging_parameters(self):
@@ -1158,6 +1173,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if not results:
                 progress.close()
                 return
+                
+            # Store variogram_info for later use in get_parameters()
+            self.variogram_info_raster = results
                 
             # Close progress dialog
             progress.close()
@@ -1379,15 +1397,30 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if not parameters:
                 return
 
+            # Check if this is a linear model (has slope instead of range/sill)
+            is_linear = parameters.get('slope') is not None and parameters.get('range') is None
+
             if point_tab:
                 # Update optimized parameter labels for point tab
-                nugget = parameters.get('nugget', InterpolationConfig.DEFAULT_NUGGET)
-                range_val = parameters.get('range', InterpolationConfig.DEFAULT_RANGE)
-                sill = parameters.get('sill', InterpolationConfig.DEFAULT_SILL)
+                nugget = parameters.get('nugget')
+                nugget_str = f"{nugget:.3f}" if nugget is not None else "N/A"
                 
-                self.label_optimized_nugget_point.setText(f"{nugget:.3f}")
-                self.label_optimized_range_point.setText(f"{range_val:.2f}")
-                self.label_optimized_sill_point.setText(f"{sill:.3f}")
+                self.label_optimized_nugget_point.setText(nugget_str)
+                
+                if is_linear:
+                    # Linear model: show slope instead of range/sill
+                    slope = parameters.get('slope')
+                    slope_str = f"{slope:.6f}" if slope is not None else "N/A"
+                    self.label_optimized_range_point.setText(f"Slope: {slope_str}")
+                    self.label_optimized_sill_point.setText("N/A (Linear)")
+                else:
+                    # Other models: show range and sill
+                    range_val = parameters.get('range')
+                    sill = parameters.get('sill')
+                    range_str = f"{range_val:.2f}" if range_val is not None else "N/A"
+                    sill_str = f"{sill:.3f}" if sill is not None else "N/A"
+                    self.label_optimized_range_point.setText(range_str)
+                    self.label_optimized_sill_point.setText(sill_str)
                 
                 # Show the optimized parameters group box
                 self.optimized_params_group_point.setVisible(True)
@@ -1404,13 +1437,25 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 metrics_label = self.metrics_label_points
             else:
                 # Update optimized parameter labels for raster tab
-                nugget = parameters.get('nugget', InterpolationConfig.DEFAULT_NUGGET)
-                range_val = parameters.get('range', InterpolationConfig.DEFAULT_RANGE)
-                sill = parameters.get('sill', InterpolationConfig.DEFAULT_SILL)
+                nugget = parameters.get('nugget')
+                nugget_str = f"{nugget:.3f}" if nugget is not None else "N/A"
                 
-                self.label_optimized_nugget_raster.setText(f"{nugget:.3f}")
-                self.label_optimized_range_raster.setText(f"{range_val:.2f}")
-                self.label_optimized_sill_raster.setText(f"{sill:.3f}")
+                self.label_optimized_nugget_raster.setText(nugget_str)
+                
+                if is_linear:
+                    # Linear model: show slope instead of range/sill
+                    slope = parameters.get('slope')
+                    slope_str = f"{slope:.6f}" if slope is not None else "N/A"
+                    self.label_optimized_range_raster.setText(f"Slope: {slope_str}")
+                    self.label_optimized_sill_raster.setText("N/A (Linear)")
+                else:
+                    # Other models: show range and sill
+                    range_val = parameters.get('range')
+                    sill = parameters.get('sill')
+                    range_str = f"{range_val:.2f}" if range_val is not None else "N/A"
+                    sill_str = f"{sill:.3f}" if sill is not None else "N/A"
+                    self.label_optimized_range_raster.setText(range_str)
+                    self.label_optimized_sill_raster.setText(sill_str)
                 
                 # Show the optimized parameters group box
                 self.optimized_params_group_raster.setVisible(True)
@@ -1429,10 +1474,17 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # Update metrics display only in the correct tab
             metrics = parameters.get('metrics', {})
             if metrics:
+                # Format metrics safely - check if values exist before formatting
+                rmse = metrics.get('rmse')
+                r2 = metrics.get('r2')
+                
+                rmse_str = f"{rmse:.3f}" if rmse is not None else "N/A"
+                r2_str = f"{r2:.3f}" if r2 is not None else "N/A"
+                
                 metrics_text = (
                     f"<b>Variogramm Metriken:</b><br>"
-                    f"RMSE: {metrics.get('rmse', 'N/A'):.3f}<br>"
-                    f"R²: {metrics.get('r2', 'N/A'):.3f}"
+                    f"RMSE: {rmse_str}<br>"
+                    f"R²: {r2_str}"
                 )
                 metrics_label.setText(metrics_text)
                 metrics_label.setVisible(True)
