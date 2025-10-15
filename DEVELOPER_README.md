@@ -922,7 +922,43 @@ temp_file.close()
 - Temporäre Dateien werden vom System aufgeräumt
 - Reduziert Speicherplatz-Verbrauch bei vielen Analysen
 
+### ✅ Dynamisches Parameter-System für Interpolationsmethoden (2025-10-14)
+
+**Problem**: Plugin unterstützte nur Ordinary Kriging, keine Erweiterbarkeit
+
+**Lösung**: QStackedWidget-System mit methodenspezifischen Parameter-Pages
+
+**Komponenten:**
+- **`config.py`**: `InterpolationMethod` Klasse mit Registry (`get_all_methods()`, `get_method_index()`)
+- **`Optimierung.ui`**: `stackedWidget_method_params` (250px Höhe) mit Pages pro Methode
+  - Page 0: `page_ordinary_kriging` (Variogramm, Lags, Sill, Range, Nugget, Analyse-Button)
+  - Page 1: `page_nearest_neighbor` (Info-Text, Test-Methode)
+  - Analog: `stackedWidget_method_params_point` für Punkt-Tab
+- **`i_plugin_dialog.py`**: Signal `comboBox_method.currentTextChanged` → `on_interpolation_method_changed_raster()` wechselt StackedWidget-Index
+
+**Neue Methode hinzufügen (4 Schritte):**
+1. `config.py`: Methode in `get_all_methods()` registrieren
+2. `Optimierung.ui`: Neue Page mit Parametern im StackedWidget erstellen
+3. `i_plugin.py`: Backend-Logik implementieren
+4. `i_plugin_dialog.py`: Parameter-Sammlung in `get_parameters()` erweitern
+
+**Status**: Test-Methode "Nearest Neighbor" implementiert (ohne Backend-Logik)
+
+### ✅ Dynamisches Ausblenden von Range-Parameter für Linear-Variogramm (2025-10-15)
+
+**Problem**: Linear-Variogramm hat keinen Range-Parameter
+
+**Lösung**: Range-Parameter werden automatisch ausgeblendet wenn "Linear" ausgewählt ist
+
+**Implementierung:**
+- Signal-Verbindung: `comboBox_variogram.currentTextChanged` → `on_variogram_model_changed_raster()`
+- Handler blendet aus: Input-Parameter (`label_range_3`, `doubleSpinBox_range`) + Optimierte Parameter (`label_optimized_range_label_raster`, `label_optimized_range_raster`)
+- Initialisierung nach `load_settings()` für korrekte Sichtbarkeit beim Start
+- Analog für Punkt-Tab mit `_point` Suffix
+
+**Verhalten**: Linear = Range ausgeblendet | Spherical/Exponential/Gaussian = Range sichtbar
+
 ---
 
-**Letzte Aktualisierung**: 2025-10-14  
+**Letzte Aktualisierung**: 2025-10-15  
 **Für**: Schneller Kontext-Aufbau bei Entwicklung/Debugging

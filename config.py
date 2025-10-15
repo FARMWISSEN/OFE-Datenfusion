@@ -7,6 +7,35 @@ the plugin to ensure consistency and easy maintenance.
 """
 
 
+class InterpolationMethod:
+    """Enum-ähnliche Klasse für Interpolationsmethoden."""
+    ORDINARY_KRIGING = "Ordinary Kriging"
+    NEAREST_NEIGHBOR = "Nearest Neighbor"
+    # Zukünftige Methoden können hier hinzugefügt werden:
+    # UNIVERSAL_KRIGING = "Universal Kriging"
+    # IDW = "Inverse Distance Weighting"
+    # SPLINE = "Spline"
+    # RBF = "Radial Basis Function"
+    
+    @classmethod
+    def get_all_methods(cls):
+        """Gibt alle verfügbaren Interpolationsmethoden zurück."""
+        return [
+            cls.ORDINARY_KRIGING,
+            cls.NEAREST_NEIGHBOR,  # Test-Methode (noch nicht implementiert)
+            # Weitere Methoden hier hinzufügen wenn implementiert
+        ]
+    
+    @classmethod
+    def get_method_index(cls, method_name):
+        """Gibt den Index einer Methode in der Liste zurück."""
+        methods = cls.get_all_methods()
+        try:
+            return methods.index(method_name)
+        except ValueError:
+            return 0  # Default: Ordinary Kriging
+
+
 class InterpolationConfig:
     """Zentrale Konfiguration für Interpolations-Parameter und Konstanten."""
     
