@@ -668,7 +668,261 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 - ✅ Keine Signal-Kaskaden mehr
 - ✅ Professional User-Experience
 
+### ✅ Variogramm-Parameter nicht mehr persistent (2025-10-13)
+
+**Problem**: Nach Schließen und Wiederöffnen des Plugins standen die optimierten Werte der letzten Analyse in den SpinBoxen, nicht die Default-Werte
+- `save_settings()` speicherte nugget, range, sill, lags (Zeilen 602-605)
+- `load_settings()` lud diese Werte beim nächsten Öffnen
+- User erwartete Default-Werte, nicht alte Analyse-Ergebnisse
+
+**Lösung**:
+1. `save_settings()`: Variogramm-Parameter werden **nicht mehr gespeichert** (Zeile 600-602)
+   - Nur das Variogramm-Modell (Index) wird gespeichert
+   - nugget, range, sill, lags werden übersprungen
+2. `load_settings()`: Verwendet **immer** Default-Werte aus `InterpolationConfig` (Zeilen 650-655)
+   - `DEFAULT_NUGGET = 0.0`
+   - `DEFAULT_RANGE = 100.0`
+   - `DEFAULT_SILL = 0.1`
+   - `DEFAULT_NLAGS = 10`
+
+**Begründung**:
+- Variogramm-Parameter sind **modellspezifisch** und sollten nicht über Sessions hinweg persistent sein
+- Optimierte Werte von einem Modell sind nicht für ein anderes Modell geeignet
+- User erwartet "sauberen Zustand" beim Plugin-Start
+- Variogramm-Analyse kann jederzeit neu durchgeführt werden
+
+**Ergebnis**:
+- ✅ Plugin startet immer mit Default-Werten
+- ✅ Keine Verwirrung durch alte Analyse-Werte
+- ✅ Konsistentes Verhalten über Sessions hinweg
+- ✅ Variogramm-Modell-Auswahl bleibt erhalten (nützlich)
+
+### ✅ Trennung von Input- und Output-Parametern (2025-10-14)
+
+**Problem**: SpinBoxen wurden nach Variogramm-Analyse mit optimierten Werten überschrieben
+- User konnte nicht mehr sehen, welche Startwerte verwendet wurden
+- Kein Vergleich zwischen Start- und optimierten Werten möglich
+- SpinBoxen dienten sowohl als Input als auch als Output (verwirrend)
+
+**Lösung: Separate Anzeige für optimierte Werte**
+
+#### **1. UI-Änderungen (`Optimierung.ui`)**
+- **Label hinzugefügt**: "Startwerte Variogramparameter:" für beide Tabs
+- **Layout optimiert**: Alle Widgets um 18px nach unten verschoben für bessere Übersicht
+- **Präzision erhöht**: 
+  - Nugget und Sill: 3 Dezimalstellen (vorher 2)
+  - Range Maximum: 1000 (vorher 100) für größere Datensätze
+- **Platzhalter-Widgets**: `page_kriging_3` (Raster) und `page_kriging_4` (Punkt) für optimierte Parameter
+
+#### **2. Code-Änderungen (`i_plugin_dialog.py`)**
+
+**Neue Methoden (Zeilen 175-237):**
+```python
+def create_optimized_parameter_labels_raster(self):
+    """Create labels to display optimized variogram parameters for raster tab."""
+    # Erstellt GroupBox "Optimierte Werte:" mit grünen Labels
+    # Initial versteckt, wird nach Analyse angezeigt
+    
+def create_optimized_parameter_labels_point(self):
+    """Create labels to display optimized variogram parameters for point tab."""
+    # Gleiche Funktionalität für Punkt-Tab
+```
+
+**Features:**
+- GroupBox mit FormLayout für strukturierte Anzeige
+- Labels in grüner Farbe (`#2E7D32`, bold) zur visuellen Unterscheidung
+- Initial versteckt (`setVisible(False)`)
+- Wird in `page_kriging_3` bzw. `page_kriging_4` eingefügt
+
+**`update_variogram_parameters()` komplett umgeschrieben (Zeilen 1182-1240):**
+
+**Vorher:**
+```python
+# Überschrieb SpinBox-Werte (❌ User-Input ging verloren)
+self.doubleSpinBox_nugget.blockSignals(True)
+self.doubleSpinBox_nugget.setValue(parameters.get('nugget'))
+self.doubleSpinBox_nugget.blockSignals(False)
+```
+
+**Jetzt:**
+```python
+# Aktualisiert nur Labels (✅ User-Input bleibt erhalten)
+nugget = parameters.get('nugget', InterpolationConfig.DEFAULT_NUGGET)
+self.label_optimized_nugget_raster.setText(f"{nugget:.3f}")
+self.optimized_params_group_raster.setVisible(True)
+```
+
+**Konzept:**
+- **SpinBoxen** = Input (User-Startwerte, bleiben unverändert)
+- **Labels** = Output (Optimierte Werte, grün dargestellt)
+- Kein `blockSignals()` mehr nötig, da SpinBoxen nicht verändert werden
+
+**`reset_variogram_parameters_*()` erweitert (Zeilen 1060-1062, 1093-1095):**
+```python
+# Versteckt GroupBox mit optimierten Werten bei Modell-Wechsel
+if hasattr(self, 'optimized_params_group_raster'):
+    self.optimized_params_group_raster.setVisible(False)
+```
+
+#### **3. Config-Änderung (`config.py`)**
+```python
+DEFAULT_NLAGS = 15  # vorher: 10
+```
+- Mehr Lags für bessere Variogramm-Schätzung bei größeren Datensätzen
+
+#### **4. UI-Layout nach Analyse:**
+```
+┌─────────────────────────────────────────────┐
+│ Variogramm Modell: [spherical ▼]           │
+│                                             │
+│ Startwerte Variogramparameter:             │
+│ Sill:    [0.100]  ← User Input (bleibt)    │
+│ Range:   [100.0]                            │
+│ Nugget:  [0.000]                            │
+│                                             │
+│ ┌─ Optimierte Werte: ─────────────────────┐│
+│ │ Sill:    2.145  ← Grün, Bold            ││
+│ │ Range:   245.8                           ││
+│ │ Nugget:  0.523                           ││
+│ └──────────────────────────────────────────┘│
+│                                             │
+│ Variogramm Metriken:                        │
+│ RMSE: 0.234                                 │
+│ R²: 0.892                                   │
+└─────────────────────────────────────────────┘
+```
+
+**Vorteile**:
+- ✅ **Klare Trennung**: Input (SpinBoxen) vs. Output (Labels)
+- ✅ **Vergleichbarkeit**: User sieht Unterschied zwischen Start und Optimiert
+- ✅ **Wiederholbarkeit**: Gleiche Startwerte für mehrere Analysen möglich
+- ✅ **Professional UX**: Standard-Pattern für Optimierungs-Tools (z.B. Solver, Optimizer)
+- ✅ **Keine Überschreibung**: User-Input bleibt erhalten
+- ✅ **Visuelle Unterscheidung**: Grüne Labels = Optimierte Werte, Schwarz = Input
+- ✅ **Einfachere Logik**: Kein `blockSignals()` mehr nötig in `update_variogram_parameters()`
+
+**Workflow**:
+1. User setzt Startwerte in SpinBoxen (z.B. sill=0.1, range=100.0, nugget=0.0)
+2. User klickt "Variogram Analyse"
+3. Progress-Dialog erscheint
+4. Nach Analyse: GroupBox "Optimierte Werte:" erscheint mit grünen Labels
+5. SpinBoxen bleiben unverändert (0.1, 100.0, 0.0) ✓
+6. Labels zeigen optimierte Werte (2.145, 245.8, 0.523) ✓
+7. User kann Startwerte anpassen und erneut analysieren
+8. Bei Modell-Wechsel: GroupBox wird versteckt, SpinBoxen auf Defaults zurückgesetzt
+
+### ✅ Export-Funktion für Variogramm-Plots (2025-10-14)
+
+**Problem**: User konnte Variogramm-Plots nicht für Dokumentation/Berichte speichern
+- Plots wurden nur temporär angezeigt
+- Keine Möglichkeit, Plots ins Projektverzeichnis zu exportieren
+
+**Lösung: Export-Button im Variogramm-Dialog**
+
+#### **Änderungen in `variogram_dialog.py`:**
+
+**1. Neue Imports (Zeilen 1-6):**
+```python
+from PyQt5.QtWidgets import QHBoxLayout, QMessageBox
+import shutil
+import os
+from datetime import datetime
+```
+
+**2. Plot-Path speichern (Zeile 30, 85):**
+```python
+self.plot_path = None  # In __init__
+self.plot_path = plot_path  # In display_results()
+```
+
+**3. Export-Button hinzugefügt (Zeilen 55-69):**
+```python
+# Button layout (horizontal)
+button_layout = QHBoxLayout()
+
+# Export button
+self.export_button = QPushButton("Export")
+self.export_button.setEnabled(False)  # Disabled until plot is loaded
+self.export_button.clicked.connect(self.export_plot)
+button_layout.addWidget(self.export_button)
+
+# Close button
+close_button = QPushButton("Close")
+close_button.clicked.connect(self.accept)
+button_layout.addWidget(close_button)
+```
+
+**4. Export-Methode (Zeilen 118-162):**
+```python
+def export_plot(self):
+    """Export the variogram plot to the project directory."""
+    # 1. Validierung: Plot vorhanden?
+    # 2. QGIS-Projektverzeichnis ermitteln
+    # 3. Dateiname mit Timestamp erstellen
+    # 4. Plot kopieren
+    # 5. Success-Nachricht anzeigen
+```
+
+**Features:**
+- **Automatischer Dateiname**: `variogram_plot_YYYYMMDD_HHMMSS.png`
+- **Timestamp**: Verhindert Überschreibung bei mehreren Exporten
+- **Projektverzeichnis**: Speichert direkt im QGIS-Projektordner
+- **Validierung**: Prüft ob Projekt geöffnet und Plot vorhanden
+- **User-Feedback**: Success/Error-Dialoge mit vollständigem Pfad
+
+**Workflow:**
+1. User führt Variogramm-Analyse durch
+2. Variogramm-Dialog öffnet mit Plot und Metriken
+3. Export-Button ist aktiviert
+4. User klickt "Export"
+5. Plot wird ins Projektverzeichnis kopiert (z.B. `variogram_plot_20251014_210830.png`)
+6. Success-Dialog zeigt vollständigen Pfad
+7. User kann Dialog schließen oder erneut exportieren
+
+**Error-Handling:**
+- ❌ Kein Plot vorhanden → Warning-Dialog
+- ❌ Kein Projekt geöffnet → Warning mit Hinweis "Projekt speichern"
+- ❌ Fehler beim Kopieren → Critical-Dialog mit Fehlermeldung
+
+**Vorteile:**
+- ✅ Plots können für Dokumentation verwendet werden
+- ✅ Mehrere Analysen können verglichen werden (Timestamp)
+- ✅ Plots bleiben im Projektkontext (nicht in temp-Ordner)
+- ✅ Einfache Bedienung (ein Klick)
+- ✅ Klare Fehlermeldungen
+
+#### **Änderungen in `i_plugin.py`:**
+
+**Temporäre Plot-Speicherung statt permanente (Zeilen 1030-1050):**
+
+**Vorher:**
+```python
+# Plot wurde automatisch im Output-Verzeichnis gespeichert
+output_dir = params.get('output_dir')
+save_path = os.path.join(output_dir, f'{base_name}_variogram.png')
+```
+
+**Jetzt:**
+```python
+# Plot wird nur temporär erstellt (User entscheidet über Export)
+import tempfile
+
+temp_file = tempfile.NamedTemporaryFile(
+    suffix='_variogram.png',
+    delete=False,
+    dir=tempfile.gettempdir()
+)
+save_path = temp_file.name
+temp_file.close()
+```
+
+**Begründung:**
+- User hat jetzt volle Kontrolle über Export (via Export-Button)
+- Keine ungewollten Dateien im Output-Verzeichnis
+- Temporäre Dateien werden vom System aufgeräumt
+- Reduziert Speicherplatz-Verbrauch bei vielen Analysen
+
 ---
 
-**Letzte Aktualisierung**: 2025-10-12  
+**Letzte Aktualisierung**: 2025-10-14  
 **Für**: Schneller Kontext-Aufbau bei Entwicklung/Debugging

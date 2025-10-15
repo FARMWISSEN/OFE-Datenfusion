@@ -28,6 +28,7 @@ from pathlib import Path
 import numpy as np
 from osgeo import gdal
 import matplotlib.pyplot as plt
+import tempfile
 
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QVariant
 from qgis.PyQt.QtGui import QIcon
@@ -1026,15 +1027,18 @@ class IPlugIn:
             metrics['aic'] = aic
             metrics['mse'] = mse  # MSE zu Metriken hinzufügen
             
-            # Erstelle Plot im Projekt-Output-Verzeichnis
+            # Erstelle temporären Plot (User kann selbst entscheiden ob Export)
             plotter = VariogramPlotter()
-            output_dir = params.get('output_dir')
-            base_name = params.get('base_name', 'variogram')
-            if output_dir is None:
-                # Fallback: plugin dir
-                save_path = os.path.join(self.plugin_dir, f'{base_name}{InterpolationConfig.VARIOGRAM_PLOT_SUFFIX}')
-            else:
-                save_path = os.path.join(output_dir, f'{base_name}{InterpolationConfig.VARIOGRAM_PLOT_SUFFIX}')
+            
+            # Erstelle temporäre Datei für Plot
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix='_variogram.png',
+                delete=False,
+                dir=tempfile.gettempdir()
+            )
+            save_path = temp_file.name
+            temp_file.close()
+            
             plotter.plot_variogram(
                 lags, experimental,
                 model_type,
