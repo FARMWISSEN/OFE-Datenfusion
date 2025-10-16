@@ -211,6 +211,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
 
         # Add variogram analysis and interpolation buttons to kriging page using layout
         self.analyze_variogram_button = QPushButton("Variogram Analyse")
+        self.analyze_variogram_button.setFixedHeight(29)
         self.analyze_variogram_button.setEnabled(False)
         self.interpolate_button = QPushButton("Interpolieren")
         # Use the layout from page_kriging (should be present after UI edit)
@@ -225,6 +226,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
 
         # Add variogram analysis button for point interpolation (page_kriging_2)
         self.analyze_variogram_button_points = QPushButton("Variogram Analyse")
+        self.analyze_variogram_button_points.setFixedHeight(29)
         self.analyze_variogram_button_points.setEnabled(False)
         layout_points = self.page_kriging_2.layout() if hasattr(self, 'page_kriging_2') else None
         if layout_points is not None:

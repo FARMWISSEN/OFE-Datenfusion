@@ -46,7 +46,7 @@ class VariogramPlotter:
             lags, experimental, 
             c=InterpolationConfig.VARIOGRAM_PLOT_EXPERIMENTAL_COLOR, 
             marker=InterpolationConfig.VARIOGRAM_PLOT_EXPERIMENTAL_MARKER, 
-            label='Experimental', 
+            label='Experimentell', 
             alpha=InterpolationConfig.VARIOGRAM_PLOT_EXPERIMENTAL_ALPHA
         )
         
@@ -58,12 +58,12 @@ class VariogramPlotter:
                 x, y, 
                 color=InterpolationConfig.VARIOGRAM_PLOT_MODEL_COLOR,
                 linestyle=InterpolationConfig.VARIOGRAM_PLOT_MODEL_LINESTYLE,
-                label=f'{model_type.capitalize()} Model'
+                label=f'{model_type.capitalize()} Modell'
             )
         
         # Customize plot
-        self.ax.set_xlabel('Lag Distance')
-        self.ax.set_ylabel('Semivariance')
+        self.ax.set_xlabel('Lag-Distanz')
+        self.ax.set_ylabel('Semivarianz')
         self.ax.set_title(title)
         self.ax.legend()
         self.ax.grid(True, alpha=InterpolationConfig.VARIOGRAM_PLOT_GRID_ALPHA)

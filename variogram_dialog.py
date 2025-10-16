@@ -56,13 +56,13 @@ class VariogramDialog(QDialog):
         button_layout = QHBoxLayout()
         
         # Export button
-        self.export_button = QPushButton("Export")
+        self.export_button = QPushButton("Plot exportieren")
         self.export_button.setEnabled(False)  # Disabled until plot is loaded
         self.export_button.clicked.connect(self.export_plot)
         button_layout.addWidget(self.export_button)
         
         # Close button
-        close_button = QPushButton("Close")
+        close_button = QPushButton("Dialog schließen")
         close_button.clicked.connect(self.accept)
         button_layout.addWidget(close_button)
         
@@ -103,7 +103,7 @@ class VariogramDialog(QDialog):
             metrics_text = f"Variogram Analyse:\n"
             metrics_text += f"RMSE: {metrics['rmse']:.3f}\n"
             metrics_text += f"R²: {metrics['r2']:.3f}\n"
-            metrics_text += "\nLower RMSE values and R² values closer to 1 indicate better model fit."
+            metrics_text += "\nNiedrigere RMSE-Werte und R²-Werte näher an 1 zeigen eine bessere Modellanpassung."
             
             self.metrics_text.setText(metrics_text)
             
