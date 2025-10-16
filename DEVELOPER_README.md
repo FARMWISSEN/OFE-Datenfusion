@@ -1098,6 +1098,32 @@ setupUi() → setup_ui_components() → load_non_layer_settings()
 
 **Wichtig**: `clear_all_layer_selections()` muss der letzte Schritt sein, um alle automatischen Selektionen zu überschreiben
 
+### ✅ Deutsche Lokalisierung für Variogramm-Komponenten (2025-10-16)
+
+**Problem**: Dialog und Plot-Beschriftungen waren auf Englisch, nicht konsistent mit dem Rest des Plugins
+
+**Lösung**: Vollständige Übersetzung aller UI-Texte auf Deutsch
+
+#### **Änderungen in `variogram_plotter.py`:**
+- **Legende**: `'Experimental'` → `'Experimentell'`
+- **Modell-Label**: `'Model'` → `'Modell'`
+- **X-Achse**: `'Lag Distance'` → `'Lag-Distanz'`
+- **Y-Achse**: `'Semivariance'` → `'Semivarianz'`
+
+#### **Änderungen in `variogram_dialog.py`:**
+- **Export-Button**: `"Export"` → `"Plot exportieren"`
+- **Schließen-Button**: `"Close"` → `"Dialog schließen"`
+- **Metriken-Erklärung**: `"Lower RMSE values and R² values closer to 1 indicate better model fit."` → `"Niedrigere RMSE-Werte und R²-Werte näher an 1 zeigen eine bessere Modellanpassung."`
+
+#### **Änderungen in `i_plugin_dialog.py`:**
+- **Button-Höhe**: `self.analyze_variogram_button.setFixedHeight(29)` für beide Tabs (Raster + Punkt)
+- Konsistente Button-Größe für bessere UI-Ästhetik
+
+**Ergebnis**:
+- ✅ Vollständig deutsche Benutzeroberfläche
+- ✅ Konsistente Terminologie im gesamten Plugin
+- ✅ Professionelle Darstellung mit fester Button-Höhe
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-16  

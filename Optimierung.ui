@@ -430,7 +430,7 @@
       <widget class="QWidget" name="page_kriging" native="true">
        <property name="geometry">
         <rect>
-         <x>390</x>
+         <x>400</x>
          <y>99</y>
          <width>151</width>
          <height>111</height>
@@ -876,7 +876,7 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
       <widget class="QWidget" name="page_kriging_2" native="true">
        <property name="geometry">
         <rect>
-         <x>400</x>
+         <x>410</x>
          <y>99</y>
          <width>141</width>
          <height>111</height>
