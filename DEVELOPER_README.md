@@ -481,6 +481,11 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 - **Bugfix**: Vollständige Raster-Abdeckung an Boundary-Rändern (Pixel-Polygon-Maske statt Punkt-Maske)
 - **Feature**: Automatisches Farbrampen-Styling für Raster-Layer (QGIS Standard RYG, 5 Stops, 6 Klassen)
 - **Feature**: Vector-Layer-Export mit abgestufter Symbolisierung (automatisch parallel zum Raster)
+- **Feature**: Trennung Input/Output-Parameter (SpinBoxen vs. grüne Labels für optimierte Werte)
+- **Feature**: Dynamisches Parameter-System für Interpolationsmethoden (QStackedWidget)
+- **Feature**: Slope-Parameter für Linear-Variogramm (statt konzeptionell falscher Range)
+- **Feature**: Export-Button für Variogramm-Plots (mit Timestamp)
+- **Bugfix**: Layer-ComboBoxen beim Plugin-Start garantiert leer (mehrstufiger Ansatz mit kritischer Reihenfolge)
 
 ---
 
@@ -489,8 +494,8 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 | Datei | Zeilen | Zweck | Wichtigste Funktionen |
 |-------|--------|-------|----------------------|
 | `i_plugin.py` | ~1850 | Backend-Logik | `run()`, `interpolate_ordinary_kriging()`, `analyze_variogram()`, `convert_to_utm()`, `create_layer_backup()` |
-| `i_plugin_dialog.py` | ~1020 | UI-Controller | `get_parameters()`, `validate_inputs()`, `interpolate_points()` |
-| `config.py` | 88 | Konfiguration | `InterpolationConfig` (alle Konstanten) |
+| `i_plugin_dialog.py` | ~1640 | UI-Controller | `get_parameters()`, `validate_inputs()`, `interpolate_points()`, `clear_all_layer_selections()`, `load_non_layer_settings()` |
+| `config.py` | 138 | Konfiguration | `InterpolationConfig` (alle Konstanten), `InterpolationMethod` |
 | `variogram_models.py` | 115 | Variogramm-Modelle | `optimize_variogram_parameters()`, `VARIOGRAM_MODELS` |
 | `exceptions.py` | 74 | Exception-Typen | `DataValidationError`, `GeometryError`, etc. |
 
@@ -1070,7 +1075,30 @@ value_str = f"{value:.2f}" if value is not None else "N/A"
 
 **Grund**: Dictionary kann explizit `None`-Werte enthalten, `.get()` mit Default hilft dann nicht!
 
+### ✅ Leere Layer-ComboBoxen beim Plugin-Start (2025-10-16)
+
+**Problem**: `QgsMapLayerComboBox` wählt automatisch ersten Layer wenn `setFilters()` aufgerufen wird
+
+**Lösung**: Mehrstufiger Ansatz
+
+**Kritische Erkenntnisse:**
+1. **Reihenfolge ist entscheidend**: `setAllowEmptyLayer(True)` MUSS VOR `setFilters()` kommen
+2. **Signals blockieren**: Während Setup `blockSignals(True/False)` verwenden
+3. **Explizites Leeren**: `setLayer(None)` statt `setCurrentIndex(-1)` verwenden
+
+**Neue Methoden:**
+- `load_non_layer_settings()`: Lädt nur Zellgröße & Variogramm-Modell, keine Layer
+- `clear_all_layer_selections()`: Leert alle ComboBoxen als letzter Schritt in `__init__()`
+
+**Initialisierungs-Reihenfolge in `__init__()`:**
+```python
+setupUi() → setup_ui_components() → load_non_layer_settings() 
+→ connect_signals() → update_ui_state() → clear_all_layer_selections()
+```
+
+**Wichtig**: `clear_all_layer_selections()` muss der letzte Schritt sein, um alle automatischen Selektionen zu überschreiben
+
 ---
 
-**Letzte Aktualisierung**: 2025-10-15  
+**Letzte Aktualisierung**: 2025-10-16  
 **Für**: Schneller Kontext-Aufbau bei Entwicklung/Debugging

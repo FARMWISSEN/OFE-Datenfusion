@@ -63,28 +63,54 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Initialize UI components
         self.setup_ui_components()
         
-        # Connect signals
-        self.connect_signals()
+        # Note: We intentionally do NOT load saved layer settings here
+        # to keep the layer combo boxes empty on startup.
+        # Only load non-layer settings (cell size, variogram model)
+        self.load_non_layer_settings()
         
-        # Load saved settings
-        self.load_settings()
+        # Connect signals AFTER loading settings to prevent unwanted triggers
+        self.connect_signals()
         
         # Update UI state after initialization
         self.update_ui_state()
+        
+        # Explicitly ensure all layer combo boxes are empty AFTER everything is set up
+        # This must be the LAST step to override any automatic selections
+        self.clear_all_layer_selections()
 # UI COMPONENTEN WERDEN HIER AUFGESETZT 
     def setup_ui_components(self):
         """Setup UI components after loading."""
+        # Block signals during setup to prevent automatic layer selection
+        self.mMapLayerComboBox.blockSignals(True)
+        self.mMapLayerComboBox_target_layer.blockSignals(True)
+        self.mMapLayerComboBox_covariate_point.blockSignals(True)
+        self.mMapLayerComboBox_boundary.blockSignals(True)
+        
         # Set up map layer combo box to show only point layers
+        self.mMapLayerComboBox.setAllowEmptyLayer(True)  # MUST be set BEFORE setFilters
         self.mMapLayerComboBox.setFilters(QgsMapLayerProxyModel.PointLayer)
+        self.mMapLayerComboBox.setLayer(None)  # Set to empty
         
         # Set up target layer combo box to show only point layers
+        self.mMapLayerComboBox_target_layer.setAllowEmptyLayer(True)  # MUST be set BEFORE setFilters
         self.mMapLayerComboBox_target_layer.setFilters(QgsMapLayerProxyModel.PointLayer)
+        self.mMapLayerComboBox_target_layer.setLayer(None)  # Set to empty
         
         # Set up covariate point layer combo box to show only point layers
+        self.mMapLayerComboBox_covariate_point.setAllowEmptyLayer(True)  # MUST be set BEFORE setFilters
         self.mMapLayerComboBox_covariate_point.setFilters(QgsMapLayerProxyModel.PointLayer)
+        self.mMapLayerComboBox_covariate_point.setLayer(None)  # Set to empty
         
         # Set up boundary layer combo box to show only polygon layers
+        self.mMapLayerComboBox_boundary.setAllowEmptyLayer(True)  # MUST be set BEFORE setFilters
         self.mMapLayerComboBox_boundary.setFilters(QgsMapLayerProxyModel.PolygonLayer)
+        self.mMapLayerComboBox_boundary.setLayer(None)  # Set to empty
+        
+        # Unblock signals after setup
+        self.mMapLayerComboBox.blockSignals(False)
+        self.mMapLayerComboBox_target_layer.blockSignals(False)
+        self.mMapLayerComboBox_covariate_point.blockSignals(False)
+        self.mMapLayerComboBox_boundary.blockSignals(False)
         
         # Set field types to numeric
         self.mFieldComboBox.setFilters(QgsFieldProxyModel.Numeric)
@@ -565,6 +591,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         """Synchronize target layer with input layer."""
         if layer:
             self.mMapLayerComboBox_target_layer.setLayer(layer)
+        else:
+            # If input layer is cleared, clear target layer too
+            self.mMapLayerComboBox_target_layer.setLayer(None)
 
     def on_interpolation_method_changed_raster(self, method_name):
         """Handle interpolation method change for raster tab.
@@ -874,8 +903,87 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         settings.setValue("IPlugIn/variogram_model", self.comboBox_variogram.currentIndex())
         # Note: nugget, range, sill, lags are NOT saved - they reset to defaults on each plugin open
 
+    def load_non_layer_settings(self):
+        """Load saved settings EXCEPT layer selections (to keep combo boxes empty on startup)."""
+        settings = QSettings()
+        
+        # Block signals during loading to prevent cascade updates
+        widgets_to_block = [
+            self.doubleSpinBox_cellsize, self.comboBox_variogram,
+            self.doubleSpinBox_nugget, self.doubleSpinBox_range, self.doubleSpinBox_sill,
+            self.spinBox_lags
+        ]
+        
+        # Add point tab widgets if they exist
+        if hasattr(self, 'comboBox_variogram_point'):
+            widgets_to_block.append(self.comboBox_variogram_point)
+        if hasattr(self, 'doubleSpinBox_nugget_point'):
+            widgets_to_block.append(self.doubleSpinBox_nugget_point)
+        if hasattr(self, 'doubleSpinBox_range_point'):
+            widgets_to_block.append(self.doubleSpinBox_range_point)
+        if hasattr(self, 'doubleSpinBox_sill_point'):
+            widgets_to_block.append(self.doubleSpinBox_sill_point)
+        if hasattr(self, 'spinBox_lags_point'):
+            widgets_to_block.append(self.spinBox_lags_point)
+        
+        for widget in widgets_to_block:
+            if widget:
+                widget.blockSignals(True)
+        
+        # Load interpolation settings with Config defaults
+        self.doubleSpinBox_cellsize.setValue(
+            float(settings.value("IPlugIn/cell_size", InterpolationConfig.DEFAULT_CELL_SIZE))
+        )
+        
+        # Load variogram model selection for raster tab
+        try:
+            variogram_idx = int(settings.value("IPlugIn/variogram_model", 0))
+            if 0 <= variogram_idx < self.comboBox_variogram.count():
+                self.comboBox_variogram.setCurrentIndex(variogram_idx)
+        except (ValueError, TypeError):
+            # If there's an error, just set to first item
+            self.comboBox_variogram.setCurrentIndex(0)
+        
+        # Load variogram model selection for point tab
+        if hasattr(self, 'comboBox_variogram_point'):
+            try:
+                variogram_idx_point = int(settings.value("IPlugIn/variogram_model_point", 0))
+                if 0 <= variogram_idx_point < self.comboBox_variogram_point.count():
+                    self.comboBox_variogram_point.setCurrentIndex(variogram_idx_point)
+            except (ValueError, TypeError):
+                self.comboBox_variogram_point.setCurrentIndex(0)
+            
+        # Always use default values for variogram parameters (not loaded from settings)
+        # This ensures parameters start fresh on each plugin open
+        
+        # Raster tab
+        self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET)
+        self.doubleSpinBox_range.setValue(InterpolationConfig.DEFAULT_RANGE)
+        self.doubleSpinBox_sill.setValue(InterpolationConfig.DEFAULT_SILL)
+        self.spinBox_lags.setValue(InterpolationConfig.DEFAULT_NLAGS)
+        
+        # Point tab
+        if hasattr(self, 'doubleSpinBox_nugget_point'):
+            self.doubleSpinBox_nugget_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+        if hasattr(self, 'doubleSpinBox_range_point'):
+            self.doubleSpinBox_range_point.setValue(InterpolationConfig.DEFAULT_RANGE)
+        if hasattr(self, 'doubleSpinBox_sill_point'):
+            self.doubleSpinBox_sill_point.setValue(InterpolationConfig.DEFAULT_SILL)
+        if hasattr(self, 'spinBox_lags_point'):
+            self.spinBox_lags_point.setValue(InterpolationConfig.DEFAULT_NLAGS)
+        
+        # Unblock signals after loading
+        for widget in widgets_to_block:
+            if widget:
+                widget.blockSignals(False)
+    
     def load_settings(self):
-        """Load saved settings."""
+        """Load ALL saved settings including layer selections.
+        
+        Note: This method is kept for backward compatibility but is NOT called
+        during __init__ to keep layer combo boxes empty on startup.
+        It can be called manually if needed.
+        """
         settings = QSettings()
         
         # Block signals during loading to prevent cascade updates
@@ -889,12 +997,18 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if widget:
                 widget.blockSignals(True)
         
-        # Load layer and field selections
+        # Load layer and field selections (only if saved settings exist)
         layer_id = settings.value("IPlugIn/input_layer", "")
         if layer_id:
             layer = QgsProject.instance().mapLayer(layer_id)
             if layer:
                 self.mMapLayerComboBox.setLayer(layer)
+            else:
+                # Layer not found, keep empty
+                self.mMapLayerComboBox.setLayer(None)
+        else:
+            # No saved layer, keep empty
+            self.mMapLayerComboBox.setLayer(None)
                 
         field = settings.value("IPlugIn/input_field", "")
         if field:
@@ -905,6 +1019,12 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             layer = QgsProject.instance().mapLayer(boundary_id)
             if layer:
                 self.mMapLayerComboBox_boundary.setLayer(layer)
+            else:
+                # Layer not found, keep empty
+                self.mMapLayerComboBox_boundary.setLayer(None)
+        else:
+            # No saved layer, keep empty
+            self.mMapLayerComboBox_boundary.setLayer(None)
                       
         # Load interpolation settings with Config defaults
         self.doubleSpinBox_cellsize.setValue(
@@ -931,6 +1051,31 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         for widget in widgets_to_block:
             if widget:
                 widget.blockSignals(False)
+
+    def clear_all_layer_selections(self):
+        """Explicitly clear all layer combo box selections.
+        
+        This ensures that all layer combo boxes are empty on startup,
+        even if signals or other initialization code tried to set them.
+        """
+        # Block signals to prevent cascade updates
+        self.mMapLayerComboBox.blockSignals(True)
+        self.mMapLayerComboBox_target_layer.blockSignals(True)
+        self.mMapLayerComboBox_covariate_point.blockSignals(True)
+        self.mMapLayerComboBox_boundary.blockSignals(True)
+        
+        # Clear all layer selections using setLayer(None) which is more explicit
+        # than setCurrentIndex(-1) for QgsMapLayerComboBox
+        self.mMapLayerComboBox.setLayer(None)
+        self.mMapLayerComboBox_target_layer.setLayer(None)
+        self.mMapLayerComboBox_covariate_point.setLayer(None)
+        self.mMapLayerComboBox_boundary.setLayer(None)
+        
+        # Unblock signals
+        self.mMapLayerComboBox.blockSignals(False)
+        self.mMapLayerComboBox_target_layer.blockSignals(False)
+        self.mMapLayerComboBox_covariate_point.blockSignals(False)
+        self.mMapLayerComboBox_boundary.blockSignals(False)
 
     def set_plugin_directory(self, directory):
         """Set the plugin output directory."""
