@@ -1234,6 +1234,51 @@ Datenfluss: Add-Button → Berechnung → Widgets → Variogramm-Analyse → Opt
 - ✅ Automatisch für alle Modelle
 - ✅ Vollständig in Variogramm-Analyse integriert
 
+### ✅ Interpolation verwendet UI-Werte ohne automatische Optimierung (2025-10-19)
+
+**Problem**: PyKrige optimierte Parameter automatisch, ignorierte UI-Spinbox-Werte
+- Variogramm-Analyse-Ergebnisse wurden nicht für Interpolation genutzt
+- Inkonsistente Parameterreihenfolgen (PyKrige vs. eigene Funktionen)
+
+**Lösung**: Drei Anpassungen für korrekte Parameter-Verwendung
+
+#### **1. PyKrige-Parameterreihenfolge korrigiert (`i_plugin.py`)**
+
+**Zwei Konventionen im Code**:
+- Eigene Variogramm-Funktionen: `(nugget, range, sill)`
+- PyKrige: `[sill, range, nugget]`
+
+**Konsequente Konvertierung** an allen Stellen (Zeilen 1003-1010, 1032-1046, 1056-1064, 1229-1253)
+
+#### **2. Automatische Optimierung deaktiviert (`i_plugin.py`, Zeile 1246-1251)**
+
+```python
+ok = OrdinaryKriging(
+    ...,
+    variogram_parameters=pykrige_params,  # Explizit beim __init__!
+    weight=False,  # Deaktiviert Optimierung!
+)
+```
+
+**Schlüssel**: `weight=False` + `variogram_parameters` beim `__init__` = keine Optimierung
+
+#### **3. Variogramm-Analyse schreibt in Spinboxes (`i_plugin_dialog.py`, Zeilen 2171-2264)**
+
+**Vorher**: `update_variogram_parameters()` schrieb nur in Labels → Spinboxes behielten Defaults → Interpolation nutzte falsche Werte
+
+**Nachher**: Schreibt in Labels UND Spinboxes
+- Raster-Tab (Zeilen 2236-2264) + Point-Tab (Zeilen 2171-2199)
+- Erkennt aktuelles Modell, setzt nur dessen Spinboxes
+- Logging: `self.log(f"Interpolation mit Parametern: {pykrige_params}")`
+
+**Workflow**: Layer hinzufügen → Variogramm-Analyse → Spinboxes aktualisiert → Interpolation nutzt diese Werte
+
+**Vorteile**:
+- ✅ Interpolation verwendet exakt UI-Werte
+- ✅ Keine unerwünschte Optimierung
+- ✅ Variogramm-Analyse direkt nutzbar
+- ✅ Konsistente Parameterreihenfolgen
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-19  
