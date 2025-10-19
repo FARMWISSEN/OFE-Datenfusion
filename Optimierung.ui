@@ -718,6 +718,19 @@
         </widget>
        </widget>
       </widget>
+      <widget class="QPushButton" name="VergleichButton_rasterVariogram">
+       <property name="geometry">
+        <rect>
+         <x>400</x>
+         <y>10</y>
+         <width>120</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Modellvergleich</string>
+       </property>
+      </widget>
      </widget>
      <widget class="QWidget" name="page_nearest_neighbor">
       <widget class="QLabel" name="label_nn_info">
@@ -1434,6 +1447,19 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
          </property>
         </widget>
        </widget>
+      </widget>
+      <widget class="QPushButton" name="VergleichButton_pointVariogram">
+       <property name="geometry">
+        <rect>
+         <x>400</x>
+         <y>10</y>
+         <width>120</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Modellvergleich</string>
+       </property>
       </widget>
      </widget>
      <widget class="QWidget" name="page_nearest_neighbor_point">

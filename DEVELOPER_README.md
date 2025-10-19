@@ -1495,6 +1495,51 @@ Der Original-Layer bleibt unverändert.
 - ✅ Kein Backup mehr nötig
 - ✅ Alle Interpolations-Layer in einem Ordner
 
+### ✅ Modellvergleichs-Dialog für Variogramm-Analyse (2025-10-19)
+
+**Problem**: Optimierte Parameter verschwanden beim Modell-Wechsel, keine Übersicht über analysierte Modelle, schwierige Modellselektion
+
+**Lösung**: Neuer Dialog (`model_comparison_dialog.py`) mit Tabelle aller analysierten Modelle
+
+**Features:**
+- Tabelle: Modell | RMSE ↓ | R² ↑ | Sill | Range | Nugget | Lags | Zeitstempel
+- Sortierbar nach allen Spalten
+- Bestes Modell: ⭐ Stern + Fettschrift (theme-unabhängig)
+- Alternierende Zeilenfarben
+- Doppelklick oder Button → Parameter übernehmen
+- CSV Export
+
+**Integration (`i_plugin_dialog.py`):**
+```python
+# Storage (Zeilen 59-61)
+self.variogram_results_raster = []
+self.variogram_results_point = []
+
+# Nach Analyse speichern (Zeilen 991-1002, 2103-2114)
+self.variogram_results_raster.append({
+    'model': model_name, 'parameters': {...}, 'metrics': {...},
+    'nlags': 6, 'timestamp': '2025-10-19 14:30:15'
+})
+self.VergleichButton_rasterVariogram.setEnabled(True)
+
+# Buttons in Optimierung.ui
+VergleichButton_rasterVariogram  # Raster-Tab
+VergleichButton_pointVariogram   # Punkt-Tab
+
+# Dialog-Methoden (Zeilen 2151-2238)
+show_model_comparison_raster/point()
+apply_model_from_comparison_raster/point()
+```
+
+**Beispiel:**
+```
+│ linear           │ 0.080 │ 0.890 │  -   │   -   │ 0.150 │ 6 │ 2025-10-19 14:30:15 │
+│ ⭐ spherical     │ 0.050 │ 0.950 │ 1.50 │ 100.0 │ 0.100 │ 6 │ 2025-10-19 14:31:22 │ ← FETT
+│ exponential      │ 0.060 │ 0.920 │ 1.45 │  95.0 │ 0.120 │ 6 │ 2025-10-19 14:32:10 │
+```
+
+**Vorteile**: Übersichtlicher Vergleich, objektive Selektion (RMSE/R²), CSV Export, keine Side-Effects
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-19  

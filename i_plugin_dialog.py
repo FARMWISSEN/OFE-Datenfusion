@@ -33,6 +33,7 @@ from qgis.core import (QgsMapLayerProxyModel, QgsFieldProxyModel, QgsProject, Qg
                       QgsRasterLayer, QgsRectangle, QgsCoordinateReferenceSystem)
 
 from .variogram_dialog import VariogramDialog
+from .model_comparison_dialog import ModelComparisonDialog
 from .config import InterpolationConfig, InterpolationMethod
 from .exceptions import (
     InterpolationError,
@@ -54,6 +55,11 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.iface = iface
         self.plugin = None  # Will be set by the plugin instance
         self.plugin_dir = None
+        
+        # Storage for variogram analysis results (for model comparison)
+        self.variogram_results_raster = []  # List of dicts with model, parameters, metrics
+        self.variogram_results_point = []   # Separate list for point interpolation
+        
         # Set up the user interface from Designer through FORM_CLASS.
         # After self.setupUi() you can access any designer object by doing
         # self.<objectname>, and you can use autoconnect slots - see
@@ -357,30 +363,37 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         if hasattr(self, 'progressBar'):
             self.progressBar.hide()
 
-        # Add variogram analysis and interpolation buttons to kriging page using layout
+        # Add variogram analysis buttons (dynamically created)
         self.analyze_variogram_button = QPushButton("Variogram Analyse")
         self.analyze_variogram_button.setFixedHeight(29)
         self.analyze_variogram_button.setEnabled(False)
-        self.interpolate_button = QPushButton("Interpolieren")
-        # Use the layout from page_kriging (should be present after UI edit)
-        layout = self.page_kriging.layout()
-        if layout is not None:
-            layout.addWidget(self.analyze_variogram_button)
-            #layout.addWidget(self.interpolate_button)
-        else:
-            # Fallback: just parent to page_kriging if layout missing
-            self.analyze_variogram_button.setParent(self.page_kriging)
-            #self.interpolate_button.setParent(self.page_kriging)
-
-        # Add variogram analysis button for point interpolation (page_kriging_2)
+       
         self.analyze_variogram_button_points = QPushButton("Variogram Analyse")
         self.analyze_variogram_button_points.setFixedHeight(29)
         self.analyze_variogram_button_points.setEnabled(False)
+        
+        self.interpolate_button = QPushButton("Interpolieren")
+        
+        # Add to layouts
+        layout = self.page_kriging.layout()
+        if layout is not None:
+            layout.addWidget(self.analyze_variogram_button)
+        else:
+            self.analyze_variogram_button.setParent(self.page_kriging)
+        
         layout_points = self.page_kriging_2.layout() if hasattr(self, 'page_kriging_2') else None
         if layout_points is not None:
             layout_points.addWidget(self.analyze_variogram_button_points)
         elif hasattr(self, 'page_kriging_2'):
             self.analyze_variogram_button_points.setParent(self.page_kriging_2)
+        
+        # Initialize model comparison buttons from UI (created in Optimierung.ui)
+        # These buttons are now part of the UI file and properly positioned
+        if hasattr(self, 'VergleichButton_rasterVariogram'):
+            self.VergleichButton_rasterVariogram.setEnabled(False)  # Disabled until at least one analysis
+        
+        if hasattr(self, 'VergleichButton_pointVariogram'):
+            self.VergleichButton_pointVariogram.setEnabled(False)  # Disabled until at least one analysis
 
         # Create labels for optimized variogram parameters (Raster tab)
         self.create_optimized_parameter_labels_raster()
@@ -972,6 +985,21 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
 
             # Close progress dialog
             progress.close()
+            
+            # Store results for model comparison
+            from datetime import datetime
+            model_name = params.get('variogram_model', 'unknown')
+            self.variogram_results_point.append({
+                'model': model_name,
+                'parameters': results['parameters'],
+                'metrics': results['metrics'],
+                'nlags': params.get('nlags', 6),
+                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            
+            # Enable model comparison button
+            if hasattr(self, 'VergleichButton_pointVariogram'):
+                self.VergleichButton_pointVariogram.setEnabled(True)
 
             # Update dialog with optimized parameters for points
             self.update_variogram_parameters({
@@ -1027,10 +1055,15 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.button_interpolate_points.clicked.connect(self.interpolate_points)
         self.button_interpolate_points_2.clicked.connect(self.interpolate_raster)  # Geändert: accept → interpolate_raster
         
-        # Connect variogram analysis button
+        # Connect variogram analysis buttons
         self.analyze_variogram_button.clicked.connect(self.show_variogram_analysis)
-        # Connect variogram analysis button for point interpolation
         self.analyze_variogram_button_points.clicked.connect(self.show_variogram_analysis_points)
+        
+        # Connect model comparison buttons (from UI file)
+        if hasattr(self, 'VergleichButton_rasterVariogram'):
+            self.VergleichButton_rasterVariogram.clicked.connect(self.show_model_comparison_raster)
+        if hasattr(self, 'VergleichButton_pointVariogram'):
+            self.VergleichButton_pointVariogram.clicked.connect(self.show_model_comparison_point)
         
         # Connect UI state updates for raster tab
         self.mMapLayerComboBox.layerChanged.connect(self.update_ui_state)
@@ -2064,6 +2097,21 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 
             # Close progress dialog
             progress.close()
+            
+            # Store results for model comparison
+            from datetime import datetime
+            model_name = params.get('variogram_model', 'unknown')
+            self.variogram_results_raster.append({
+                'model': model_name,
+                'parameters': results['parameters'],
+                'metrics': results['metrics'],
+                'nlags': params.get('nlags', 6),
+                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            
+            # Enable model comparison button
+            if hasattr(self, 'VergleichButton_rasterVariogram'):
+                self.VergleichButton_rasterVariogram.setEnabled(True)
                 
             # Update dialog with optimized parameters
             self.update_variogram_parameters({
@@ -2101,6 +2149,95 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 Qgis.Critical
             )
             QMessageBox.critical(self, "Unerwarteter Fehler", f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}")
+
+    def show_model_comparison_raster(self):
+        """Show model comparison dialog for raster interpolation."""
+        if not self.variogram_results_raster:
+            QMessageBox.information(
+                self,
+                "Keine Modelle analysiert",
+                "Bitte führen Sie zuerst mindestens eine Variogramm-Analyse durch."
+            )
+            return
+        
+        # Create and show comparison dialog
+        dialog = ModelComparisonDialog(
+            self,
+            results=self.variogram_results_raster,
+            is_point_tab=False
+        )
+        
+        # Connect signal to apply selected model
+        dialog.model_selected.connect(self.apply_model_from_comparison_raster)
+        
+        dialog.exec_()
+    
+    def show_model_comparison_point(self):
+        """Show model comparison dialog for point interpolation."""
+        if not self.variogram_results_point:
+            QMessageBox.information(
+                self,
+                "Keine Modelle analysiert",
+                "Bitte führen Sie zuerst mindestens eine Variogramm-Analyse durch."
+            )
+            return
+        
+        # Create and show comparison dialog
+        dialog = ModelComparisonDialog(
+            self,
+            results=self.variogram_results_point,
+            is_point_tab=True
+        )
+        
+        # Connect signal to apply selected model
+        dialog.model_selected.connect(self.apply_model_from_comparison_point)
+        
+        dialog.exec_()
+    
+    def apply_model_from_comparison_raster(self, result):
+        """Apply selected model parameters from comparison dialog (raster tab)."""
+        # Set variogram model in combobox
+        model_name = result['model']
+        index = self.comboBox_variogram.findText(model_name, Qt.MatchFixedString)
+        if index >= 0:
+            self.comboBox_variogram.setCurrentIndex(index)
+        
+        # Update parameters
+        self.update_variogram_parameters({
+            'nugget': result['parameters']['nugget'],
+            'range': result['parameters']['range'],
+            'sill': result['parameters']['sill'],
+            'metrics': result['metrics']
+        }, point_tab=False)
+        
+        # Update variogram_info
+        self.variogram_info_raster = {
+            'parameters': result['parameters'],
+            'metrics': result['metrics']
+        }
+    
+    def apply_model_from_comparison_point(self, result):
+        """Apply selected model parameters from comparison dialog (point tab)."""
+        # Set variogram model in combobox
+        model_name = result['model']
+        if hasattr(self, 'comboBox_variogram_point'):
+            index = self.comboBox_variogram_point.findText(model_name, Qt.MatchFixedString)
+            if index >= 0:
+                self.comboBox_variogram_point.setCurrentIndex(index)
+        
+        # Update parameters
+        self.update_variogram_parameters({
+            'nugget': result['parameters']['nugget'],
+            'range': result['parameters']['range'],
+            'sill': result['parameters']['sill'],
+            'metrics': result['metrics']
+        }, point_tab=True)
+        
+        # Update variogram_info
+        self.variogram_info_point = {
+            'parameters': result['parameters'],
+            'metrics': result['metrics']
+        }
 
     def update_ui_state(self):
         """Update UI state based on current selections.
