@@ -577,22 +577,23 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 9. 5-Stop-Gradient: Rot (0%) → Orange (25%) → Gelb (50%) → Hellgrün (75%) → Grün (100%)
 10. Alle Farben konfigurierbar in `config.py`
 
-### ✅ Vector-Layer-Export mit Symbolisierung implementiert
+### ✅ Vector-Layer-Export mit Symbolisierung implementiert (Optional via Dialog)
 **Problem**: Nur Raster-Output verfügbar
 - Keine Punkt-Daten für weitere Analysen
 - Keine Flexibilität für andere GIS-Operationen
 - Manuelle Konvertierung notwendig
 
 **Lösung**:
-1. Neue Methode `create_vector_layer_from_grid()` (Zeile 1352-1430)
-2. Erstellt Punkt-Features aus Grid-Daten (X, Y, Wert)
-3. Boundary-Filterung: Nur Punkte mit mask[i,j]=True
-4. Speichert als Shapefile parallel zum Raster
-5. Neue Methode `apply_graduated_symbology_to_vector()` (Zeile 1432-1514)
-6. Abgestufte Symbolisierung mit gleichem Farbschema wie Raster
-7. 6 Klassen mit QGIS Standard RYG-Farben
-8. Automatisch zur Layer-Gruppe hinzugefügt
-9. Imports: `QgsGraduatedSymbolRenderer`, `QgsRendererRange`, `QgsMarkerSymbol`
+1. **QMessageBox-Dialog** nach Interpolation (Zeile 2206-2215): Fragt User ob Vector-Layer erstellt werden soll
+2. Neue Methode `create_vector_layer_from_grid()` (Zeile 1454-1530)
+3. Erstellt Punkt-Features aus Grid-Daten (X, Y, Wert)
+4. Boundary-Filterung: Nur Punkte mit mask[i,j]=True
+5. Speichert als Shapefile parallel zum Raster
+6. Neue Methode `apply_graduated_symbology_to_vector()` (Zeile 1532-1612)
+7. Abgestufte Symbolisierung mit gleichem Farbschema wie Raster
+8. 6 Klassen mit QGIS Standard RYG-Farben
+9. Nur erstellt wenn User "Ja" wählt (Default: Nein)
+10. Imports: `QgsGraduatedSymbolRenderer`, `QgsRendererRange`, `QgsMarkerSymbol`, `QMessageBox`
 
 ### ✅ Punkt-Interpolation Validierung korrigiert
 **Problem**: `validate_point_interpolation_inputs()` hatte mehrere Bugs (i_plugin_dialog.py)
