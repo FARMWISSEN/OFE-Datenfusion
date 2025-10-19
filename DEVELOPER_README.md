@@ -1280,23 +1280,58 @@ ok = OrdinaryKriging(
 - ✅ Variogramm-Analyse direkt nutzbar
 - ✅ Konsistente Parameterreihenfolgen
 
-### ✅ Dialog bleibt nach Interpolation offen (2025-10-19)
+### ✅ Dialog-Verhalten und Settings-Management verbessert (2025-10-19)
 
-**Problem**: Plugin-Fenster schloss sich nach Raster-Interpolation automatisch
+**Problem 1**: Plugin-Fenster schloss sich nach Raster-Interpolation automatisch
 - Inkonsistent: Punkt-Interpolation ließ Fenster offen
 - User musste Plugin neu öffnen für weitere Interpolationen
-- Keine Möglichkeit Parameter schnell anzupassen
 
-**Lösung**: Neue Methode `interpolate_raster()` statt `accept()` (`i_plugin_dialog.py`)
-1. Button-Verbindung geändert (Zeile 1022): `button_interpolate_points_2.clicked.connect(self.interpolate_raster)`
-2. Neue Methode `interpolate_raster()` (Zeilen 1835-1874): Führt Interpolation aus OHNE `super().accept()`
-3. Success-Message hinzugefügt: "Die Raster-Interpolation wurde erfolgreich abgeschlossen!"
-4. `accept()` bleibt für Rückwärtskompatibilität erhalten (deprecated)
+**Problem 2**: Settings wurden bei Cancel/Close gespeichert
+- Änderungen blieben persistent, auch wenn nicht gewünscht
+- Plugin musste neu geladen werden um "sauber" zu sein
+
+**Lösung**: Neue Methoden für besseres Dialog-Management (`i_plugin_dialog.py`)
+
+#### **1. Dialog bleibt offen nach Interpolation**
+- Button-Verbindung geändert (Zeile 1022): `button_interpolate_points_2.clicked.connect(self.interpolate_raster)`
+- Neue Methode `interpolate_raster()` (Zeilen 1835-1874): Führt Interpolation aus OHNE `super().accept()`
+- Success-Message hinzugefügt
+
+#### **2. Settings nur bei Erfolg speichern**
+- `save_settings()` verschoben: **Nach** erfolgreicher Interpolation (Zeilen 1459, 1852)
+- Vorher: Speichern vor Interpolation → Bei Fehler trotzdem gespeichert ❌
+- Nachher: Speichern nach Erfolg → Bei Fehler nicht gespeichert ✅
+
+#### **3. Neue `reject()` und `reset_to_defaults()` Methoden (Zeilen 1878-1965)**
+
+**`reset_to_defaults()` (Zeilen 1878-1944)**:
+- Löscht alle gespeicherten Settings: `settings.remove("IPlugIn")`
+- Setzt alle UI-Elemente auf Defaults zurück
+- Setzt alle Variogramm-Parameter (Linear, Spherical, Exponential, Gaussian) zurück
+- Versteckt optimierte Parameter-Gruppen
+- Loggt Aktion
+
+**`reject()` (Zeilen 1946-1965)**:
+```python
+def reject(self):
+    reply = QMessageBox.question(
+        self, 'Plugin schließen?',
+        'Alle nicht gespeicherten Änderungen gehen verloren und beim nächsten Öffnen '
+        'werden die Standard-Einstellungen wiederhergestellt.',
+        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+    )
+    if reply == QMessageBox.Yes:
+        self.reset_to_defaults()  # Löscht Settings + Reset auf Defaults
+        super().reject()
+```
 
 **Vorteile**:
 - ✅ Konsistentes Verhalten: Beide Tabs lassen Dialog offen
 - ✅ Schnellere Workflows: Mehrere Interpolationen ohne Neustart
-- ✅ Bessere UX: User behält Kontrolle über Dialog
+- ✅ Sichere Settings: Nur bei Erfolg gespeichert
+- ✅ Echter Reset: Settings werden gelöscht, nicht nur neu geladen
+- ✅ Frischer Start: Beim nächsten Öffnen sind alle Defaults wiederhergestellt
+- ✅ Kein Plugin-Reload mehr nötig
 
 ---
 
