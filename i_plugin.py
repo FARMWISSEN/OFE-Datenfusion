@@ -1809,6 +1809,93 @@ class IPlugIn:
         
         return str(output_path), output_dir
 
+    def create_layer_copy_for_interpolation(self, layer, covariate_field):
+        """Erstellt eine Kopie eines Layers für Punkt-Interpolation.
+        
+        Diese Methode erstellt eine Kopie des Ziel-Layers im point_interpolation Ordner.
+        Die Kopie wird mit einem Präfix versehen und zur Layer-Gruppe hinzugefügt.
+        
+        Args:
+            layer (QgsVectorLayer): Der zu kopierende Layer
+            covariate_field (str): Name des Kovariaten-Feldes (für Namensgebung)
+            
+        Returns:
+            QgsVectorLayer: Der kopierte Layer oder None bei Fehler
+            
+        Notes:
+            - Speichert in 'ofr_interpolation_outputs/point_interpolation/'
+            - Dateiname: INTERP_{LayerName}_{CovarField}_{timestamp}.shp
+            - Layer wird automatisch zur "OFR Interpolationen" Gruppe hinzugefügt
+            - Kopie enthält alle Features und Felder des Originals
+        """
+        try:
+            # Prüfe ob Layer gültig ist
+            if not layer or not layer.isValid():
+                self.log("Ungültiger Layer für Kopie", Qgis.Warning)
+                return None
+            
+            # Bestimme Output-Verzeichnis
+            project = QgsProject.instance()
+            project_file = project.fileName()
+            if project_file:
+                project_dir = Path(os.path.dirname(project_file))
+            else:
+                self.log(
+                    "QGIS-Projekt ist nicht gespeichert. Layer-Kopie wird im Home-Verzeichnis erstellt.",
+                    Qgis.Warning
+                )
+                project_dir = Path(os.path.expanduser("~"))
+            
+            # Erstelle point_interpolation Verzeichnis
+            output_dir = project_dir / InterpolationConfig.OUTPUT_DIR_NAME / "point_interpolation"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Generiere Dateinamen mit Timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            clean_field = ''.join(c for c in covariate_field if c.isalnum())
+            filename = f"INTERP_{layer.name()}_{clean_field}_{timestamp}.shp"
+            copy_path = output_dir / filename
+            
+            # Erstelle Kopie mit QGIS Processing
+            self.log(f"Erstelle Layer-Kopie für Interpolation: {filename}")
+            
+            params = {
+                'INPUT': layer,
+                'OUTPUT': str(copy_path)
+            }
+            
+            feedback = QgsProcessingFeedback()
+            result = processing.run("native:savefeatures", params, feedback=feedback)
+            
+            if result and 'OUTPUT' in result:
+                # Lade kopierten Layer
+                display_name = f"INTERP_{layer.name()}_{clean_field}_{timestamp}"
+                copied_layer = QgsVectorLayer(result['OUTPUT'], display_name, "ogr")
+                
+                if copied_layer.isValid():
+                    # Füge zur Layer-Gruppe hinzu
+                    group = self.get_layer_group()
+                    project.addMapLayer(copied_layer, False)
+                    group.addLayer(copied_layer)
+                    
+                    self.log(
+                        f"Layer-Kopie erfolgreich erstellt: {filename}",
+                        Qgis.Success
+                    )
+                    return copied_layer
+                else:
+                    self.log("Kopierter Layer ist ungültig", Qgis.Critical)
+                    return None
+            else:
+                self.log("Layer-Kopie konnte nicht erstellt werden", Qgis.Critical)
+                return None
+                
+        except Exception as e:
+            self.log(f"Fehler beim Erstellen der Layer-Kopie: {str(e)}", Qgis.Critical)
+            import traceback
+            self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
+            return None
+
     def create_layer_backup(self, layer, backup_suffix="_backup"):
         """Erstellt ein Backup eines Layers, falls noch nicht vorhanden.
         
@@ -2034,24 +2121,26 @@ class IPlugIn:
             if interpolated_values is None:
                 raise ValueError("Interpolation fehlgeschlagen")
         
-            # Erstelle Backup des Ziel-Layers vor Modifikation (nur beim ersten Mal)
-            backup_path, backup_created = self.create_layer_backup(target_layer)
-            if not backup_path:
-                self.log(
-                    "Warnung: Backup konnte nicht erstellt werden. Fahre trotzdem fort.",
-                    Qgis.Warning
-                )
+            # Erstelle Kopie des Ziel-Layers für Interpolation
+            copied_layer = self.create_layer_copy_for_interpolation(target_layer, covariate_field)
+            if not copied_layer:
+                raise ValueError("Layer-Kopie konnte nicht erstellt werden")
             
-            # Speichere Backup-Status für Success-Nachricht
-            params['backup_created'] = backup_created
-            params['backup_path'] = backup_path
+            # Speichere Kopie-Info für Success-Nachricht
+            params['copied_layer_name'] = copied_layer.name()
+            params['copied_layer_path'] = copied_layer.source()
         
-            # Aktualisiere Ziel-Layer mit neuem Feld
+            # Hole Features vom kopierten Layer (nicht vom Original!)
+            copied_features = []
+            for feature in copied_layer.getFeatures():
+                copied_features.append(feature)
+            
+            # Aktualisiere kopierten Layer mit neuem Feld
             # Generiere kurzen Feldnamen für Shapefile (max. 10 Zeichen)
             # Entferne Sonderzeichen und kürze wenn nötig
             clean_name = ''.join(c for c in covariate_field if c.isalnum())
             field_name = f"{clean_name[:InterpolationConfig.FIELD_NAME_TRUNCATE]}INT"
-            self.update_target_layer(target_layer, target_features, interpolated_values, field_name)
+            self.update_target_layer(copied_layer, copied_features, interpolated_values, field_name)
             
             # Speichere Metadaten für Punkt-Interpolation
             params['interpolated_points_count'] = len(interpolated_values)

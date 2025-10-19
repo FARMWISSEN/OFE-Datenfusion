@@ -1436,6 +1436,65 @@ Layers
 - ✅ Einfach ein-/auszublenden (ganze Gruppe)
 - ✅ Konsistente Struktur
 
+### ✅ Punkt-Interpolation auf Layer-Kopie statt Original (2025-10-19)
+
+**Problem**: Punkt-Interpolation modifizierte den Original-Layer
+- Original-Layer wurde direkt verändert
+- Backup wurde erstellt, aber Original trotzdem modifiziert
+- Keine Möglichkeit, mehrere Interpolationen zu vergleichen
+- Risiko von Datenverlust
+
+**Lösung**: Interpolation auf Kopie des Ziel-Layers (`i_plugin.py`)
+
+#### **Neue Methode `create_layer_copy_for_interpolation()` (Zeilen 1812-1897)**
+
+**Workflow:**
+1. **Kopie erstellen**: Ziel-Layer wird kopiert
+2. **Speichern**: In `ofr_interpolation_outputs/point_interpolation/`
+3. **Benennung**: `INTERP_{LayerName}_{CovarField}_{timestamp}.shp`
+4. **Zur Gruppe hinzufügen**: Automatisch in "OFR Interpolationen"
+5. **Interpolation**: Erfolgt auf Kopie, nicht auf Original
+
+**Vorher (`run_point_interpolation()`):**
+```python
+# Backup erstellen
+backup_path, backup_created = self.create_layer_backup(target_layer)
+
+# Original-Layer modifizieren ❌
+self.update_target_layer(target_layer, target_features, interpolated_values, field_name)
+```
+
+**Nachher (`run_point_interpolation()`, Zeilen 2124-2143):**
+```python
+# Kopie erstellen
+copied_layer = self.create_layer_copy_for_interpolation(target_layer, covariate_field)
+
+# Features vom kopierten Layer holen
+copied_features = [feature for feature in copied_layer.getFeatures()]
+
+# Kopierten Layer modifizieren ✅
+self.update_target_layer(copied_layer, copied_features, interpolated_values, field_name)
+```
+
+**Dateiname-Beispiel:**
+- `INTERP_MeinZielLayer_Temperature_20251019_1420.shp`
+
+**Success-Nachricht (`i_plugin_dialog.py`, Zeilen 1467-1477):**
+```
+Punkt-Interpolation erfolgreich abgeschlossen.
+
+Ein neuer Layer wurde erstellt: 'INTERP_MeinZielLayer_Temperature_20251019_1420'
+Der Original-Layer bleibt unverändert.
+```
+
+**Vorteile**:
+- ✅ Original-Layer bleibt unverändert
+- ✅ Mehrere Interpolationen möglich (verschiedene Parameter)
+- ✅ Einfacher Vergleich zwischen Interpolationen
+- ✅ Kein Datenverlust-Risiko
+- ✅ Kein Backup mehr nötig
+- ✅ Alle Interpolations-Layer in einem Ordner
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-19  

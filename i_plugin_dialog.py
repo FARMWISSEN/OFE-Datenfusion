@@ -1464,17 +1464,16 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     # Nur bei erfolgreicher Interpolation speichern!
                     self.save_settings()
                     
-                    # Erstelle passende Success-Nachricht basierend auf Backup-Status
-                    backup_msg = ""
-                    if params.get('backup_created'):
-                        backup_msg = "\n\nErstellung eines Backups des Ziel-Layers wurde im Projektverzeichnis unter 'i_plugin_outputs/backups/' durchgeführt."
-                    elif params.get('backup_path'):
-                        backup_msg = "\n\nEin Backup des Ziel-Layers existiert bereits im Projektverzeichnis unter 'i_plugin_outputs/backups/'."
+                    # Erstelle passende Success-Nachricht mit Layer-Kopie Info
+                    copy_msg = ""
+                    if params.get('copied_layer_name'):
+                        copy_msg = f"\n\nEin neuer Layer wurde erstellt: '{params['copied_layer_name']}'\n"
+                        copy_msg += "Der Original-Layer bleibt unverändert."
                     
                     QMessageBox.information(
                         self,
                         "Erfolg",
-                        f"Punkt-Interpolation erfolgreich abgeschlossen.{backup_msg}"
+                        f"Punkt-Interpolation erfolgreich abgeschlossen.{copy_msg}"
                     )
                     
                 except InterpolationError as e:
