@@ -411,8 +411,11 @@ class IPlugIn:
                 f"Der erstellte UTM-Layer für '{layer.name()}' ist ungültig."
             )
 
-        # Add to project and return
-        project.addMapLayer(new_layer)
+        # Add to layer group
+        group = self.get_layer_group()
+        project.addMapLayer(new_layer, False)  # False = don't add to root
+        group.addLayer(new_layer)
+        
         self.log(
             f"UTM-Layer '{display_name}' erfolgreich erstellt "
             f"(CRS: {target_crs.authid()}, Datei: {output_path.name})",

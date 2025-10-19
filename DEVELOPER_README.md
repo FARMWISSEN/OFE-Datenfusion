@@ -1337,17 +1337,17 @@ def reject(self):
 
 **Problem**: Outputs wurden in verschiedenen Ordnern gespeichert
 - UTM-Layer: Direkt im Projektverzeichnis
-- Backups: In `backups/` (außerhalb von `i_plugin_outputs`)
-- Raster-Interpolationen: In `i_plugin_outputs/raster_interpolation/`
-- Punkt-Interpolationen: In `i_plugin_outputs/point_interpolation/`
+- Backups: In `backups/` (außerhalb von `ofr_interpolation_outputs`)
+- Raster-Interpolationen: In `ofr_interpolation_outputs/raster_interpolation/`
+- Punkt-Interpolationen: In `ofr_interpolation_outputs/point_interpolation/`
 - Inkonsistente Struktur, schwer zu finden
 
-**Lösung**: Alle Outputs unter `i_plugin_outputs/` (`i_plugin.py`)
+**Lösung**: Alle Outputs unter `ofr_interpolation_outputs/` (`i_plugin.py`)
 
 #### **Neue Ordnerstruktur:**
 ```
 Projektverzeichnis/
-└── i_plugin_outputs/
+└── ofr_interpolation_outputs/
     ├── utm/                    # UTM-konvertierte Layer (Zeile 367)
     ├── backups/                # Layer-Backups (Zeile 1849)
     ├── raster_interpolation/   # Raster-Outputs (bereits vorhanden)
@@ -1358,14 +1358,14 @@ Projektverzeichnis/
 
 **1. UTM-Layer** (`convert_to_utm()`, Zeile 367):
 - Vorher: `project_dir / "UTM_LayerName.shp"`
-- Nachher: `project_dir / "i_plugin_outputs/utm/UTM_LayerName.shp"`
+- Nachher: `project_dir / "ofr_interpolation_outputs/utm/UTM_LayerName.shp"`
 
 **2. Backups** (`create_layer_backup()`, Zeile 1849):
 - Vorher: `project_dir / "backups/LayerName_backup.shp"`
-- Nachher: `project_dir / "i_plugin_outputs/backups/LayerName_backup.shp"`
+- Nachher: `project_dir / "ofr_interpolation_outputs/backups/LayerName_backup.shp"`
 
 **3. User-Nachrichten aktualisiert** (`i_plugin_dialog.py`, Zeilen 1464, 1466):
-- Backup-Pfad in Success-Message: `'i_plugin_outputs/backups/'`
+- Backup-Pfad in Success-Message: `'ofr_interpolation_outputs/backups/'`
 
 **Vorteile**:
 - ✅ Alle Plugin-Outputs an einem Ort
@@ -1382,7 +1382,7 @@ Projektverzeichnis/
 **Lösung**:
 1. **`VariogramDialog.__init__()` erweitert** (Zeile 28): Neue Parameter `layer_name`, `field_name`, `method`, `is_point_tab`
 2. **`export_plot()` angepasst** (Zeilen 147-169):
-   - Speichert in `i_plugin_outputs/raster_interpolation/` oder `i_plugin_outputs/point_interpolation/`
+   - Speichert in `ofr_interpolation_outputs/raster_interpolation/` oder `ofr_interpolation_outputs/point_interpolation/`
    - Namenskonvention: `variogram_{method}_{layer_name}_{field_name}_{timestamp}.png`
    - Gleiche Konvention wie Interpolations-Outputs
 3. **Dialog-Aufrufe aktualisiert** (`i_plugin_dialog.py`, Zeilen 985-991, 2078-2084):
@@ -1398,6 +1398,43 @@ Projektverzeichnis/
 - ✅ Variogramm-Plots bei zugehöriger Interpolation
 - ✅ Konsistente Namenskonvention
 - ✅ Einfach zuzuordnen zu Interpolations-Outputs
+
+#### **5. Alle Plugin-Layer in Layer-Gruppe organisiert** (`i_plugin.py`)
+
+**Problem**: UTM-Layer wurden direkt zum Projekt-Root hinzugefügt
+- Raster- und Vector-Layer waren in "OFR Interpolationen" Gruppe
+- UTM-Layer waren außerhalb der Gruppe
+- Inkonsistente Organisation
+
+**Lösung**: Alle vom Plugin erstellten Layer in einer Gruppe (`convert_to_utm()`, Zeile 414-417)
+
+**Vorher:**
+```python
+project.addMapLayer(new_layer)  # ❌ Direkt zum Root
+```
+
+**Nachher:**
+```python
+group = self.get_layer_group()
+project.addMapLayer(new_layer, False)  # False = nicht zum Root
+group.addLayer(new_layer)  # ✅ Zur Gruppe hinzufügen
+```
+
+**Layer-Gruppe in QGIS:**
+```
+Layers
+└── OFR Interpolationen/                # Alle Plugin-Layer hier!
+    ├── UTM_MeinLayer                   # ✅ UTM-konvertierte Layer
+    ├── UTM_MeinLayer_1
+    ├── ordinary_kriging_...            # ✅ Raster-Interpolationen
+    └── ordinary_kriging_..._points     # ✅ Vector-Layer (optional)
+```
+
+**Vorteile**:
+- ✅ Alle Plugin-Layer an einem Ort in QGIS
+- ✅ Übersichtliche Organisation
+- ✅ Einfach ein-/auszublenden (ganze Gruppe)
+- ✅ Konsistente Struktur
 
 ---
 
