@@ -23,6 +23,7 @@
 """
 
 import os
+import numpy as np
 
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets
@@ -135,7 +136,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_slope.setDecimals(3)
         
         if hasattr(self, 'doubleSpinBox_nugget'):
-            self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET_LINEAR)
             self.doubleSpinBox_nugget.setRange(
                 InterpolationConfig.DEFAULT_NUGGET_MIN,
                 InterpolationConfig.DEFAULT_NUGGET_MAX
@@ -144,7 +145,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Spherical model
         if hasattr(self, 'doubleSpinBox_sill_sph'):
-            self.doubleSpinBox_sill_sph.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_sph.setValue(InterpolationConfig.DEFAULT_SILL_SPHERICAL)
             self.doubleSpinBox_sill_sph.setRange(
                 InterpolationConfig.DEFAULT_SILL_MIN,
                 InterpolationConfig.DEFAULT_SILL_MAX
@@ -152,7 +153,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_sill_sph.setDecimals(3)
         
         if hasattr(self, 'doubleSpinBox_range_sph'):
-            self.doubleSpinBox_range_sph.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_sph.setValue(InterpolationConfig.DEFAULT_RANGE_SPHERICAL)
             self.doubleSpinBox_range_sph.setRange(
                 InterpolationConfig.DEFAULT_RANGE_MIN,
                 InterpolationConfig.DEFAULT_RANGE_MAX
@@ -160,7 +161,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_range_sph.setDecimals(2)
         
         if hasattr(self, 'doubleSpinBox_nugget_sph'):
-            self.doubleSpinBox_nugget_sph.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_sph.setValue(InterpolationConfig.DEFAULT_NUGGET_SPHERICAL)
             self.doubleSpinBox_nugget_sph.setRange(
                 InterpolationConfig.DEFAULT_NUGGET_MIN,
                 InterpolationConfig.DEFAULT_NUGGET_MAX
@@ -169,7 +170,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Exponential model
         if hasattr(self, 'doubleSpinBox_sill_exp'):
-            self.doubleSpinBox_sill_exp.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_exp.setValue(InterpolationConfig.DEFAULT_SILL_EXPONENTIAL)
             self.doubleSpinBox_sill_exp.setRange(
                 InterpolationConfig.DEFAULT_SILL_MIN,
                 InterpolationConfig.DEFAULT_SILL_MAX
@@ -177,7 +178,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_sill_exp.setDecimals(3)
         
         if hasattr(self, 'doubleSpinBox_range_exp'):
-            self.doubleSpinBox_range_exp.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_exp.setValue(InterpolationConfig.DEFAULT_RANGE_EXPONENTIAL)
             self.doubleSpinBox_range_exp.setRange(
                 InterpolationConfig.DEFAULT_RANGE_MIN,
                 InterpolationConfig.DEFAULT_RANGE_MAX
@@ -185,7 +186,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_range_exp.setDecimals(2)
         
         if hasattr(self, 'doubleSpinBox_nugget_exp'):
-            self.doubleSpinBox_nugget_exp.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_exp.setValue(InterpolationConfig.DEFAULT_NUGGET_EXPONENTIAL)
             self.doubleSpinBox_nugget_exp.setRange(
                 InterpolationConfig.DEFAULT_NUGGET_MIN,
                 InterpolationConfig.DEFAULT_NUGGET_MAX
@@ -194,7 +195,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Gaussian model
         if hasattr(self, 'doubleSpinBox_sill_gau'):
-            self.doubleSpinBox_sill_gau.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_gau.setValue(InterpolationConfig.DEFAULT_SILL_GAUSSIAN)
             self.doubleSpinBox_sill_gau.setRange(
                 InterpolationConfig.DEFAULT_SILL_MIN,
                 InterpolationConfig.DEFAULT_SILL_MAX
@@ -202,7 +203,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_sill_gau.setDecimals(3)
         
         if hasattr(self, 'doubleSpinBox_range_gau'):
-            self.doubleSpinBox_range_gau.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_gau.setValue(InterpolationConfig.DEFAULT_RANGE_GAUSSIAN)
             self.doubleSpinBox_range_gau.setRange(
                 InterpolationConfig.DEFAULT_RANGE_MIN,
                 InterpolationConfig.DEFAULT_RANGE_MAX
@@ -210,7 +211,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_range_gau.setDecimals(2)
         
         if hasattr(self, 'doubleSpinBox_nugget_gau'):
-            self.doubleSpinBox_nugget_gau.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_gau.setValue(InterpolationConfig.DEFAULT_NUGGET_GAUSSIAN)
             self.doubleSpinBox_nugget_gau.setRange(
                 InterpolationConfig.DEFAULT_NUGGET_MIN,
                 InterpolationConfig.DEFAULT_NUGGET_MAX
@@ -235,7 +236,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_slope_point.setDecimals(3)
         
         if hasattr(self, 'doubleSpinBox_nugget_lin_point'):
-            self.doubleSpinBox_nugget_lin_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_lin_point.setValue(InterpolationConfig.DEFAULT_NUGGET_LINEAR)
             self.doubleSpinBox_nugget_lin_point.setRange(
                 InterpolationConfig.DEFAULT_NUGGET_MIN,
                 InterpolationConfig.DEFAULT_NUGGET_MAX
@@ -244,7 +245,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Spherical model
         if hasattr(self, 'doubleSpinBox_sill_sph_point'):
-            self.doubleSpinBox_sill_sph_point.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_sph_point.setValue(InterpolationConfig.DEFAULT_SILL_SPHERICAL)
             self.doubleSpinBox_sill_sph_point.setRange(
                 InterpolationConfig.DEFAULT_SILL_MIN,
                 InterpolationConfig.DEFAULT_SILL_MAX
@@ -252,7 +253,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_sill_sph_point.setDecimals(3)
         
         if hasattr(self, 'doubleSpinBox_range_sph_point'):
-            self.doubleSpinBox_range_sph_point.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_sph_point.setValue(InterpolationConfig.DEFAULT_RANGE_SPHERICAL)
             self.doubleSpinBox_range_sph_point.setRange(
                 InterpolationConfig.DEFAULT_RANGE_MIN,
                 InterpolationConfig.DEFAULT_RANGE_MAX
@@ -260,7 +261,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_range_sph_point.setDecimals(2)
         
         if hasattr(self, 'doubleSpinBox_nugget_sph_point'):
-            self.doubleSpinBox_nugget_sph_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_sph_point.setValue(InterpolationConfig.DEFAULT_NUGGET_SPHERICAL)
             self.doubleSpinBox_nugget_sph_point.setRange(
                 InterpolationConfig.DEFAULT_NUGGET_MIN,
                 InterpolationConfig.DEFAULT_NUGGET_MAX
@@ -269,7 +270,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Exponential model
         if hasattr(self, 'doubleSpinBox_sill_exp_point'):
-            self.doubleSpinBox_sill_exp_point.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_exp_point.setValue(InterpolationConfig.DEFAULT_SILL_EXPONENTIAL)
             self.doubleSpinBox_sill_exp_point.setRange(
                 InterpolationConfig.DEFAULT_SILL_MIN,
                 InterpolationConfig.DEFAULT_SILL_MAX
@@ -277,7 +278,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_sill_exp_point.setDecimals(3)
         
         if hasattr(self, 'doubleSpinBox_range_exp_point'):
-            self.doubleSpinBox_range_exp_point.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_exp_point.setValue(InterpolationConfig.DEFAULT_RANGE_EXPONENTIAL)
             self.doubleSpinBox_range_exp_point.setRange(
                 InterpolationConfig.DEFAULT_RANGE_MIN,
                 InterpolationConfig.DEFAULT_RANGE_MAX
@@ -285,7 +286,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_range_exp_point.setDecimals(2)
         
         if hasattr(self, 'doubleSpinBox_nugget_exp_point'):
-            self.doubleSpinBox_nugget_exp_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_exp_point.setValue(InterpolationConfig.DEFAULT_NUGGET_EXPONENTIAL)
             self.doubleSpinBox_nugget_exp_point.setRange(
                 InterpolationConfig.DEFAULT_NUGGET_MIN,
                 InterpolationConfig.DEFAULT_NUGGET_MAX
@@ -294,7 +295,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Gaussian model
         if hasattr(self, 'doubleSpinBox_sill_gau_point'):
-            self.doubleSpinBox_sill_gau_point.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_gau_point.setValue(InterpolationConfig.DEFAULT_SILL_GAUSSIAN)
             self.doubleSpinBox_sill_gau_point.setRange(
                 InterpolationConfig.DEFAULT_SILL_MIN,
                 InterpolationConfig.DEFAULT_SILL_MAX
@@ -302,7 +303,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_sill_gau_point.setDecimals(3)
         
         if hasattr(self, 'doubleSpinBox_range_gau_point'):
-            self.doubleSpinBox_range_gau_point.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_gau_point.setValue(InterpolationConfig.DEFAULT_RANGE_GAUSSIAN)
             self.doubleSpinBox_range_gau_point.setRange(
                 InterpolationConfig.DEFAULT_RANGE_MIN,
                 InterpolationConfig.DEFAULT_RANGE_MAX
@@ -310,7 +311,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.doubleSpinBox_range_gau_point.setDecimals(2)
         
         if hasattr(self, 'doubleSpinBox_nugget_gau_point'):
-            self.doubleSpinBox_nugget_gau_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_gau_point.setValue(InterpolationConfig.DEFAULT_NUGGET_GAUSSIAN)
             self.doubleSpinBox_nugget_gau_point.setRange(
                 InterpolationConfig.DEFAULT_NUGGET_MIN,
                 InterpolationConfig.DEFAULT_NUGGET_MAX
@@ -402,14 +403,14 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.on_variogram_model_changed_point(current_model_point)
 
         # --- Optimierung: Hinzufügen-Button anbinden ---
-        if hasattr(self, 'pushButton'):
-            self.pushButton.clicked.connect(self.raster_interpolation_layer_add)
-        if hasattr(self, 'pushButton_5'):
-            self.pushButton_5.clicked.connect(self.point_interpolation_layer_add)
-        if hasattr(self, 'pushButton_4'):
-            self.pushButton_4.clicked.connect(self.target_layer_add)
-        if hasattr(self, 'pushButton_2'):
-            self.pushButton_2.clicked.connect(self.boundary_layer_add)
+        if hasattr(self, 'add_DatenLayer'):
+            self.add_DatenLayer.clicked.connect(self.raster_interpolation_layer_add)
+        if hasattr(self, 'add_CovLayer'):
+            self.add_CovLayer.clicked.connect(self.point_interpolation_layer_add)
+        if hasattr(self, 'add_ZielLayer'):
+            self.add_ZielLayer.clicked.connect(self.target_layer_add)
+        if hasattr(self, 'add_GrenzLayer'):
+            self.add_GrenzLayer.clicked.connect(self.boundary_layer_add)
 
     def create_optimized_parameter_labels_raster(self):
         """Create labels to display optimized variogram parameters for raster tab."""
@@ -584,6 +585,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             field_combo=self.mFieldComboBox,
             layer_type_name="Raster-Input"
         )
+        
+        # Calculate and set data-based initial values for raster interpolation
+        self._calculate_and_set_initial_values_raster()
 
     def point_interpolation_layer_add(self):
         """Validiert den Kovariaten-Layer und Feld für Punkt-Interpolation."""
@@ -592,6 +596,326 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             field_combo=self.mFieldComboBox_covariate,
             layer_type_name="Kovariaten"
         )
+        
+        # Calculate and set data-based initial values for point interpolation
+        self._calculate_and_set_initial_values_point()
+    
+    def _calculate_initial_variogram_parameters(self, layer, field_name):
+        """Calculate initial variogram parameters from layer data.
+        
+        Args:
+            layer: QgsVectorLayer with point data
+            field_name: Name of the field to analyze
+            
+        Returns:
+            dict: Calculated parameters for all models:
+                {
+                    'variance': float,  # Variance of field values
+                    'bbox_diagonal': float,  # Bounding box diagonal
+                    'linear': {'slope': float, 'nugget': float},
+                    'spherical': {'sill': float, 'range': float, 'nugget': float},
+                    'exponential': {'sill': float, 'range': float, 'nugget': float},
+                    'gaussian': {'sill': float, 'range': float, 'nugget': float}
+                }
+        """
+        try:
+            # Extract field values and coordinates
+            values = []
+            coords = []
+            
+            for feature in layer.getFeatures():
+                geom = feature.geometry()
+                if geom and not geom.isNull():
+                    point = geom.asPoint()
+                    value = feature[field_name]
+                    
+                    # Skip NULL values
+                    if value is not None:
+                        try:
+                            values.append(float(value))
+                            coords.append((point.x(), point.y()))
+                        except (ValueError, TypeError):
+                            continue
+            
+            if len(values) < 3:
+                QgsMessageLog.logMessage(
+                    f"Not enough valid data points ({len(values)}) for parameter calculation",
+                    "I-PlugIn",
+                    Qgis.Warning
+                )
+                return None
+            
+            # Convert to numpy arrays
+            z = np.array(values)
+            xy = np.array(coords)
+            
+            # Calculate variance
+            variance = np.var(z)
+            
+            if variance == 0:
+                QgsMessageLog.logMessage(
+                    "Variance is zero - cannot calculate meaningful parameters",
+                    "I-PlugIn",
+                    Qgis.Warning
+                )
+                return None
+            
+            # Calculate bounding box diagonal
+            x_min, x_max = xy[:, 0].min(), xy[:, 0].max()
+            y_min, y_max = xy[:, 1].min(), xy[:, 1].max()
+            bbox_diagonal = np.sqrt((x_max - x_min)**2 + (y_max - y_min)**2)
+            
+            if bbox_diagonal == 0:
+                QgsMessageLog.logMessage(
+                    "Bounding box diagonal is zero - all points at same location",
+                    "I-PlugIn",
+                    Qgis.Warning
+                )
+                return None
+            
+            # Calculate base parameters
+            # Partial Sill: C = 0.9 * Var(z)
+            partial_sill = 0.9 * variance
+            
+            # Nugget: C0 = 0.1 * Var(z)
+            nugget = 0.1 * variance
+            
+            # Base range: rp = 0.5 * bbox_diagonal
+            base_range = 0.5 * bbox_diagonal
+            
+            # Calculate model-specific parameters
+            result = {
+                'variance': variance,
+                'bbox_diagonal': bbox_diagonal,
+                'linear': {
+                    'slope': partial_sill / base_range,  # slope = C / rp
+                    'nugget': nugget
+                },
+                'spherical': {
+                    'sill': partial_sill,
+                    'range': base_range,  # rp
+                    'nugget': nugget
+                },
+                'exponential': {
+                    'sill': partial_sill,
+                    'range': base_range / 3.0,  # rp / 3
+                    'nugget': nugget
+                },
+                'gaussian': {
+                    'sill': partial_sill,
+                    'range': base_range / 1.73,  # rp / 1.73
+                    'nugget': nugget
+                }
+            }
+            
+            QgsMessageLog.logMessage(
+                f"Calculated initial parameters: Var={variance:.3f}, BBox_diag={bbox_diagonal:.2f}, "
+                f"C={partial_sill:.3f}, C0={nugget:.3f}, rp={base_range:.2f}",
+                "I-PlugIn",
+                Qgis.Info
+            )
+            
+            return result
+            
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Error calculating initial parameters: {str(e)}",
+                "I-PlugIn",
+                Qgis.Critical
+            )
+            return None
+    
+    def _calculate_and_set_initial_values_raster(self):
+        """Calculate and set data-based initial values for all variogram models (Raster tab).
+        
+        This method is triggered when a layer is added via the add button.
+        It calculates appropriate initial values based on the selected layer's data
+        and sets them for all variogram models (Linear, Spherical, Exponential, Gaussian).
+        """
+        try:
+            # Get current layer and field
+            layer = self.mMapLayerComboBox.currentLayer()
+            field = self.mFieldComboBox.currentField()
+            
+            if not layer or not field:
+                QgsMessageLog.logMessage(
+                    "No layer or field selected for initial value calculation",
+                    "I-PlugIn",
+                    Qgis.Info
+                )
+                return
+            
+            # Calculate parameters from layer data
+            calculated_values = self._calculate_initial_variogram_parameters(layer, field)
+            
+            # If calculation failed, use default values as fallback
+            if calculated_values is None:
+                QgsMessageLog.logMessage(
+                    "Using default values as fallback",
+                    "I-PlugIn",
+                    Qgis.Info
+                )
+                calculated_values = {
+                    'linear': {
+                        'slope': InterpolationConfig.DEFAULT_SLOPE,
+                        'nugget': InterpolationConfig.DEFAULT_NUGGET_LINEAR
+                    },
+                    'spherical': {
+                        'sill': InterpolationConfig.DEFAULT_SILL_SPHERICAL,
+                        'range': InterpolationConfig.DEFAULT_RANGE_SPHERICAL,
+                        'nugget': InterpolationConfig.DEFAULT_NUGGET_SPHERICAL
+                    },
+                    'exponential': {
+                        'sill': InterpolationConfig.DEFAULT_SILL_EXPONENTIAL,
+                        'range': InterpolationConfig.DEFAULT_RANGE_EXPONENTIAL,
+                        'nugget': InterpolationConfig.DEFAULT_NUGGET_EXPONENTIAL
+                    },
+                    'gaussian': {
+                        'sill': InterpolationConfig.DEFAULT_SILL_GAUSSIAN,
+                        'range': InterpolationConfig.DEFAULT_RANGE_GAUSSIAN,
+                        'nugget': InterpolationConfig.DEFAULT_NUGGET_GAUSSIAN
+                    }
+                }
+            
+            # Set calculated values to all model widgets
+            # Linear model
+            if hasattr(self, 'doubleSpinBox_slope'):
+                self.doubleSpinBox_slope.setValue(calculated_values['linear']['slope'])
+            if hasattr(self, 'doubleSpinBox_nugget'):
+                self.doubleSpinBox_nugget.setValue(calculated_values['linear']['nugget'])
+            
+            # Spherical model
+            if hasattr(self, 'doubleSpinBox_sill_sph'):
+                self.doubleSpinBox_sill_sph.setValue(calculated_values['spherical']['sill'])
+            if hasattr(self, 'doubleSpinBox_range_sph'):
+                self.doubleSpinBox_range_sph.setValue(calculated_values['spherical']['range'])
+            if hasattr(self, 'doubleSpinBox_nugget_sph'):
+                self.doubleSpinBox_nugget_sph.setValue(calculated_values['spherical']['nugget'])
+            
+            # Exponential model
+            if hasattr(self, 'doubleSpinBox_sill_exp'):
+                self.doubleSpinBox_sill_exp.setValue(calculated_values['exponential']['sill'])
+            if hasattr(self, 'doubleSpinBox_range_exp'):
+                self.doubleSpinBox_range_exp.setValue(calculated_values['exponential']['range'])
+            if hasattr(self, 'doubleSpinBox_nugget_exp'):
+                self.doubleSpinBox_nugget_exp.setValue(calculated_values['exponential']['nugget'])
+            
+            # Gaussian model
+            if hasattr(self, 'doubleSpinBox_sill_gau'):
+                self.doubleSpinBox_sill_gau.setValue(calculated_values['gaussian']['sill'])
+            if hasattr(self, 'doubleSpinBox_range_gau'):
+                self.doubleSpinBox_range_gau.setValue(calculated_values['gaussian']['range'])
+            if hasattr(self, 'doubleSpinBox_nugget_gau'):
+                self.doubleSpinBox_nugget_gau.setValue(calculated_values['gaussian']['nugget'])
+            
+            QgsMessageLog.logMessage(
+                f"Initial values calculated and set for layer '{layer.name()}', field '{field}'",
+                "I-PlugIn",
+                Qgis.Info
+            )
+            
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Failed to calculate initial values: {str(e)}",
+                "I-PlugIn",
+                Qgis.Warning
+            )
+    
+    def _calculate_and_set_initial_values_point(self):
+        """Calculate and set data-based initial values for all variogram models (Point tab).
+        
+        This method is triggered when a layer is added via the add button.
+        It calculates appropriate initial values based on the selected layer's data
+        and sets them for all variogram models (Linear, Spherical, Exponential, Gaussian).
+        """
+        try:
+            # Get current layer and field
+            layer = self.mMapLayerComboBox_covariate_point.currentLayer()
+            field = self.mFieldComboBox_covariate.currentField()
+            
+            if not layer or not field:
+                QgsMessageLog.logMessage(
+                    "No layer or field selected for initial value calculation (point tab)",
+                    "I-PlugIn",
+                    Qgis.Info
+                )
+                return
+            
+            # Calculate parameters from layer data
+            calculated_values = self._calculate_initial_variogram_parameters(layer, field)
+            
+            # If calculation failed, use default values as fallback
+            if calculated_values is None:
+                QgsMessageLog.logMessage(
+                    "Using default values as fallback (point tab)",
+                    "I-PlugIn",
+                    Qgis.Info
+                )
+                calculated_values = {
+                    'linear': {
+                        'slope': InterpolationConfig.DEFAULT_SLOPE,
+                        'nugget': InterpolationConfig.DEFAULT_NUGGET_LINEAR
+                    },
+                    'spherical': {
+                        'sill': InterpolationConfig.DEFAULT_SILL_SPHERICAL,
+                        'range': InterpolationConfig.DEFAULT_RANGE_SPHERICAL,
+                        'nugget': InterpolationConfig.DEFAULT_NUGGET_SPHERICAL
+                    },
+                    'exponential': {
+                        'sill': InterpolationConfig.DEFAULT_SILL_EXPONENTIAL,
+                        'range': InterpolationConfig.DEFAULT_RANGE_EXPONENTIAL,
+                        'nugget': InterpolationConfig.DEFAULT_NUGGET_EXPONENTIAL
+                    },
+                    'gaussian': {
+                        'sill': InterpolationConfig.DEFAULT_SILL_GAUSSIAN,
+                        'range': InterpolationConfig.DEFAULT_RANGE_GAUSSIAN,
+                        'nugget': InterpolationConfig.DEFAULT_NUGGET_GAUSSIAN
+                    }
+                }
+            
+            # Set calculated values to all model widgets (point tab)
+            # Linear model
+            if hasattr(self, 'doubleSpinBox_slope_point'):
+                self.doubleSpinBox_slope_point.setValue(calculated_values['linear']['slope'])
+            if hasattr(self, 'doubleSpinBox_nugget_lin_point'):
+                self.doubleSpinBox_nugget_lin_point.setValue(calculated_values['linear']['nugget'])
+            
+            # Spherical model
+            if hasattr(self, 'doubleSpinBox_sill_sph_point'):
+                self.doubleSpinBox_sill_sph_point.setValue(calculated_values['spherical']['sill'])
+            if hasattr(self, 'doubleSpinBox_range_sph_point'):
+                self.doubleSpinBox_range_sph_point.setValue(calculated_values['spherical']['range'])
+            if hasattr(self, 'doubleSpinBox_nugget_sph_point'):
+                self.doubleSpinBox_nugget_sph_point.setValue(calculated_values['spherical']['nugget'])
+            
+            # Exponential model
+            if hasattr(self, 'doubleSpinBox_sill_exp_point'):
+                self.doubleSpinBox_sill_exp_point.setValue(calculated_values['exponential']['sill'])
+            if hasattr(self, 'doubleSpinBox_range_exp_point'):
+                self.doubleSpinBox_range_exp_point.setValue(calculated_values['exponential']['range'])
+            if hasattr(self, 'doubleSpinBox_nugget_exp_point'):
+                self.doubleSpinBox_nugget_exp_point.setValue(calculated_values['exponential']['nugget'])
+            
+            # Gaussian model
+            if hasattr(self, 'doubleSpinBox_sill_gau_point'):
+                self.doubleSpinBox_sill_gau_point.setValue(calculated_values['gaussian']['sill'])
+            if hasattr(self, 'doubleSpinBox_range_gau_point'):
+                self.doubleSpinBox_range_gau_point.setValue(calculated_values['gaussian']['range'])
+            if hasattr(self, 'doubleSpinBox_nugget_gau_point'):
+                self.doubleSpinBox_nugget_gau_point.setValue(calculated_values['gaussian']['nugget'])
+            
+            QgsMessageLog.logMessage(
+                f"Initial values calculated and set for layer '{layer.name()}', field '{field}' (point tab)",
+                "I-PlugIn",
+                Qgis.Info
+            )
+            
+        except Exception as e:
+            QgsMessageLog.logMessage(
+                f"Failed to calculate initial values (point tab): {str(e)}",
+                "I-PlugIn",
+                Qgis.Warning
+            )
 
     def show_variogram_analysis_points(self):
         """Show variogram analysis dialog with current parameters for point interpolation."""

@@ -112,23 +112,46 @@ class InterpolationConfig:
     # Datenvalidierung
     ZERO_VALUE_WARNING_THRESHOLD = 90  # Prozent - Warnung wenn mehr als X% Null-Werte
     
-    # UI-Defaults
+    # UI-Defaults (allgemein)
     DEFAULT_CELL_SIZE = 10.0
     DEFAULT_CELL_SIZE_MIN = 0.1
     DEFAULT_CELL_SIZE_MAX = 10000.0
-    DEFAULT_SILL = 0.1
+    DEFAULT_NLAGS = 15
+    
+    # Variogramm-Parameter: Gemeinsame Min/Max-Werte
     DEFAULT_SILL_MIN = 0.0
     DEFAULT_SILL_MAX = 10000.0
-    DEFAULT_RANGE = 100.0
     DEFAULT_RANGE_MIN = 0.1
     DEFAULT_RANGE_MAX = 10000.0
-    DEFAULT_NUGGET = 0.0
     DEFAULT_NUGGET_MIN = 0.0
     DEFAULT_NUGGET_MAX = 10000.0
-    DEFAULT_SLOPE = 0.001  # Slope für Linear-Variogramm (Semivarianz pro Distanzeinheit)
     DEFAULT_SLOPE_MIN = 0.0
     DEFAULT_SLOPE_MAX = 1.0
-    DEFAULT_NLAGS = 15
+    
+    # Variogramm-Parameter: Modellspezifische Defaults
+    # Linear-Modell
+    DEFAULT_SLOPE = 0.001  # Slope für Linear-Variogramm (Semivarianz pro Distanzeinheit)
+    DEFAULT_NUGGET_LINEAR = 0.0
+    
+    # Spherical-Modell (klassisches Modell, mittlere Werte)
+    DEFAULT_SILL_SPHERICAL = 1.0
+    DEFAULT_RANGE_SPHERICAL = 100.0
+    DEFAULT_NUGGET_SPHERICAL = 0.0
+    
+    # Exponential-Modell (oft größerer Range)
+    DEFAULT_SILL_EXPONENTIAL = 1.0
+    DEFAULT_RANGE_EXPONENTIAL = 150.0
+    DEFAULT_NUGGET_EXPONENTIAL = 0.0
+    
+    # Gaussian-Modell (glatte Übergänge, kleinerer Range)
+    DEFAULT_SILL_GAUSSIAN = 1.0
+    DEFAULT_RANGE_GAUSSIAN = 80.0
+    DEFAULT_NUGGET_GAUSSIAN = 0.0
+    
+    # Legacy defaults (für Rückwärtskompatibilität)
+    DEFAULT_SILL = DEFAULT_SILL_SPHERICAL
+    DEFAULT_RANGE = DEFAULT_RANGE_SPHERICAL
+    DEFAULT_NUGGET = DEFAULT_NUGGET_SPHERICAL
     
     # Output-Verzeichnisse
     OUTPUT_DIR_NAME = "i_plugin_outputs"
