@@ -124,26 +124,98 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         )
         self.doubleSpinBox_cellsize.setDecimals(2)
         
-        self.doubleSpinBox_sill.setValue(InterpolationConfig.DEFAULT_SILL)
-        self.doubleSpinBox_sill.setRange(
-            InterpolationConfig.DEFAULT_SILL_MIN, 
-            InterpolationConfig.DEFAULT_SILL_MAX
-        )
-        self.doubleSpinBox_sill.setDecimals(3)
+        # Initialize Raster tab variogram parameters for all models
+        # Linear model
+        if hasattr(self, 'doubleSpinBox_slope'):
+            self.doubleSpinBox_slope.setValue(InterpolationConfig.DEFAULT_SLOPE)
+            self.doubleSpinBox_slope.setRange(
+                InterpolationConfig.DEFAULT_SLOPE_MIN,
+                InterpolationConfig.DEFAULT_SLOPE_MAX
+            )
+            self.doubleSpinBox_slope.setDecimals(3)
         
-        self.doubleSpinBox_range.setValue(InterpolationConfig.DEFAULT_RANGE)
-        self.doubleSpinBox_range.setRange(
-            InterpolationConfig.DEFAULT_RANGE_MIN, 
-            InterpolationConfig.DEFAULT_RANGE_MAX
-        )
-        self.doubleSpinBox_range.setDecimals(2)
+        if hasattr(self, 'doubleSpinBox_nugget'):
+            self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget.setRange(
+                InterpolationConfig.DEFAULT_NUGGET_MIN,
+                InterpolationConfig.DEFAULT_NUGGET_MAX
+            )
+            self.doubleSpinBox_nugget.setDecimals(3)
         
-        self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET)
-        self.doubleSpinBox_nugget.setRange(
-            InterpolationConfig.DEFAULT_NUGGET_MIN, 
-            InterpolationConfig.DEFAULT_NUGGET_MAX
-        )
-        self.doubleSpinBox_nugget.setDecimals(3)
+        # Spherical model
+        if hasattr(self, 'doubleSpinBox_sill_sph'):
+            self.doubleSpinBox_sill_sph.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_sph.setRange(
+                InterpolationConfig.DEFAULT_SILL_MIN,
+                InterpolationConfig.DEFAULT_SILL_MAX
+            )
+            self.doubleSpinBox_sill_sph.setDecimals(3)
+        
+        if hasattr(self, 'doubleSpinBox_range_sph'):
+            self.doubleSpinBox_range_sph.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_sph.setRange(
+                InterpolationConfig.DEFAULT_RANGE_MIN,
+                InterpolationConfig.DEFAULT_RANGE_MAX
+            )
+            self.doubleSpinBox_range_sph.setDecimals(2)
+        
+        if hasattr(self, 'doubleSpinBox_nugget_sph'):
+            self.doubleSpinBox_nugget_sph.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_sph.setRange(
+                InterpolationConfig.DEFAULT_NUGGET_MIN,
+                InterpolationConfig.DEFAULT_NUGGET_MAX
+            )
+            self.doubleSpinBox_nugget_sph.setDecimals(3)
+        
+        # Exponential model
+        if hasattr(self, 'doubleSpinBox_sill_exp'):
+            self.doubleSpinBox_sill_exp.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_exp.setRange(
+                InterpolationConfig.DEFAULT_SILL_MIN,
+                InterpolationConfig.DEFAULT_SILL_MAX
+            )
+            self.doubleSpinBox_sill_exp.setDecimals(3)
+        
+        if hasattr(self, 'doubleSpinBox_range_exp'):
+            self.doubleSpinBox_range_exp.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_exp.setRange(
+                InterpolationConfig.DEFAULT_RANGE_MIN,
+                InterpolationConfig.DEFAULT_RANGE_MAX
+            )
+            self.doubleSpinBox_range_exp.setDecimals(2)
+        
+        if hasattr(self, 'doubleSpinBox_nugget_exp'):
+            self.doubleSpinBox_nugget_exp.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_exp.setRange(
+                InterpolationConfig.DEFAULT_NUGGET_MIN,
+                InterpolationConfig.DEFAULT_NUGGET_MAX
+            )
+            self.doubleSpinBox_nugget_exp.setDecimals(3)
+        
+        # Gaussian model
+        if hasattr(self, 'doubleSpinBox_sill_gau'):
+            self.doubleSpinBox_sill_gau.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_gau.setRange(
+                InterpolationConfig.DEFAULT_SILL_MIN,
+                InterpolationConfig.DEFAULT_SILL_MAX
+            )
+            self.doubleSpinBox_sill_gau.setDecimals(3)
+        
+        if hasattr(self, 'doubleSpinBox_range_gau'):
+            self.doubleSpinBox_range_gau.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_gau.setRange(
+                InterpolationConfig.DEFAULT_RANGE_MIN,
+                InterpolationConfig.DEFAULT_RANGE_MAX
+            )
+            self.doubleSpinBox_range_gau.setDecimals(2)
+        
+        if hasattr(self, 'doubleSpinBox_nugget_gau'):
+            self.doubleSpinBox_nugget_gau.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_gau.setRange(
+                InterpolationConfig.DEFAULT_NUGGET_MIN,
+                InterpolationConfig.DEFAULT_NUGGET_MAX
+            )
+            self.doubleSpinBox_nugget_gau.setDecimals(3)
         
         # Setup lags spinbox (Raster tab)
         self.spinBox_lags.setValue(InterpolationConfig.DEFAULT_NLAGS)
@@ -152,30 +224,98 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             InterpolationConfig.MAX_LAGS
         )
         
-        # Setup point interpolation tab parameters
-        if hasattr(self, 'doubleSpinBox_sill_point'):
-            self.doubleSpinBox_sill_point.setValue(InterpolationConfig.DEFAULT_SILL)
-            self.doubleSpinBox_sill_point.setRange(
-                InterpolationConfig.DEFAULT_SILL_MIN, 
-                InterpolationConfig.DEFAULT_SILL_MAX
+        # Setup point interpolation tab parameters for all models
+        # Linear model
+        if hasattr(self, 'doubleSpinBox_slope_point'):
+            self.doubleSpinBox_slope_point.setValue(InterpolationConfig.DEFAULT_SLOPE)
+            self.doubleSpinBox_slope_point.setRange(
+                InterpolationConfig.DEFAULT_SLOPE_MIN,
+                InterpolationConfig.DEFAULT_SLOPE_MAX
             )
-            self.doubleSpinBox_sill_point.setDecimals(3)
+            self.doubleSpinBox_slope_point.setDecimals(3)
         
-        if hasattr(self, 'doubleSpinBox_range_point'):
-            self.doubleSpinBox_range_point.setValue(InterpolationConfig.DEFAULT_RANGE)
-            self.doubleSpinBox_range_point.setRange(
-                InterpolationConfig.DEFAULT_RANGE_MIN, 
-                InterpolationConfig.DEFAULT_RANGE_MAX
-            )
-            self.doubleSpinBox_range_point.setDecimals(2)
-        
-        if hasattr(self, 'doubleSpinBox_nugget_point'):
-            self.doubleSpinBox_nugget_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
-            self.doubleSpinBox_nugget_point.setRange(
-                InterpolationConfig.DEFAULT_NUGGET_MIN, 
+        if hasattr(self, 'doubleSpinBox_nugget_lin_point'):
+            self.doubleSpinBox_nugget_lin_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_lin_point.setRange(
+                InterpolationConfig.DEFAULT_NUGGET_MIN,
                 InterpolationConfig.DEFAULT_NUGGET_MAX
             )
-            self.doubleSpinBox_nugget_point.setDecimals(3)
+            self.doubleSpinBox_nugget_lin_point.setDecimals(3)
+        
+        # Spherical model
+        if hasattr(self, 'doubleSpinBox_sill_sph_point'):
+            self.doubleSpinBox_sill_sph_point.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_sph_point.setRange(
+                InterpolationConfig.DEFAULT_SILL_MIN,
+                InterpolationConfig.DEFAULT_SILL_MAX
+            )
+            self.doubleSpinBox_sill_sph_point.setDecimals(3)
+        
+        if hasattr(self, 'doubleSpinBox_range_sph_point'):
+            self.doubleSpinBox_range_sph_point.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_sph_point.setRange(
+                InterpolationConfig.DEFAULT_RANGE_MIN,
+                InterpolationConfig.DEFAULT_RANGE_MAX
+            )
+            self.doubleSpinBox_range_sph_point.setDecimals(2)
+        
+        if hasattr(self, 'doubleSpinBox_nugget_sph_point'):
+            self.doubleSpinBox_nugget_sph_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_sph_point.setRange(
+                InterpolationConfig.DEFAULT_NUGGET_MIN,
+                InterpolationConfig.DEFAULT_NUGGET_MAX
+            )
+            self.doubleSpinBox_nugget_sph_point.setDecimals(3)
+        
+        # Exponential model
+        if hasattr(self, 'doubleSpinBox_sill_exp_point'):
+            self.doubleSpinBox_sill_exp_point.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_exp_point.setRange(
+                InterpolationConfig.DEFAULT_SILL_MIN,
+                InterpolationConfig.DEFAULT_SILL_MAX
+            )
+            self.doubleSpinBox_sill_exp_point.setDecimals(3)
+        
+        if hasattr(self, 'doubleSpinBox_range_exp_point'):
+            self.doubleSpinBox_range_exp_point.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_exp_point.setRange(
+                InterpolationConfig.DEFAULT_RANGE_MIN,
+                InterpolationConfig.DEFAULT_RANGE_MAX
+            )
+            self.doubleSpinBox_range_exp_point.setDecimals(2)
+        
+        if hasattr(self, 'doubleSpinBox_nugget_exp_point'):
+            self.doubleSpinBox_nugget_exp_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_exp_point.setRange(
+                InterpolationConfig.DEFAULT_NUGGET_MIN,
+                InterpolationConfig.DEFAULT_NUGGET_MAX
+            )
+            self.doubleSpinBox_nugget_exp_point.setDecimals(3)
+        
+        # Gaussian model
+        if hasattr(self, 'doubleSpinBox_sill_gau_point'):
+            self.doubleSpinBox_sill_gau_point.setValue(InterpolationConfig.DEFAULT_SILL)
+            self.doubleSpinBox_sill_gau_point.setRange(
+                InterpolationConfig.DEFAULT_SILL_MIN,
+                InterpolationConfig.DEFAULT_SILL_MAX
+            )
+            self.doubleSpinBox_sill_gau_point.setDecimals(3)
+        
+        if hasattr(self, 'doubleSpinBox_range_gau_point'):
+            self.doubleSpinBox_range_gau_point.setValue(InterpolationConfig.DEFAULT_RANGE)
+            self.doubleSpinBox_range_gau_point.setRange(
+                InterpolationConfig.DEFAULT_RANGE_MIN,
+                InterpolationConfig.DEFAULT_RANGE_MAX
+            )
+            self.doubleSpinBox_range_gau_point.setDecimals(2)
+        
+        if hasattr(self, 'doubleSpinBox_nugget_gau_point'):
+            self.doubleSpinBox_nugget_gau_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
+            self.doubleSpinBox_nugget_gau_point.setRange(
+                InterpolationConfig.DEFAULT_NUGGET_MIN,
+                InterpolationConfig.DEFAULT_NUGGET_MAX
+            )
+            self.doubleSpinBox_nugget_gau_point.setDecimals(3)
         
         if hasattr(self, 'spinBox_lags_point'):
             self.spinBox_lags_point.setValue(InterpolationConfig.DEFAULT_NLAGS)
@@ -201,6 +341,13 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         if hasattr(self, 'stackedWidget_method_params_point'):
             self.stackedWidget_method_params_point.setCurrentIndex(0)
+        
+        # Initialize variogram parameter stacked widgets to show Linear parameters (index 0)
+        if hasattr(self, 'StartwerteVariogramModel'):
+            self.StartwerteVariogramModel.setCurrentIndex(0)
+        
+        if hasattr(self, 'StartwerteVariogramModel_point'):
+            self.StartwerteVariogramModel_point.setCurrentIndex(0)
         
         # Load saved settings
         self.load_settings()
@@ -571,15 +718,67 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.comboBox_variogram_point.currentTextChanged.connect(self.on_variogram_model_changed_point)
         self.spinBox_lags_point.valueChanged.connect(self.update_ui_state)
         
-        # Connect numeric input validation for raster tab
-        self.doubleSpinBox_nugget.valueChanged.connect(self.validate_variogram_parameters)
-        self.doubleSpinBox_sill.valueChanged.connect(self.validate_variogram_parameters)
-        self.doubleSpinBox_range.valueChanged.connect(self.validate_variogram_parameters)
+        # Connect numeric input validation for raster tab - all variogram model widgets
+        # Linear model
+        if hasattr(self, 'doubleSpinBox_slope'):
+            self.doubleSpinBox_slope.valueChanged.connect(self.validate_variogram_parameters)
+        if hasattr(self, 'doubleSpinBox_nugget'):
+            self.doubleSpinBox_nugget.valueChanged.connect(self.validate_variogram_parameters)
         
-        # Connect numeric input validation for point tab
-        self.doubleSpinBox_nugget_point.valueChanged.connect(self.validate_variogram_parameters_point)
-        self.doubleSpinBox_sill_point.valueChanged.connect(self.validate_variogram_parameters_point)
-        self.doubleSpinBox_range_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        # Spherical model
+        if hasattr(self, 'doubleSpinBox_sill_sph'):
+            self.doubleSpinBox_sill_sph.valueChanged.connect(self.validate_variogram_parameters)
+        if hasattr(self, 'doubleSpinBox_range_sph'):
+            self.doubleSpinBox_range_sph.valueChanged.connect(self.validate_variogram_parameters)
+        if hasattr(self, 'doubleSpinBox_nugget_sph'):
+            self.doubleSpinBox_nugget_sph.valueChanged.connect(self.validate_variogram_parameters)
+        
+        # Exponential model
+        if hasattr(self, 'doubleSpinBox_sill_exp'):
+            self.doubleSpinBox_sill_exp.valueChanged.connect(self.validate_variogram_parameters)
+        if hasattr(self, 'doubleSpinBox_range_exp'):
+            self.doubleSpinBox_range_exp.valueChanged.connect(self.validate_variogram_parameters)
+        if hasattr(self, 'doubleSpinBox_nugget_exp'):
+            self.doubleSpinBox_nugget_exp.valueChanged.connect(self.validate_variogram_parameters)
+        
+        # Gaussian model
+        if hasattr(self, 'doubleSpinBox_sill_gau'):
+            self.doubleSpinBox_sill_gau.valueChanged.connect(self.validate_variogram_parameters)
+        if hasattr(self, 'doubleSpinBox_range_gau'):
+            self.doubleSpinBox_range_gau.valueChanged.connect(self.validate_variogram_parameters)
+        if hasattr(self, 'doubleSpinBox_nugget_gau'):
+            self.doubleSpinBox_nugget_gau.valueChanged.connect(self.validate_variogram_parameters)
+        
+        # Connect numeric input validation for point tab - all variogram model widgets
+        # Linear model
+        if hasattr(self, 'doubleSpinBox_slope_point'):
+            self.doubleSpinBox_slope_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        if hasattr(self, 'doubleSpinBox_nugget_lin_point'):
+            self.doubleSpinBox_nugget_lin_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        
+        # Spherical model
+        if hasattr(self, 'doubleSpinBox_sill_sph_point'):
+            self.doubleSpinBox_sill_sph_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        if hasattr(self, 'doubleSpinBox_range_sph_point'):
+            self.doubleSpinBox_range_sph_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        if hasattr(self, 'doubleSpinBox_nugget_sph_point'):
+            self.doubleSpinBox_nugget_sph_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        
+        # Exponential model
+        if hasattr(self, 'doubleSpinBox_sill_exp_point'):
+            self.doubleSpinBox_sill_exp_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        if hasattr(self, 'doubleSpinBox_range_exp_point'):
+            self.doubleSpinBox_range_exp_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        if hasattr(self, 'doubleSpinBox_nugget_exp_point'):
+            self.doubleSpinBox_nugget_exp_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        
+        # Gaussian model
+        if hasattr(self, 'doubleSpinBox_sill_gau_point'):
+            self.doubleSpinBox_sill_gau_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        if hasattr(self, 'doubleSpinBox_range_gau_point'):
+            self.doubleSpinBox_range_gau_point.valueChanged.connect(self.validate_variogram_parameters_point)
+        if hasattr(self, 'doubleSpinBox_nugget_gau_point'):
+            self.doubleSpinBox_nugget_gau_point.valueChanged.connect(self.validate_variogram_parameters_point)
 
     def on_layer_changed(self, layer):
         """Handle layer change in the main data combobox."""
@@ -656,29 +855,25 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
     def on_variogram_model_changed_raster(self, model_name):
         """Handle variogram model change for raster tab.
         
-        Shows/hides the range parameter based on the selected variogram model.
-        Linear models don't have a range parameter (unbounded growth).
+        Switches the visible parameter widget in the stacked widget based on
+        the selected variogram model. Each model has its own parameter page.
         
         Args:
             model_name (str): Name of the selected variogram model
         """
-        is_linear = (model_name == "Linear")
+        if not hasattr(self, 'StartwerteVariogramModel'):
+            return
+            
+        # Get the index for this variogram model
+        from .config import VariogramModel
+        model_index = VariogramModel.get_model_index(model_name)
         
-        # Hide range parameter for Linear model (input parameters)
-        if hasattr(self, 'label_range_3'):
-            self.label_range_3.setVisible(not is_linear)
-        if hasattr(self, 'doubleSpinBox_range'):
-            self.doubleSpinBox_range.setVisible(not is_linear)
-        
-        # Hide range parameter in optimized parameters display
-        if hasattr(self, 'label_optimized_range_label_raster'):
-            self.label_optimized_range_label_raster.setVisible(not is_linear)
-        if hasattr(self, 'label_optimized_range_raster'):
-            self.label_optimized_range_raster.setVisible(not is_linear)
+        # Switch to the corresponding parameter page
+        self.StartwerteVariogramModel.setCurrentIndex(model_index)
         
         # Log the change
         QgsMessageLog.logMessage(
-            f"Raster tab: Range parameter {'hidden' if is_linear else 'visible'} for model '{model_name}'",
+            f"Raster tab: Switched to parameter page {model_index} for variogram model '{model_name}'",
             "I-PlugIn",
             Qgis.Info
         )
@@ -686,44 +881,134 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
     def on_variogram_model_changed_point(self, model_name):
         """Handle variogram model change for point tab.
         
-        Shows/hides the range parameter based on the selected variogram model.
-        Linear models don't have a range parameter (unbounded growth).
+        Switches the visible parameter widget in the stacked widget based on
+        the selected variogram model. Each model has its own parameter page.
         
         Args:
             model_name (str): Name of the selected variogram model
         """
-        is_linear = (model_name == "Linear")
+        if not hasattr(self, 'StartwerteVariogramModel_point'):
+            return
+            
+        # Get the index for this variogram model
+        from .config import VariogramModel
+        model_index = VariogramModel.get_model_index(model_name)
         
-        # Hide range parameter for Linear model (input parameters)
-        if hasattr(self, 'label_range_4'):
-            self.label_range_4.setVisible(not is_linear)
-        if hasattr(self, 'doubleSpinBox_range_point'):
-            self.doubleSpinBox_range_point.setVisible(not is_linear)
-        
-        # Hide range parameter in optimized parameters display
-        if hasattr(self, 'label_optimized_range_label_point'):
-            self.label_optimized_range_label_point.setVisible(not is_linear)
-        if hasattr(self, 'label_optimized_range_point'):
-            self.label_optimized_range_point.setVisible(not is_linear)
+        # Switch to the corresponding parameter page
+        self.StartwerteVariogramModel_point.setCurrentIndex(model_index)
         
         # Log the change
         QgsMessageLog.logMessage(
-            f"Point tab: Range parameter {'hidden' if is_linear else 'visible'} for model '{model_name}'",
+            f"Point tab: Switched to parameter page {model_index} for variogram model '{model_name}'",
             "I-PlugIn",
             Qgis.Info
         )
 
+    def get_variogram_parameters_raster(self):
+        """Get variogram parameters from raster tab based on selected model.
+        
+        Returns:
+            dict: Dictionary with sill, range, nugget, slope (depending on model)
+        """
+        model_name = self.comboBox_variogram.currentText()
+        
+        if model_name == "Linear":
+            return {
+                'slope': self.doubleSpinBox_slope.value() if hasattr(self, 'doubleSpinBox_slope') else 0.001,
+                'nugget': self.doubleSpinBox_nugget.value() if hasattr(self, 'doubleSpinBox_nugget') else 0.0,
+                'sill': None,  # Linear has no sill
+                'range': None  # Linear has no range
+            }
+        elif model_name == "Spherical":
+            return {
+                'sill': self.doubleSpinBox_sill_sph.value() if hasattr(self, 'doubleSpinBox_sill_sph') else 0.1,
+                'range': self.doubleSpinBox_range_sph.value() if hasattr(self, 'doubleSpinBox_range_sph') else 100.0,
+                'nugget': self.doubleSpinBox_nugget_sph.value() if hasattr(self, 'doubleSpinBox_nugget_sph') else 0.0,
+                'slope': None
+            }
+        elif model_name == "Exponential":
+            return {
+                'sill': self.doubleSpinBox_sill_exp.value() if hasattr(self, 'doubleSpinBox_sill_exp') else 0.1,
+                'range': self.doubleSpinBox_range_exp.value() if hasattr(self, 'doubleSpinBox_range_exp') else 100.0,
+                'nugget': self.doubleSpinBox_nugget_exp.value() if hasattr(self, 'doubleSpinBox_nugget_exp') else 0.0,
+                'slope': None
+            }
+        elif model_name == "Gaussian":
+            return {
+                'sill': self.doubleSpinBox_sill_gau.value() if hasattr(self, 'doubleSpinBox_sill_gau') else 0.1,
+                'range': self.doubleSpinBox_range_gau.value() if hasattr(self, 'doubleSpinBox_range_gau') else 100.0,
+                'nugget': self.doubleSpinBox_nugget_gau.value() if hasattr(self, 'doubleSpinBox_nugget_gau') else 0.0,
+                'slope': None
+            }
+        else:
+            # Fallback
+            return {
+                'sill': 0.1,
+                'range': 100.0,
+                'nugget': 0.0,
+                'slope': None
+            }
+
+    def get_variogram_parameters_point(self):
+        """Get variogram parameters from point tab based on selected model.
+        
+        Returns:
+            dict: Dictionary with sill, range, nugget, slope (depending on model)
+        """
+        model_name = self.comboBox_variogram_point.currentText()
+        
+        if model_name == "Linear":
+            return {
+                'slope': self.doubleSpinBox_slope_point.value() if hasattr(self, 'doubleSpinBox_slope_point') else 0.001,
+                'nugget': self.doubleSpinBox_nugget_lin_point.value() if hasattr(self, 'doubleSpinBox_nugget_lin_point') else 0.0,
+                'sill': None,  # Linear has no sill
+                'range': None  # Linear has no range
+            }
+        elif model_name == "Spherical":
+            return {
+                'sill': self.doubleSpinBox_sill_sph_point.value() if hasattr(self, 'doubleSpinBox_sill_sph_point') else 0.1,
+                'range': self.doubleSpinBox_range_sph_point.value() if hasattr(self, 'doubleSpinBox_range_sph_point') else 100.0,
+                'nugget': self.doubleSpinBox_nugget_sph_point.value() if hasattr(self, 'doubleSpinBox_nugget_sph_point') else 0.0,
+                'slope': None
+            }
+        elif model_name == "Exponential":
+            return {
+                'sill': self.doubleSpinBox_sill_exp_point.value() if hasattr(self, 'doubleSpinBox_sill_exp_point') else 0.1,
+                'range': self.doubleSpinBox_range_exp_point.value() if hasattr(self, 'doubleSpinBox_range_exp_point') else 100.0,
+                'nugget': self.doubleSpinBox_nugget_exp_point.value() if hasattr(self, 'doubleSpinBox_nugget_exp_point') else 0.0,
+                'slope': None
+            }
+        elif model_name == "Gaussian":
+            return {
+                'sill': self.doubleSpinBox_sill_gau_point.value() if hasattr(self, 'doubleSpinBox_sill_gau_point') else 0.1,
+                'range': self.doubleSpinBox_range_gau_point.value() if hasattr(self, 'doubleSpinBox_range_gau_point') else 100.0,
+                'nugget': self.doubleSpinBox_nugget_gau_point.value() if hasattr(self, 'doubleSpinBox_nugget_gau_point') else 0.0,
+                'slope': None
+            }
+        else:
+            # Fallback
+            return {
+                'sill': 0.1,
+                'range': 100.0,
+                'nugget': 0.0,
+                'slope': None
+            }
+
     def get_point_interpolation_parameters(self):
         """Sammelt die Parameter für die Punkt-Interpolation."""
+        # Get variogram parameters from the appropriate widget based on selected model
+        variogram_params = self.get_variogram_parameters_point()
+        
         params = {
             'target_layer': self.mMapLayerComboBox_target_layer.currentLayer(),
             'covariate_layer': self.mMapLayerComboBox_covariate_point.currentLayer(),
             'covariate_field': self.mFieldComboBox_covariate.currentField(),
             'method': 'ordinary_kriging',
             'variogram_model': self.comboBox_variogram_point.currentText(),
-            'sill': self.doubleSpinBox_sill_point.value(),
-            'range': self.doubleSpinBox_range_point.value(),
-            'nugget': self.doubleSpinBox_nugget_point.value(),
+            'sill': variogram_params.get('sill'),
+            'range': variogram_params.get('range'),
+            'nugget': variogram_params.get('nugget'),
+            'slope': variogram_params.get('slope'),
             'nlags': self.spinBox_lags_point.value()
         }
         
@@ -738,6 +1023,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     'nugget': params['nugget'],
                     'range': params['range'],
                     'sill': params['sill'],
+                    'slope': params['slope'],
                     'model_type': params['variogram_model']
                 },
                 'experimental': {'lags': [], 'semivariance': []},
@@ -912,19 +1198,12 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Block signals during loading to prevent cascade updates
         widgets_to_block = [
             self.doubleSpinBox_cellsize, self.comboBox_variogram,
-            self.doubleSpinBox_nugget, self.doubleSpinBox_range, self.doubleSpinBox_sill,
             self.spinBox_lags
         ]
         
         # Add point tab widgets if they exist
         if hasattr(self, 'comboBox_variogram_point'):
             widgets_to_block.append(self.comboBox_variogram_point)
-        if hasattr(self, 'doubleSpinBox_nugget_point'):
-            widgets_to_block.append(self.doubleSpinBox_nugget_point)
-        if hasattr(self, 'doubleSpinBox_range_point'):
-            widgets_to_block.append(self.doubleSpinBox_range_point)
-        if hasattr(self, 'doubleSpinBox_sill_point'):
-            widgets_to_block.append(self.doubleSpinBox_sill_point)
         if hasattr(self, 'spinBox_lags_point'):
             widgets_to_block.append(self.spinBox_lags_point)
         
@@ -955,22 +1234,10 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             except (ValueError, TypeError):
                 self.comboBox_variogram_point.setCurrentIndex(0)
             
-        # Always use default values for variogram parameters (not loaded from settings)
-        # This ensures parameters start fresh on each plugin open
-        
-        # Raster tab
-        self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET)
-        self.doubleSpinBox_range.setValue(InterpolationConfig.DEFAULT_RANGE)
-        self.doubleSpinBox_sill.setValue(InterpolationConfig.DEFAULT_SILL)
+        # Variogram parameters are already initialized with default values
+        # in setup_ui_components(), so we don't need to set them again here
         self.spinBox_lags.setValue(InterpolationConfig.DEFAULT_NLAGS)
         
-        # Point tab
-        if hasattr(self, 'doubleSpinBox_nugget_point'):
-            self.doubleSpinBox_nugget_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
-        if hasattr(self, 'doubleSpinBox_range_point'):
-            self.doubleSpinBox_range_point.setValue(InterpolationConfig.DEFAULT_RANGE)
-        if hasattr(self, 'doubleSpinBox_sill_point'):
-            self.doubleSpinBox_sill_point.setValue(InterpolationConfig.DEFAULT_SILL)
         if hasattr(self, 'spinBox_lags_point'):
             self.spinBox_lags_point.setValue(InterpolationConfig.DEFAULT_NLAGS)
         
@@ -992,7 +1259,6 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         widgets_to_block = [
             self.mMapLayerComboBox, self.mFieldComboBox, self.mMapLayerComboBox_boundary,
             self.doubleSpinBox_cellsize, self.comboBox_variogram,
-            self.doubleSpinBox_nugget, self.doubleSpinBox_range, self.doubleSpinBox_sill,
             self.spinBox_lags
         ]
         for widget in widgets_to_block:
@@ -1042,11 +1308,8 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # If there's an error, just set to first item
             self.comboBox_variogram.setCurrentIndex(0)
             
-        # Always use default values for variogram parameters (not loaded from settings)
-        # This ensures parameters start fresh on each plugin open
-        self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET)
-        self.doubleSpinBox_range.setValue(InterpolationConfig.DEFAULT_RANGE)
-        self.doubleSpinBox_sill.setValue(InterpolationConfig.DEFAULT_SILL)
+        # Variogram parameters are already initialized with default values
+        # in setup_ui_components(), so we don't need to set them again here
         self.spinBox_lags.setValue(InterpolationConfig.DEFAULT_NLAGS)
         
         # Unblock signals after loading
@@ -1085,6 +1348,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
 
     def get_parameters(self):
         """Get parameters from dialog."""
+        # Get variogram parameters from the appropriate widget based on selected model
+        variogram_params = self.get_variogram_parameters_raster()
+        
         params = {
             'input_layer': self.mMapLayerComboBox.currentLayer(),
             'input_field': self.mFieldComboBox.currentField(),
@@ -1092,9 +1358,10 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             'cell_size': self.doubleSpinBox_cellsize.value(),
             'boundary_layer': self.mMapLayerComboBox_boundary.currentLayer(),
             'variogram_model': self.comboBox_variogram.currentText(),
-            'sill': self.doubleSpinBox_sill.value(),
-            'range': self.doubleSpinBox_range.value(),
-            'nugget': self.doubleSpinBox_nugget.value(),
+            'sill': variogram_params.get('sill'),
+            'range': variogram_params.get('range'),
+            'nugget': variogram_params.get('nugget'),
+            'slope': variogram_params.get('slope'),
             'nlags': self.spinBox_lags.value()
         }
         
@@ -1107,11 +1374,13 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
     def get_kriging_parameters(self):
         """Get current kriging parameters from UI."""
         try:
+            variogram_params = self.get_variogram_parameters_raster()
             return {
                 'variogram_model': self.comboBox_variogram.currentText().lower(),
-                'nugget': self.doubleSpinBox_nugget.value(),
-                'range': self.doubleSpinBox_range.value(),
-                'sill': self.doubleSpinBox_sill.value(),
+                'nugget': variogram_params.get('nugget'),
+                'range': variogram_params.get('range'),
+                'sill': variogram_params.get('sill'),
+                'slope': variogram_params.get('slope'),
                 'nlags': self.spinBox_lags.value()
             }
         except Exception as e:
@@ -1359,7 +1628,11 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             QMessageBox.critical(self, "Unerwarteter Fehler", f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}")
 
     def update_ui_state(self):
-        """Update UI state based on current selections."""
+        """Update UI state based on current selections.
+        
+        Note: With the new StackedWidget system, we don't need to enable/disable
+        individual parameter widgets. They are always available in their respective pages.
+        """
         try:
             # Check if we have valid input data for raster tab
             has_valid_inputs = bool(
@@ -1378,16 +1651,6 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 self.comboBox_variogram_point.currentText() != ''
             )
             self.analyze_variogram_button_points.setEnabled(has_valid_point_inputs)
-
-            # Enable parameter inputs for raster tab
-            self.doubleSpinBox_nugget.setEnabled(has_valid_inputs)
-            self.doubleSpinBox_range.setEnabled(has_valid_inputs)
-            self.doubleSpinBox_sill.setEnabled(has_valid_inputs)
-            
-            # Enable parameter inputs for point interpolation tab
-            self.doubleSpinBox_nugget_point.setEnabled(has_valid_point_inputs)
-            self.doubleSpinBox_range_point.setEnabled(has_valid_point_inputs)
-            self.doubleSpinBox_sill_point.setEnabled(has_valid_point_inputs)
                 
         except Exception as e:
             QgsMessageLog.logMessage(
@@ -1397,23 +1660,13 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             )
 
     def reset_variogram_parameters_raster(self):
-        """Reset variogram parameters to defaults when model changes (raster tab)."""
+        """Reset variogram parameters to defaults when model changes (raster tab).
+        
+        Note: With the new StackedWidget system, each model has its own widgets
+        that are already initialized with defaults. We only need to hide the
+        optimized parameters display when the model changes.
+        """
         try:
-            # Block signals to prevent triggering validation during reset
-            self.doubleSpinBox_nugget.blockSignals(True)
-            self.doubleSpinBox_range.blockSignals(True)
-            self.doubleSpinBox_sill.blockSignals(True)
-            
-            # Reset to default values
-            self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET)
-            self.doubleSpinBox_range.setValue(InterpolationConfig.DEFAULT_RANGE)
-            self.doubleSpinBox_sill.setValue(InterpolationConfig.DEFAULT_SILL)
-            
-            # Unblock signals
-            self.doubleSpinBox_nugget.blockSignals(False)
-            self.doubleSpinBox_range.blockSignals(False)
-            self.doubleSpinBox_sill.blockSignals(False)
-            
             # Hide optimized parameters group box
             if hasattr(self, 'optimized_params_group_raster'):
                 self.optimized_params_group_raster.setVisible(False)
@@ -1430,23 +1683,13 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             )
 
     def reset_variogram_parameters_point(self):
-        """Reset variogram parameters to defaults when model changes (point tab)."""
+        """Reset variogram parameters to defaults when model changes (point tab).
+        
+        Note: With the new StackedWidget system, each model has its own widgets
+        that are already initialized with defaults. We only need to hide the
+        optimized parameters display when the model changes.
+        """
         try:
-            # Block signals to prevent triggering validation during reset
-            self.doubleSpinBox_nugget_point.blockSignals(True)
-            self.doubleSpinBox_range_point.blockSignals(True)
-            self.doubleSpinBox_sill_point.blockSignals(True)
-            
-            # Reset to default values
-            self.doubleSpinBox_nugget_point.setValue(InterpolationConfig.DEFAULT_NUGGET)
-            self.doubleSpinBox_range_point.setValue(InterpolationConfig.DEFAULT_RANGE)
-            self.doubleSpinBox_sill_point.setValue(InterpolationConfig.DEFAULT_SILL)
-            
-            # Unblock signals
-            self.doubleSpinBox_nugget_point.blockSignals(False)
-            self.doubleSpinBox_range_point.blockSignals(False)
-            self.doubleSpinBox_sill_point.blockSignals(False)
-            
             # Hide optimized parameters group box
             if hasattr(self, 'optimized_params_group_point'):
                 self.optimized_params_group_point.setVisible(False)
@@ -1465,24 +1708,36 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
     def validate_variogram_parameters(self):
         """Validate variogram parameters for raster tab and update UI state."""
         try:
-            nugget = self.doubleSpinBox_nugget.value()
-            sill = self.doubleSpinBox_sill.value()
-            range_ = self.doubleSpinBox_range.value()
+            # Get parameters from the appropriate widget based on selected model
+            variogram_params = self.get_variogram_parameters_raster()
+            model_name = self.comboBox_variogram.currentText()
             
             # Warn if parameters might be suboptimal
             warnings = []
             
-            if nugget < 0:
+            nugget = variogram_params.get('nugget')
+            if nugget is not None and nugget < 0:
                 warnings.append("Nugget sollte nicht negativ sein")
             
-            if range_ <= 0:
-                warnings.append("Range sollte größer als 0 sein")
-            
-            if sill <= 0:
-                warnings.append("Sill sollte größer als 0 sein")
-            
-            if nugget > sill:
-                warnings.append("Nugget sollte nicht größer als Sill sein")
+            # Only validate range for non-Linear models
+            if model_name != "Linear":
+                range_ = variogram_params.get('range')
+                if range_ is not None and range_ <= 0:
+                    warnings.append("Range sollte größer als 0 sein")
+                
+                # Only validate sill for non-Linear models
+                sill = variogram_params.get('sill')
+                if sill is not None and sill <= 0:
+                    warnings.append("Sill sollte größer als 0 sein")
+                
+                # Check nugget vs sill relationship
+                if nugget is not None and sill is not None and nugget > sill:
+                    warnings.append("Nugget sollte nicht größer als Sill sein")
+            else:
+                # For Linear model, validate slope
+                slope = variogram_params.get('slope')
+                if slope is not None and slope <= 0:
+                    warnings.append("Slope sollte größer als 0 sein")
             
             # Show warnings if any
             if warnings:
@@ -1503,24 +1758,36 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
     def validate_variogram_parameters_point(self):
         """Validate variogram parameters for point tab and update UI state."""
         try:
-            nugget = self.doubleSpinBox_nugget_point.value()
-            sill = self.doubleSpinBox_sill_point.value()
-            range_ = self.doubleSpinBox_range_point.value()
+            # Get parameters from the appropriate widget based on selected model
+            variogram_params = self.get_variogram_parameters_point()
+            model_name = self.comboBox_variogram_point.currentText()
             
             # Warn if parameters might be suboptimal
             warnings = []
             
-            if nugget < 0:
+            nugget = variogram_params.get('nugget')
+            if nugget is not None and nugget < 0:
                 warnings.append("Nugget sollte nicht negativ sein")
             
-            if range_ <= 0:
-                warnings.append("Range sollte größer als 0 sein")
-            
-            if sill <= 0:
-                warnings.append("Sill sollte größer als 0 sein")
-            
-            if nugget > sill:
-                warnings.append("Nugget sollte nicht größer als Sill sein")
+            # Only validate range for non-Linear models
+            if model_name != "Linear":
+                range_ = variogram_params.get('range')
+                if range_ is not None and range_ <= 0:
+                    warnings.append("Range sollte größer als 0 sein")
+                
+                # Only validate sill for non-Linear models
+                sill = variogram_params.get('sill')
+                if sill is not None and sill <= 0:
+                    warnings.append("Sill sollte größer als 0 sein")
+                
+                # Check nugget vs sill relationship
+                if nugget is not None and sill is not None and nugget > sill:
+                    warnings.append("Nugget sollte nicht größer als Sill sein")
+            else:
+                # For Linear model, validate slope
+                slope = variogram_params.get('slope')
+                if slope is not None and slope <= 0:
+                    warnings.append("Slope sollte größer als 0 sein")
             
             # Show warnings if any
             if warnings:
