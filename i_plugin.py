@@ -2203,15 +2203,28 @@ class IPlugIn:
                 # Save metadata
                 self.save_metadata(output_dir, Path(output_path).stem, params, interpolation_type="raster")
                 
-                # Create vector layer from interpolated grid points
-                vector_output_path = str(output_dir / f"{Path(output_path).stem}_points.shp")
-                vector_created = self.create_vector_layer_from_grid(
-                    grid_x, grid_y, interpolated_data,
-                    vector_output_path,
-                    target_crs,
-                    mask=mask,
-                    field_name=params['input_field']
+                # Ask user if they want to create a vector layer
+                from qgis.PyQt.QtWidgets import QMessageBox
+                reply = QMessageBox.question(
+                    None,
+                    'Vector-Layer erstellen?',
+                    'Möchten Sie zusätzlich zum Raster auch einen Punkt-Vector-Layer erstellen?\n\n'
+                    'Der Vector-Layer enthält die interpolierten Werte als Punkt-Features und kann für weitere Analysen verwendet werden.',
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No  # Default: No
                 )
+                
+                vector_created = False
+                if reply == QMessageBox.Yes:
+                    # Create vector layer from interpolated grid points
+                    vector_output_path = str(output_dir / f"{Path(output_path).stem}_points.shp")
+                    vector_created = self.create_vector_layer_from_grid(
+                        grid_x, grid_y, interpolated_data,
+                        vector_output_path,
+                        target_crs,
+                        mask=mask,
+                        field_name=params['input_field']
+                    )
                 
                 # Add layer to QGIS
                 layer_name = Path(output_path).stem

@@ -577,22 +577,23 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 9. 5-Stop-Gradient: Rot (0%) → Orange (25%) → Gelb (50%) → Hellgrün (75%) → Grün (100%)
 10. Alle Farben konfigurierbar in `config.py`
 
-### ✅ Vector-Layer-Export mit Symbolisierung implementiert
+### ✅ Vector-Layer-Export mit Symbolisierung implementiert (Optional via Dialog)
 **Problem**: Nur Raster-Output verfügbar
 - Keine Punkt-Daten für weitere Analysen
 - Keine Flexibilität für andere GIS-Operationen
 - Manuelle Konvertierung notwendig
 
 **Lösung**:
-1. Neue Methode `create_vector_layer_from_grid()` (Zeile 1352-1430)
-2. Erstellt Punkt-Features aus Grid-Daten (X, Y, Wert)
-3. Boundary-Filterung: Nur Punkte mit mask[i,j]=True
-4. Speichert als Shapefile parallel zum Raster
-5. Neue Methode `apply_graduated_symbology_to_vector()` (Zeile 1432-1514)
-6. Abgestufte Symbolisierung mit gleichem Farbschema wie Raster
-7. 6 Klassen mit QGIS Standard RYG-Farben
-8. Automatisch zur Layer-Gruppe hinzugefügt
-9. Imports: `QgsGraduatedSymbolRenderer`, `QgsRendererRange`, `QgsMarkerSymbol`
+1. **QMessageBox-Dialog** nach Interpolation (Zeile 2206-2215): Fragt User ob Vector-Layer erstellt werden soll
+2. Neue Methode `create_vector_layer_from_grid()` (Zeile 1454-1530)
+3. Erstellt Punkt-Features aus Grid-Daten (X, Y, Wert)
+4. Boundary-Filterung: Nur Punkte mit mask[i,j]=True
+5. Speichert als Shapefile parallel zum Raster
+6. Neue Methode `apply_graduated_symbology_to_vector()` (Zeile 1532-1612)
+7. Abgestufte Symbolisierung mit gleichem Farbschema wie Raster
+8. 6 Klassen mit QGIS Standard RYG-Farben
+9. Nur erstellt wenn User "Ja" wählt (Default: Nein)
+10. Imports: `QgsGraduatedSymbolRenderer`, `QgsRendererRange`, `QgsMarkerSymbol`, `QMessageBox`
 
 ### ✅ Punkt-Interpolation Validierung korrigiert
 **Problem**: `validate_point_interpolation_inputs()` hatte mehrere Bugs (i_plugin_dialog.py)
@@ -1278,6 +1279,59 @@ ok = OrdinaryKriging(
 - ✅ Keine unerwünschte Optimierung
 - ✅ Variogramm-Analyse direkt nutzbar
 - ✅ Konsistente Parameterreihenfolgen
+
+### ✅ Dialog-Verhalten und Settings-Management verbessert (2025-10-19)
+
+**Problem 1**: Plugin-Fenster schloss sich nach Raster-Interpolation automatisch
+- Inkonsistent: Punkt-Interpolation ließ Fenster offen
+- User musste Plugin neu öffnen für weitere Interpolationen
+
+**Problem 2**: Settings wurden bei Cancel/Close gespeichert
+- Änderungen blieben persistent, auch wenn nicht gewünscht
+- Plugin musste neu geladen werden um "sauber" zu sein
+
+**Lösung**: Neue Methoden für besseres Dialog-Management (`i_plugin_dialog.py`)
+
+#### **1. Dialog bleibt offen nach Interpolation**
+- Button-Verbindung geändert (Zeile 1022): `button_interpolate_points_2.clicked.connect(self.interpolate_raster)`
+- Neue Methode `interpolate_raster()` (Zeilen 1835-1874): Führt Interpolation aus OHNE `super().accept()`
+- Success-Message hinzugefügt
+
+#### **2. Settings nur bei Erfolg speichern**
+- `save_settings()` verschoben: **Nach** erfolgreicher Interpolation (Zeilen 1459, 1852)
+- Vorher: Speichern vor Interpolation → Bei Fehler trotzdem gespeichert ❌
+- Nachher: Speichern nach Erfolg → Bei Fehler nicht gespeichert ✅
+
+#### **3. Neue `reject()` und `reset_to_defaults()` Methoden (Zeilen 1878-1965)**
+
+**`reset_to_defaults()` (Zeilen 1878-1944)**:
+- Löscht alle gespeicherten Settings: `settings.remove("IPlugIn")`
+- Setzt alle UI-Elemente auf Defaults zurück
+- Setzt alle Variogramm-Parameter (Linear, Spherical, Exponential, Gaussian) zurück
+- Versteckt optimierte Parameter-Gruppen
+- Loggt Aktion
+
+**`reject()` (Zeilen 1946-1965)**:
+```python
+def reject(self):
+    reply = QMessageBox.question(
+        self, 'Plugin schließen?',
+        'Alle nicht gespeicherten Änderungen gehen verloren und beim nächsten Öffnen '
+        'werden die Standard-Einstellungen wiederhergestellt.',
+        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+    )
+    if reply == QMessageBox.Yes:
+        self.reset_to_defaults()  # Löscht Settings + Reset auf Defaults
+        super().reject()
+```
+
+**Vorteile**:
+- ✅ Konsistentes Verhalten: Beide Tabs lassen Dialog offen
+- ✅ Schnellere Workflows: Mehrere Interpolationen ohne Neustart
+- ✅ Sichere Settings: Nur bei Erfolg gespeichert
+- ✅ Echter Reset: Settings werden gelöscht, nicht nur neu geladen
+- ✅ Frischer Start: Beim nächsten Öffnen sind alle Defaults wiederhergestellt
+- ✅ Kein Plugin-Reload mehr nötig
 
 ---
 

@@ -1019,7 +1019,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Connect interpolation buttons
         #self.interpolate_button.clicked.connect(self.accept)
         self.button_interpolate_points.clicked.connect(self.interpolate_points)
-        self.button_interpolate_points_2.clicked.connect(self.accept)
+        self.button_interpolate_points_2.clicked.connect(self.interpolate_raster)  # Geändert: accept → interpolate_raster
         
         # Connect variogram analysis button
         self.analyze_variogram_button.clicked.connect(self.show_variogram_analysis)
@@ -1424,9 +1424,6 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # Get parameters
             params = self.get_point_interpolation_parameters()
             
-            # Save current settings
-            self.save_settings()
-            
             # Create progress dialog
             progress = QProgressDialog(
                 "Punkt-Interpolation läuft...",
@@ -1457,6 +1454,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     
                     # Close progress dialog
                     progress.close()
+                    
+                    # Nur bei erfolgreicher Interpolation speichern!
+                    self.save_settings()
                     
                     # Erstelle passende Success-Nachricht basierend auf Backup-Status
                     backup_msg = ""
@@ -1832,15 +1832,155 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             
         return True
 # DAS PASSIERT WENN MAN OK DRÜCKT 
+    def interpolate_raster(self):
+        """Handle raster interpolation button click (Raster-Tab)."""
+        if not self.validate_inputs():
+            return
+            
+        try:
+            # Get parameters
+            params = self.get_parameters()
+            
+            # Store parameters for plugin to use
+            if self.plugin:
+                self.plugin.last_parameters = params
+                
+                # Run interpolation
+                self.plugin.run()
+                
+                # Nur bei erfolgreicher Interpolation speichern!
+                self.save_settings()
+                
+                # Show success message
+                QMessageBox.information(
+                    self,
+                    "Interpolation erfolgreich",
+                    "Die Raster-Interpolation wurde erfolgreich abgeschlossen!"
+                )
+            
+            # NICHT super().accept() aufrufen → Dialog bleibt offen!
+            
+        except DataValidationError as e:
+            QMessageBox.warning(self, "Datenvalidierung", str(e))
+        except GeometryError as e:
+            QMessageBox.warning(self, "Geometrie-Problem", str(e))
+        except InterpolationCalculationError as e:
+            QMessageBox.critical(self, "Interpolation fehlgeschlagen", str(e))
+        except InterpolationError as e:
+            QMessageBox.critical(self, "Fehler", str(e))
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Unerwarteter Fehler",
+                f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}"
+            )
+
+    def reset_to_defaults(self):
+        """Reset all settings to default values and clear QSettings."""
+        settings = QSettings()
+        
+        # Lösche alle gespeicherten Plugin-Settings
+        settings.remove("IPlugIn")
+        
+        # Block signals während Reset
+        widgets_to_block = [
+            self.mMapLayerComboBox, self.mFieldComboBox, self.mMapLayerComboBox_boundary,
+            self.doubleSpinBox_cellsize, self.comboBox_variogram, self.spinBox_lags
+        ]
+        for widget in widgets_to_block:
+            if widget:
+                widget.blockSignals(True)
+        
+        # Setze alle UI-Elemente auf Defaults zurück
+        self.mMapLayerComboBox.setLayer(None)
+        self.mFieldComboBox.setField("")
+        self.mMapLayerComboBox_boundary.setLayer(None)
+        self.doubleSpinBox_cellsize.setValue(InterpolationConfig.DEFAULT_CELL_SIZE)
+        self.comboBox_variogram.setCurrentIndex(0)  # Erster Eintrag (z.B. Linear)
+        self.spinBox_lags.setValue(InterpolationConfig.DEFAULT_NLAGS)
+        
+        # Setze Variogramm-Parameter auf Defaults (alle Modelle)
+        # Linear
+        if hasattr(self, 'doubleSpinBox_slope'):
+            self.doubleSpinBox_slope.setValue(InterpolationConfig.DEFAULT_SLOPE)
+        if hasattr(self, 'doubleSpinBox_nugget'):
+            self.doubleSpinBox_nugget.setValue(InterpolationConfig.DEFAULT_NUGGET)
+        
+        # Spherical
+        if hasattr(self, 'doubleSpinBox_sill_sph'):
+            self.doubleSpinBox_sill_sph.setValue(InterpolationConfig.DEFAULT_SILL)
+        if hasattr(self, 'doubleSpinBox_range_sph'):
+            self.doubleSpinBox_range_sph.setValue(InterpolationConfig.DEFAULT_RANGE)
+        if hasattr(self, 'doubleSpinBox_nugget_sph'):
+            self.doubleSpinBox_nugget_sph.setValue(InterpolationConfig.DEFAULT_NUGGET)
+        
+        # Exponential
+        if hasattr(self, 'doubleSpinBox_sill_exp'):
+            self.doubleSpinBox_sill_exp.setValue(InterpolationConfig.DEFAULT_SILL)
+        if hasattr(self, 'doubleSpinBox_range_exp'):
+            self.doubleSpinBox_range_exp.setValue(InterpolationConfig.DEFAULT_RANGE)
+        if hasattr(self, 'doubleSpinBox_nugget_exp'):
+            self.doubleSpinBox_nugget_exp.setValue(InterpolationConfig.DEFAULT_NUGGET)
+        
+        # Gaussian
+        if hasattr(self, 'doubleSpinBox_sill_gau'):
+            self.doubleSpinBox_sill_gau.setValue(InterpolationConfig.DEFAULT_SILL)
+        if hasattr(self, 'doubleSpinBox_range_gau'):
+            self.doubleSpinBox_range_gau.setValue(InterpolationConfig.DEFAULT_RANGE)
+        if hasattr(self, 'doubleSpinBox_nugget_gau'):
+            self.doubleSpinBox_nugget_gau.setValue(InterpolationConfig.DEFAULT_NUGGET)
+        
+        # Verstecke optimierte Parameter-Gruppen
+        if hasattr(self, 'optimized_params_group_raster'):
+            self.optimized_params_group_raster.setVisible(False)
+        if hasattr(self, 'optimized_params_group_point'):
+            self.optimized_params_group_point.setVisible(False)
+        
+        # Unblock signals
+        for widget in widgets_to_block:
+            if widget:
+                widget.blockSignals(False)
+        
+        # Log über QgsMessageLog statt self.log
+        QgsMessageLog.logMessage(
+            "Plugin auf Standard-Einstellungen zurückgesetzt",
+            "I-PlugIn",
+            Qgis.Info
+        )
+
+    def reject(self):
+        """Handle Cancel button click or dialog close (X button)."""
+        # Frage User ob Änderungen verworfen werden sollen
+        reply = QMessageBox.question(
+            self,
+            'Plugin schließen?',
+            'Möchten Sie das Plugin schließen?\n\n'
+            'Alle nicht gespeicherten Änderungen gehen verloren und beim nächsten Öffnen '
+            'werden die Standard-Einstellungen wiederhergestellt.',
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No  # Default: No (sicherer)
+        )
+        
+        if reply == QMessageBox.Yes:
+            # Setze auf Defaults zurück und lösche gespeicherte Settings
+            self.reset_to_defaults()
+            
+            # Schließe Dialog
+            super().reject()
+        # Wenn No: Dialog bleibt offen, User kann weiterarbeiten
+
     def accept(self):
-        """Handle OK button click."""
+        """Handle OK button click (deprecated - not used anymore)."""
+        # Diese Methode wird nicht mehr verwendet, da beide Interpolation-Buttons
+        # jetzt ihre eigenen Methoden haben (interpolate_raster, interpolate_points)
+        # Bleibt für Rückwärtskompatibilität erhalten
         if not self.validate_inputs():
             return
             
         try:
             # Get and save parameters
             params = self.get_parameters()
-            self.save_settings()  # This will save all current UI values
+            self.save_settings()
             
             # Store parameters for plugin to use
             if self.plugin:
