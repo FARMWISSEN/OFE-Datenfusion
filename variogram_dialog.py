@@ -25,9 +25,13 @@ except ImportError:
         pass
 
 class VariogramDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, layer_name=None, field_name=None, method="ordinary_kriging", is_point_tab=False):
         super(VariogramDialog, self).__init__(parent)
         self.plot_path = None  # Store plot path for export
+        self.layer_name = layer_name
+        self.field_name = field_name
+        self.method = method
+        self.is_point_tab = is_point_tab
         self.setup_ui()
         
     def setup_ui(self):
@@ -116,7 +120,7 @@ class VariogramDialog(QDialog):
             )
     
     def export_plot(self):
-        """Export the variogram plot to the project directory."""
+        """Export the variogram plot to the appropriate interpolation output directory."""
         if not self.plot_path or not os.path.exists(self.plot_path):
             QMessageBox.warning(
                 self,
@@ -128,6 +132,7 @@ class VariogramDialog(QDialog):
         try:
             # Get QGIS project directory
             from qgis.core import QgsProject
+            from pathlib import Path
             project = QgsProject.instance()
             project_path = project.homePath()
             
@@ -139,13 +144,29 @@ class VariogramDialog(QDialog):
                 )
                 return
             
-            # Create filename with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"variogram_plot_{timestamp}.png"
-            export_path = os.path.join(project_path, filename)
+            # Determine output directory based on interpolation type
+            project_dir = Path(project_path)
+            if self.is_point_tab:
+                output_dir = project_dir / InterpolationConfig.OUTPUT_DIR_NAME / "point_interpolation"
+            else:
+                output_dir = project_dir / InterpolationConfig.OUTPUT_DIR_NAME / "raster_interpolation"
             
-            # Copy plot to project directory
-            shutil.copy2(self.plot_path, export_path)
+            # Create output directory if it doesn't exist
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Create filename with same convention as interpolation outputs
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+            
+            # Use provided layer/field names or fallback to generic name
+            if self.layer_name and self.field_name:
+                filename = f"variogram_{self.method}_{self.layer_name}_{self.field_name}_{timestamp}.png"
+            else:
+                filename = f"variogram_plot_{timestamp}.png"
+            
+            export_path = output_dir / filename
+            
+            # Copy plot to output directory
+            shutil.copy2(self.plot_path, str(export_path))
             
             # Show success message
             QMessageBox.information(

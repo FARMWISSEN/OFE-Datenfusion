@@ -1333,6 +1333,72 @@ def reject(self):
 - ✅ Frischer Start: Beim nächsten Öffnen sind alle Defaults wiederhergestellt
 - ✅ Kein Plugin-Reload mehr nötig
 
+### ✅ Ordnerstruktur für Outputs aufgeräumt (2025-10-19)
+
+**Problem**: Outputs wurden in verschiedenen Ordnern gespeichert
+- UTM-Layer: Direkt im Projektverzeichnis
+- Backups: In `backups/` (außerhalb von `i_plugin_outputs`)
+- Raster-Interpolationen: In `i_plugin_outputs/raster_interpolation/`
+- Punkt-Interpolationen: In `i_plugin_outputs/point_interpolation/`
+- Inkonsistente Struktur, schwer zu finden
+
+**Lösung**: Alle Outputs unter `i_plugin_outputs/` (`i_plugin.py`)
+
+#### **Neue Ordnerstruktur:**
+```
+Projektverzeichnis/
+└── i_plugin_outputs/
+    ├── utm/                    # UTM-konvertierte Layer (Zeile 367)
+    ├── backups/                # Layer-Backups (Zeile 1849)
+    ├── raster_interpolation/   # Raster-Outputs (bereits vorhanden)
+    └── point_interpolation/    # Punkt-Outputs (bereits vorhanden)
+```
+
+#### **Änderungen:**
+
+**1. UTM-Layer** (`convert_to_utm()`, Zeile 367):
+- Vorher: `project_dir / "UTM_LayerName.shp"`
+- Nachher: `project_dir / "i_plugin_outputs/utm/UTM_LayerName.shp"`
+
+**2. Backups** (`create_layer_backup()`, Zeile 1849):
+- Vorher: `project_dir / "backups/LayerName_backup.shp"`
+- Nachher: `project_dir / "i_plugin_outputs/backups/LayerName_backup.shp"`
+
+**3. User-Nachrichten aktualisiert** (`i_plugin_dialog.py`, Zeilen 1464, 1466):
+- Backup-Pfad in Success-Message: `'i_plugin_outputs/backups/'`
+
+**Vorteile**:
+- ✅ Alle Plugin-Outputs an einem Ort
+- ✅ Einfacher zu finden und zu verwalten
+- ✅ Konsistente Struktur
+- ✅ Einfacher zu löschen/archivieren
+
+#### **4. Variogramm-Plots mit korrekter Namenskonvention** (`variogram_dialog.py`)
+
+**Problem**: Variogramm-Plots wurden direkt ins Projektverzeichnis exportiert
+- Inkonsistente Namenskonvention: `variogram_plot_{timestamp}.png`
+- Nicht zugeordnet zu Raster- oder Punkt-Interpolation
+
+**Lösung**:
+1. **`VariogramDialog.__init__()` erweitert** (Zeile 28): Neue Parameter `layer_name`, `field_name`, `method`, `is_point_tab`
+2. **`export_plot()` angepasst** (Zeilen 147-169):
+   - Speichert in `i_plugin_outputs/raster_interpolation/` oder `i_plugin_outputs/point_interpolation/`
+   - Namenskonvention: `variogram_{method}_{layer_name}_{field_name}_{timestamp}.png`
+   - Gleiche Konvention wie Interpolations-Outputs
+3. **Dialog-Aufrufe aktualisiert** (`i_plugin_dialog.py`, Zeilen 985-991, 2078-2084):
+   - Übergibt Layer-Name, Feld-Name, Methode und Tab-Info
+   - Punkt-Tab: `is_point_tab=True`
+   - Raster-Tab: `is_point_tab=False`
+
+**Beispiel-Dateinamen:**
+- Raster: `variogram_ordinary_kriging_MeinLayer_Yield_20251019_1420.png`
+- Punkt: `variogram_ordinary_kriging_CovarLayer_Temperature_20251019_1420.png`
+
+**Vorteile**:
+- ✅ Variogramm-Plots bei zugehöriger Interpolation
+- ✅ Konsistente Namenskonvention
+- ✅ Einfach zuzuordnen zu Interpolations-Outputs
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-19  

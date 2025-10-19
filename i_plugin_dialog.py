@@ -981,8 +981,14 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 'metrics': results['metrics']
             }, point_tab=True)
 
-            # Show dialog
-            dialog = VariogramDialog(self)
+            # Show dialog with context information
+            dialog = VariogramDialog(
+                self,
+                layer_name=covariate_layer.name() if covariate_layer else None,
+                field_name=covariate_field,
+                method="ordinary_kriging",
+                is_point_tab=True
+            )
             dialog.display_results(results['plot_path'], results['metrics'])
             dialog.exec_()
 
@@ -1461,9 +1467,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     # Erstelle passende Success-Nachricht basierend auf Backup-Status
                     backup_msg = ""
                     if params.get('backup_created'):
-                        backup_msg = "\n\nErstellung eines Backups des Ziel-Layers wurde im Projektverzeichnis unter 'backups/' durchgeführt."
+                        backup_msg = "\n\nErstellung eines Backups des Ziel-Layers wurde im Projektverzeichnis unter 'i_plugin_outputs/backups/' durchgeführt."
                     elif params.get('backup_path'):
-                        backup_msg = "\n\nEin Backup des Ziel-Layers existiert bereits im Projektverzeichnis unter 'backups/'."
+                        backup_msg = "\n\nEin Backup des Ziel-Layers existiert bereits im Projektverzeichnis unter 'i_plugin_outputs/backups/'."
                     
                     QMessageBox.information(
                         self,
@@ -2068,8 +2074,14 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 'metrics': results['metrics']
             }, point_tab=False)
                 
-            # Show dialog
-            dialog = VariogramDialog(self)
+            # Show dialog with context information
+            dialog = VariogramDialog(
+                self,
+                layer_name=layer.name() if layer else None,
+                field_name=field,
+                method="ordinary_kriging",
+                is_point_tab=False
+            )
             dialog.display_results(results['plot_path'], results['metrics'])
             dialog.exec_()
             
