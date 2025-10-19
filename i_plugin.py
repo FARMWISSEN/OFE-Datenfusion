@@ -363,11 +363,12 @@ class IPlugIn:
         else:
             project_dir = Path(os.path.expanduser("~"))
             
-        # Ensure output directory exists
-        project_dir.mkdir(parents=True, exist_ok=True)
+        # Create UTM output directory under i_plugin_outputs
+        utm_output_dir = project_dir / InterpolationConfig.OUTPUT_DIR_NAME / "utm"
+        utm_output_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate unique output path to avoid file conflicts
-        base_output_path = project_dir / f"{new_layer_name}.shp"
+        base_output_path = utm_output_dir / f"{new_layer_name}.shp"
         output_path = base_output_path
         counter = 1
         
@@ -377,7 +378,7 @@ class IPlugIn:
                 f"Datei '{output_path}' existiert bereits. Generiere eindeutigen Namen.",
                 Qgis.Warning
             )
-            output_path = project_dir / f"{new_layer_name}_{counter}.shp"
+            output_path = utm_output_dir / f"{new_layer_name}_{counter}.shp"
             counter += 1
         
         output_path_str = str(output_path)
@@ -410,8 +411,11 @@ class IPlugIn:
                 f"Der erstellte UTM-Layer für '{layer.name()}' ist ungültig."
             )
 
-        # Add to project and return
-        project.addMapLayer(new_layer)
+        # Add to layer group
+        group = self.get_layer_group()
+        project.addMapLayer(new_layer, False)  # False = don't add to root
+        group.addLayer(new_layer)
+        
         self.log(
             f"UTM-Layer '{display_name}' erfolgreich erstellt "
             f"(CRS: {target_crs.authid()}, Datei: {output_path.name})",
@@ -1821,7 +1825,7 @@ class IPlugIn:
             
         Notes:
             - Prüft ob bereits ein Backup existiert (verhindert mehrfache Backups)
-            - Speichert im Projektverzeichnis unter 'backups/'
+            - Speichert im Projektverzeichnis unter 'i_plugin_outputs/backups/'
             - Dateiname: LayerName_backup.shp (ohne Timestamp)
             - Backup wird NICHT automatisch zum Projekt hinzugefügt
             - Idempotent: Mehrfache Aufrufe erstellen nur ein Backup
@@ -1844,9 +1848,9 @@ class IPlugIn:
                 )
                 project_dir = Path(os.path.expanduser("~"))
             
-            # Erstelle Backup-Verzeichnis
-            backup_dir = project_dir / "backups"
-            backup_dir.mkdir(exist_ok=True)
+            # Erstelle Backup-Verzeichnis unter i_plugin_outputs
+            backup_dir = project_dir / InterpolationConfig.OUTPUT_DIR_NAME / "backups"
+            backup_dir.mkdir(parents=True, exist_ok=True)
             
             # Generiere Backup-Dateinamen
             backup_filename = f"{layer.name()}{backup_suffix}.shp"
