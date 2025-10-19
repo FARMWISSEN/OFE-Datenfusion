@@ -1000,10 +1000,13 @@ class IPlugIn:
             if range_value is None:
                 range_value = max_dist
             
+            # WICHTIG: PyKrige erwartet intern [sill, range, nugget],
+            # aber unsere Variogramm-Funktionen verwenden (nugget, range, sill)
+            # Hier setzen wir für PyKrige in der richtigen Reihenfolge
             ok.variogram_model_parameters = [
-                params.get('nugget', 0),
-                params.get('sill', np.var(z)),
-                min(range_value, max_dist)
+                params.get('sill', np.var(z)),      # PyKrige Position 0: sill
+                min(range_value, max_dist),          # PyKrige Position 1: range
+                params.get('nugget', 0)              # PyKrige Position 2: nugget
             ]
             
             # Hole experimentelle Variogramm-Daten
@@ -1014,6 +1017,8 @@ class IPlugIn:
             is_linear = model_type.lower() == 'linear'
             
             # Initiale Schätzung der Parameter
+            # WICHTIG: optimize_variogram_parameters erwartet unsere Konvention:
+            # Linear: [nugget, slope], Andere: [nugget, range, sill]
             if is_linear:
                 # Linear: [nugget, slope]
                 # Robuste Slope-Schätzung: mittlere Steigung über alle Lags
@@ -1046,11 +1051,15 @@ class IPlugIn:
             )
             
             # Extrahiere optimierte Parameter (unterschiedlich für linear vs. andere)
+            # optimize_variogram_parameters gibt zurück in unserer Konvention:
+            # Linear: [nugget, slope], Andere: [nugget, range, sill]
             if is_linear:
+                # Linear: [nugget, slope]
                 nugget, slope = opt_params
                 range_ = None  # Linear hat keinen Range
                 sill = None    # Linear hat keinen Sill
             else:
+                # Andere Modelle: [nugget, range, sill]
                 nugget, range_, sill = opt_params
                 slope = None   # Andere Modelle haben keinen Slope
             
@@ -1214,14 +1223,38 @@ class IPlugIn:
                 }
             
             # Initialize kriging model
+            # WICHTIG: Um die UI-Werte OHNE Optimierung zu verwenden, müssen wir
+            # variogram_parameters beim __init__ übergeben. PyKrige verwendet diese dann direkt.
+            # Konvertiere von unserer Konvention zu PyKrige's Konvention
+            if is_linear:
+                # Linear-Modell: PyKrige erwartet [slope, nugget]
+                pykrige_params = [
+                    variogram_params['slope'],
+                    variogram_params['nugget']
+                ]
+            else:
+                # Andere Modelle: PyKrige erwartet [sill, range, nugget]
+                pykrige_params = [
+                    variogram_params['sill'],    # PyKrige Position 0: sill
+                    variogram_params['range'],   # PyKrige Position 1: range
+                    variogram_params['nugget']   # PyKrige Position 2: nugget
+                ]
+            
+            # Initialisiere mit expliziten Parametern (verhindert automatische Optimierung)
+            # WICHTIG: weight=True aktiviert die automatische Optimierung!
+            # weight=False deaktiviert sie und verwendet die übergebenen Parameter direkt
             ok = OrdinaryKriging(
                 x, y, z,
                 variogram_model=params['variogram_model'].lower(),
-                variogram_parameters=variogram_params,
+                variogram_parameters=pykrige_params,  # Explizite Parameter
                 nlags=variogram_params['nlags'],
+                weight=False,  # KRITISCH: Deaktiviert automatische Optimierung!
                 enable_plotting=False,
                 coordinates_type='euclidean'
             )
+            
+            # Logge die verwendeten Parameter zur Verifikation
+            self.log(f"Interpolation mit Parametern: {pykrige_params}")
             
             # Perform interpolation based on style
             if style == 'grid':
