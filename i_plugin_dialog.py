@@ -545,6 +545,19 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # ComboBox auf UTM-Layer setzen, falls konvertiert wurde
             if utm_layer:
                 layer_combo.setLayer(utm_layer)
+                
+                # Feld-Auswahl wiederherstellen, falls vorhanden
+                if field_combo is not None and field:
+                    # Prüfe ob Feld im transformierten Layer existiert
+                    field_names = [f.name() for f in utm_layer.fields()]
+                    if field in field_names:
+                        field_combo.setField(field)
+                    else:
+                        QgsMessageLog.logMessage(
+                            f"Feld '{field}' nicht im transformierten Layer gefunden. Verfügbare Felder: {', '.join(field_names)}",
+                            "I-PlugIn",
+                            Qgis.Warning
+                        )
             
             # Erfolgsmeldung
             if field is not None:
@@ -1580,17 +1593,17 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Load variogram model selection for raster tab
         try:
-            variogram_idx = int(settings.value("IPlugIn/variogram_model", 0))
+            variogram_idx = int(settings.value("IPlugIn/variogram_model", 1))  # Default: Index 2 (Spherical)
             if 0 <= variogram_idx < self.comboBox_variogram.count():
                 self.comboBox_variogram.setCurrentIndex(variogram_idx)
         except (ValueError, TypeError):
-            # If there's an error, just set to first item
-            self.comboBox_variogram.setCurrentIndex(0)
+            # If there's an error, set to index 2 (Spherical)
+            self.comboBox_variogram.setCurrentIndex(1)
         
         # Load variogram model selection for point tab
         if hasattr(self, 'comboBox_variogram_point'):
             try:
-                variogram_idx_point = int(settings.value("IPlugIn/variogram_model_point", 0))
+                variogram_idx_point = int(settings.value("IPlugIn/variogram_model_point", 0))  # Default: Index 2 (Spherical)
                 if 0 <= variogram_idx_point < self.comboBox_variogram_point.count():
                     self.comboBox_variogram_point.setCurrentIndex(variogram_idx_point)
             except (ValueError, TypeError):
@@ -1663,12 +1676,12 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Load variogram model selection
         try:
-            variogram_idx = int(settings.value("IPlugIn/variogram_model", 0))
+            variogram_idx = int(settings.value("IPlugIn/variogram_model", 1))  # Default: Index 2 (Spherical)
             if 0 <= variogram_idx < self.comboBox_variogram.count():
                 self.comboBox_variogram.setCurrentIndex(variogram_idx)
         except (ValueError, TypeError):
-            # If there's an error, just set to first item
-            self.comboBox_variogram.setCurrentIndex(0)
+            # If there's an error, set to index 2 (Spherical)
+            self.comboBox_variogram.setCurrentIndex(1)
             
         # Variogram parameters are already initialized with default values
         # in setup_ui_components(), so we don't need to set them again here
@@ -1934,7 +1947,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.mFieldComboBox.setField("")
         self.mMapLayerComboBox_boundary.setLayer(None)
         self.doubleSpinBox_cellsize.setValue(InterpolationConfig.DEFAULT_CELL_SIZE)
-        self.comboBox_variogram.setCurrentIndex(0)  # Erster Eintrag (z.B. Linear)
+        self.comboBox_variogram.setCurrentIndex(1)  # Index 2 (Spherical)
         self.spinBox_lags.setValue(InterpolationConfig.DEFAULT_NLAGS)
         
         # Setze Variogramm-Parameter auf Defaults (alle Modelle)

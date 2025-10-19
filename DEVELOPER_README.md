@@ -1586,6 +1586,12 @@ Es wurden 3 Punkte mit identischen Koordinaten gefunden.
 
 **Vorteile**: Verhindert "singular matrix" Fehler, intelligente Mittelwert-Bildung, keine Datenmanipulation am Original
 
+### ✅ Kleinere UI-Verbesserungen (2025-10-19)
+
+**Feld-Auswahl nach UTM-Transformation:** Feld wird automatisch wiederhergestellt (Zeilen 549-560)
+
+**Default Variogramm-Modell:** Spherical (Index 1) statt Linear als Startmodell (Zeilen 1596, 1679, 1950)
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-19  
