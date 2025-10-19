@@ -36,6 +36,38 @@ class InterpolationMethod:
             return 0  # Default: Ordinary Kriging
 
 
+class VariogramModel:
+    """Enum-ähnliche Klasse für Variogramm-Modelle."""
+    LINEAR = "Linear"
+    SPHERICAL = "Spherical"
+    EXPONENTIAL = "Exponential"
+    GAUSSIAN = "Gaussian"
+    
+    @classmethod
+    def get_all_models(cls):
+        """Gibt alle verfügbaren Variogramm-Modelle zurück."""
+        return [
+            cls.LINEAR,
+            cls.SPHERICAL,
+            cls.EXPONENTIAL,
+            cls.GAUSSIAN
+        ]
+    
+    @classmethod
+    def get_model_index(cls, model_name):
+        """Gibt den Index eines Modells in der Liste zurück (für StackedWidget)."""
+        models = cls.get_all_models()
+        try:
+            return models.index(model_name)
+        except ValueError:
+            return 0  # Default: Linear
+    
+    @classmethod
+    def has_range_parameter(cls, model_name):
+        """Prüft ob ein Modell einen Range-Parameter hat."""
+        return model_name != cls.LINEAR
+
+
 class InterpolationConfig:
     """Zentrale Konfiguration für Interpolations-Parameter und Konstanten."""
     

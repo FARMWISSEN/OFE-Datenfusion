@@ -1124,7 +1124,54 @@ setupUi() → setup_ui_components() → load_non_layer_settings()
 - ✅ Konsistente Terminologie im gesamten Plugin
 - ✅ Professionelle Darstellung mit fester Button-Höhe
 
+### ✅ Nested StackedWidget-System für Variogramm-Parameter (2025-10-19)
+
+**Problem**: Range-Parameter-Ausblenden für Linear-Modell war nicht skalierbar
+- Jedes Variogramm-Modell kann unterschiedliche Parameter haben
+- Linear braucht Slope statt Sill+Range
+- Ausblenden/Einblenden führt zu komplexer if/else-Logik
+
+**Lösung**: Nested StackedWidget-System - jedes Modell hat eigene Parameter-Page
+
+#### **Komponenten:**
+
+**1. `config.py`**: Neue Klasse `VariogramModel` (Zeilen 40-66)
+- Registry mit `get_all_models()`, `get_model_index()`, `has_range_parameter()`
+- Neue Konstanten: `DEFAULT_SLOPE`, `DEFAULT_SLOPE_MIN`, `DEFAULT_SLOPE_MAX`
+
+**2. `Optimierung.ui`**: Nested StackedWidgets
+- **Raster**: `StartwerteVariogramModel` mit 4 Pages (Linear/Spherical/Exponential/Gaussian)
+- **Punkt**: `StartwerteVariogramModel_point` (analog mit `_point` Suffix)
+- **Widget-Naming**: `doubleSpinBox_{parameter}_{model_abbrev}[_point]`
+  - Beispiel Raster: `doubleSpinBox_sill_sph`, `doubleSpinBox_slope`
+  - Beispiel Punkt: `doubleSpinBox_sill_sph_point`, `doubleSpinBox_slope_point`
+
+**3. `i_plugin_dialog.py`**: Handler und Hilfsmethoden
+- `on_variogram_model_changed_raster/point()`: Wechselt StackedWidget-Index (Zeilen 712-764)
+- `get_variogram_parameters_raster/point()`: Liest Parameter aus richtigem Widget (Zeilen 715-803)
+- Angepasst: `get_parameters()`, `get_kriging_parameters()`, `get_point_interpolation_parameters()`
+- Vereinfacht: `reset_variogram_parameters_*()` - nur noch optimierte Labels verstecken (Zeilen 1668-1710)
+- Widget-Initialisierung für alle Modelle (Zeilen 127-318)
+- Signal-Verbindungen für alle Widgets (Zeilen 581-641)
+
+**4. `i_plugin.py`**: None-Handling für Range
+- Linear-Modell hat `range=None`, Backend verwendet `max_dist` als Fallback (Zeilen 997-1007)
+
+#### **Neue Modelle hinzufügen (5 Schritte):**
+1. `config.py`: Modell registrieren
+2. `Optimierung.ui`: Neue Page im StackedWidget
+3. `variogram_models.py`: Modell-Funktion implementieren
+4. `i_plugin_dialog.py`: Widget-Init, Parameter-Sammlung, Signals
+5. `i_plugin.py`: Backend-Logik
+
+**Vorteile**:
+- ✅ Keine if/else-Logik zum Ausblenden/Einblenden
+- ✅ Jedes Modell kann völlig unterschiedliche Parameter haben
+- ✅ Linear-Modell verwendet jetzt Slope statt Range
+- ✅ Konsistent mit Interpolationsmethoden-System
+- ✅ Einfach erweiterbar für neue Modelle
+
 ---
 
-**Letzte Aktualisierung**: 2025-10-16  
+**Letzte Aktualisierung**: 2025-10-19  
 **Für**: Schneller Kontext-Aufbau bei Entwicklung/Debugging

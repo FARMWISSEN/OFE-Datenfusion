@@ -103,7 +103,12 @@ class IPlugIn:
         self.plugin_dir = os.path.dirname(__file__)
         
         # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
+        locale_value = QSettings().value('locale/userLocale')
+        if locale_value:
+            locale = str(locale_value)[0:2]
+        else:
+            locale = 'en'
+        
         locale_path = os.path.join(
             self.plugin_dir,
             'i18n',
@@ -990,10 +995,15 @@ class IPlugIn:
             )
             
             # Setze maximale Distanz für das Variogramm
+            # Note: For Linear model, range is None, so we use max_dist as fallback
+            range_value = params.get('range')
+            if range_value is None:
+                range_value = max_dist
+            
             ok.variogram_model_parameters = [
                 params.get('nugget', 0),
                 params.get('sill', np.var(z)),
-                min(params.get('range', max_dist), max_dist)
+                min(range_value, max_dist)
             ]
             
             # Hole experimentelle Variogramm-Daten

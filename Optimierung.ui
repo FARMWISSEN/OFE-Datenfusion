@@ -334,99 +334,6 @@
         <string>Startwerte Variogramparameter:</string>
        </property>
       </widget>
-      <widget class="QLabel" name="label_sill_3">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>120</y>
-         <width>30</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Sill:</string>
-       </property>
-      </widget>
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_sill">
-       <property name="geometry">
-        <rect>
-         <x>140</x>
-         <y>120</y>
-         <width>80</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.100000000000000</double>
-       </property>
-      </widget>
-      <widget class="QLabel" name="label_range_3">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>150</y>
-         <width>61</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Range:</string>
-       </property>
-      </widget>
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_range">
-       <property name="geometry">
-        <rect>
-         <x>140</x>
-         <y>150</y>
-         <width>80</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="maximum">
-        <double>1000.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>100.000000000000000</double>
-       </property>
-      </widget>
-      <widget class="QLabel" name="label_nugget_3">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>180</y>
-         <width>69</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Nugget:</string>
-       </property>
-      </widget>
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget">
-       <property name="geometry">
-        <rect>
-         <x>140</x>
-         <y>180</y>
-         <width>80</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.000000000000000</double>
-       </property>
-      </widget>
       <widget class="QWidget" name="page_kriging" native="true">
        <property name="geometry">
         <rect>
@@ -446,6 +353,370 @@
          <height>111</height>
         </rect>
        </property>
+      </widget>
+      <widget class="QStackedWidget" name="StartwerteVariogramModel">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>120</y>
+         <width>221</width>
+         <height>91</height>
+        </rect>
+       </property>
+       <property name="currentIndex">
+        <number>1</number>
+       </property>
+       <widget class="QWidget" name="linearStartwerte">
+        <widget class="QLabel" name="label_nugget_3">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>60</y>
+           <width>69</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Nugget:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_lin">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>60</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_slope">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>10</y>
+           <width>69</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Slope:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_slope">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>10</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="sphericalStartwerte">
+        <widget class="QLabel" name="label_range_5">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>61</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Range:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_sph">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>0</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_range_sph">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>30</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="maximum">
+          <double>1000.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>100.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_sill_7">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>0</y>
+           <width>30</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Sill:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_sph">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>60</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_nugget_5">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>60</y>
+           <width>69</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Nugget:</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="exponentiellStartwerte">
+        <widget class="QLabel" name="label_sill_8">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>0</y>
+           <width>30</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Sill:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_exp">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>60</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_range_exp">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>30</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="maximum">
+          <double>1000.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>100.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_exp">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>0</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_range_6">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>61</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Range:</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_nugget_6">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>60</y>
+           <width>69</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Nugget:</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="gaussianStartwerte">
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_gau">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>60</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_sill_9">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>0</y>
+           <width>30</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Sill:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_range_gau">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>30</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="maximum">
+          <double>1000.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>100.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_range_7">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>61</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Range:</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_nugget_7">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>60</y>
+           <width>69</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Nugget:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_gau">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>0</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </widget>
       </widget>
      </widget>
      <widget class="QWidget" name="page_nearest_neighbor">
@@ -780,99 +1051,6 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
         <string>Startwerte Variogramparameter:</string>
        </property>
       </widget>
-      <widget class="QLabel" name="label_sill_4">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>120</y>
-         <width>30</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Sill:</string>
-       </property>
-      </widget>
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_point">
-       <property name="geometry">
-        <rect>
-         <x>140</x>
-         <y>120</y>
-         <width>80</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.100000000000000</double>
-       </property>
-      </widget>
-      <widget class="QLabel" name="label_range_4">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>150</y>
-         <width>61</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Range:</string>
-       </property>
-      </widget>
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_range_point">
-       <property name="geometry">
-        <rect>
-         <x>140</x>
-         <y>150</y>
-         <width>80</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="maximum">
-        <double>1000.000000000000000</double>
-       </property>
-       <property name="value">
-        <double>100.000000000000000</double>
-       </property>
-      </widget>
-      <widget class="QLabel" name="label_nugget_4">
-       <property name="geometry">
-        <rect>
-         <x>30</x>
-         <y>180</y>
-         <width>69</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>Nugget:</string>
-       </property>
-      </widget>
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_point">
-       <property name="geometry">
-        <rect>
-         <x>140</x>
-         <y>180</y>
-         <width>80</width>
-         <height>29</height>
-        </rect>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>0.000000000000000</double>
-       </property>
-      </widget>
       <widget class="QWidget" name="page_kriging_2" native="true">
        <property name="geometry">
         <rect>
@@ -892,6 +1070,370 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
          <height>111</height>
         </rect>
        </property>
+      </widget>
+      <widget class="QStackedWidget" name="StartwerteVariogramModel_point">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>120</y>
+         <width>221</width>
+         <height>91</height>
+        </rect>
+       </property>
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="linearStartwerte_point">
+        <widget class="QLabel" name="label_nugget_8">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>60</y>
+           <width>69</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Nugget:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_lin_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>60</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_slope_2">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>10</y>
+           <width>69</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Slope:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_slope_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>10</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="sphericalStartwerte_point">
+        <widget class="QLabel" name="label_range_8">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>61</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Range:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_sph_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>0</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_range_sph_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>30</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="maximum">
+          <double>1000.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>100.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_sill_10">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>0</y>
+           <width>30</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Sill:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_sph_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>60</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_nugget_9">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>60</y>
+           <width>69</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Nugget:</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="exponentiellStartwerte_point">
+        <widget class="QLabel" name="label_sill_11">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>0</y>
+           <width>30</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Sill:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_exp_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>60</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_range_exp_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>30</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="maximum">
+          <double>1000.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>100.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_exp_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>0</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_range_9">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>61</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Range:</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_nugget_10">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>60</y>
+           <width>69</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Nugget:</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="gaussianStartwerte_point">
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_gau_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>60</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_sill_12">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>0</y>
+           <width>30</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Sill:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_range_gau_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>30</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="maximum">
+          <double>1000.000000000000000</double>
+         </property>
+         <property name="value">
+          <double>100.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_range_10">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>61</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Range:</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_nugget_11">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>60</y>
+           <width>69</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Nugget:</string>
+         </property>
+        </widget>
+        <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_gau_point">
+         <property name="geometry">
+          <rect>
+           <x>120</x>
+           <y>0</y>
+           <width>80</width>
+           <height>29</height>
+          </rect>
+         </property>
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </widget>
       </widget>
      </widget>
      <widget class="QWidget" name="page_nearest_neighbor_point">

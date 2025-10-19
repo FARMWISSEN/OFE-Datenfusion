@@ -15,3 +15,6 @@ __pycache__
 
 # ignore variogram.png
 variogram.png
+
+# ignore all files in the .windsurf directory
+.windsurf
