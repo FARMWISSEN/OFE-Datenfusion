@@ -1280,6 +1280,24 @@ ok = OrdinaryKriging(
 - ✅ Variogramm-Analyse direkt nutzbar
 - ✅ Konsistente Parameterreihenfolgen
 
+### ✅ Dialog bleibt nach Interpolation offen (2025-10-19)
+
+**Problem**: Plugin-Fenster schloss sich nach Raster-Interpolation automatisch
+- Inkonsistent: Punkt-Interpolation ließ Fenster offen
+- User musste Plugin neu öffnen für weitere Interpolationen
+- Keine Möglichkeit Parameter schnell anzupassen
+
+**Lösung**: Neue Methode `interpolate_raster()` statt `accept()` (`i_plugin_dialog.py`)
+1. Button-Verbindung geändert (Zeile 1022): `button_interpolate_points_2.clicked.connect(self.interpolate_raster)`
+2. Neue Methode `interpolate_raster()` (Zeilen 1835-1874): Führt Interpolation aus OHNE `super().accept()`
+3. Success-Message hinzugefügt: "Die Raster-Interpolation wurde erfolgreich abgeschlossen!"
+4. `accept()` bleibt für Rückwärtskompatibilität erhalten (deprecated)
+
+**Vorteile**:
+- ✅ Konsistentes Verhalten: Beide Tabs lassen Dialog offen
+- ✅ Schnellere Workflows: Mehrere Interpolationen ohne Neustart
+- ✅ Bessere UX: User behält Kontrolle über Dialog
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-19  

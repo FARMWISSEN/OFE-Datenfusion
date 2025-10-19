@@ -1019,7 +1019,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Connect interpolation buttons
         #self.interpolate_button.clicked.connect(self.accept)
         self.button_interpolate_points.clicked.connect(self.interpolate_points)
-        self.button_interpolate_points_2.clicked.connect(self.accept)
+        self.button_interpolate_points_2.clicked.connect(self.interpolate_raster)  # Geändert: accept → interpolate_raster
         
         # Connect variogram analysis button
         self.analyze_variogram_button.clicked.connect(self.show_variogram_analysis)
@@ -1832,8 +1832,8 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             
         return True
 # DAS PASSIERT WENN MAN OK DRÜCKT 
-    def accept(self):
-        """Handle OK button click."""
+    def interpolate_raster(self):
+        """Handle raster interpolation button click (Raster-Tab)."""
         if not self.validate_inputs():
             return
             
@@ -1841,6 +1841,50 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             # Get and save parameters
             params = self.get_parameters()
             self.save_settings()  # This will save all current UI values
+            
+            # Store parameters for plugin to use
+            if self.plugin:
+                self.plugin.last_parameters = params
+                
+                # Run interpolation
+                self.plugin.run()
+                
+                # Show success message
+                QMessageBox.information(
+                    self,
+                    "Interpolation erfolgreich",
+                    "Die Raster-Interpolation wurde erfolgreich abgeschlossen!"
+                )
+            
+            # NICHT super().accept() aufrufen → Dialog bleibt offen!
+            
+        except DataValidationError as e:
+            QMessageBox.warning(self, "Datenvalidierung", str(e))
+        except GeometryError as e:
+            QMessageBox.warning(self, "Geometrie-Problem", str(e))
+        except InterpolationCalculationError as e:
+            QMessageBox.critical(self, "Interpolation fehlgeschlagen", str(e))
+        except InterpolationError as e:
+            QMessageBox.critical(self, "Fehler", str(e))
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Unerwarteter Fehler",
+                f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}"
+            )
+
+    def accept(self):
+        """Handle OK button click (deprecated - not used anymore)."""
+        # Diese Methode wird nicht mehr verwendet, da beide Interpolation-Buttons
+        # jetzt ihre eigenen Methoden haben (interpolate_raster, interpolate_points)
+        # Bleibt für Rückwärtskompatibilität erhalten
+        if not self.validate_inputs():
+            return
+            
+        try:
+            # Get and save parameters
+            params = self.get_parameters()
+            self.save_settings()
             
             # Store parameters for plugin to use
             if self.plugin:
