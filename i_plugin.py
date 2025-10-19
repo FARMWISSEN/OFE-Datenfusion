@@ -32,7 +32,7 @@ import tempfile
 
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QVariant
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QMessageBox, QProgressDialog
+from qgis.PyQt.QtWidgets import QAction, QMessageBox, QProgressDialog, QDialog
 from qgis.core import (
     QgsMessageLog,
     QgsProject,
@@ -688,9 +688,110 @@ class IPlugIn:
         # Validation erfolgreich - keine Rückgabe nötig (wird nur für Seiteneffekte verwendet)
 
 
-################################ Interpolation beginnt #####################################################################        
+################################ Interpolation beginnt #####################################################################
+    
+    def check_and_handle_duplicate_coordinates(self, layer, field_name, boundary_layer=None):
+        """Prüft auf doppelte Koordinaten und bietet Behandlungsoptionen an.
+        
+        Diese Methode erkennt Punkte mit identischen Koordinaten, die zu
+        "singular matrix" Fehlern führen können. Bietet dem User Optionen:
+        - Mittelwert bilden (empfohlen)
+        - Erste behalten
+        - Abbrechen
+        
+        Args:
+            layer (QgsVectorLayer): Layer mit den Punktdaten
+            field_name (str): Name des Feldes mit den Werten
+            boundary_layer (QgsVectorLayer, optional): Begrenzungspolygone
+            
+        Returns:
+            dict: {(x, y): value} - Bereinigte Koordinaten und Werte
+                  Oder None wenn User abbricht
+                  
+        Notes:
+            - Koordinaten werden auf 6 Dezimalstellen gerundet (ca. 10cm Toleranz)
+            - Original-Layer wird nicht verändert
+            - Bei Mittelwert: Durchschnitt aller Werte an gleicher Koordinate
+        """
+        from .duplicate_coordinates_dialog import DuplicateCoordinatesDialog
+        
+        # Sammle alle Koordinaten und Werte
+        coords_dict = {}  # {(x, y): [values]}
+        
+        for feature in layer.getFeatures():
+            geom = feature.geometry()
+            if not geom or not geom.isGeosValid():
+                continue
+                
+            point = geom.asPoint()
+            
+            # Boundary-Check wenn vorhanden
+            if boundary_layer:
+                point_geom = QgsGeometry.fromPointXY(point)
+                in_boundary = False
+                for boundary_feature in boundary_layer.getFeatures():
+                    if point_geom.within(boundary_feature.geometry()):
+                        in_boundary = True
+                        break
+                if not in_boundary:
+                    continue
+            
+            # Hole Wert
+            value = self.get_field_value(feature, field_name)
+            if value is None:
+                continue
+                
+            # Runde Koordinaten auf 6 Dezimalstellen (ca. 10cm Toleranz)
+            coord = (round(point.x(), 6), round(point.y(), 6))
+            
+            if coord not in coords_dict:
+                coords_dict[coord] = []
+            coords_dict[coord].append(float(value))
+        
+        # Finde Duplikate
+        duplicates = {k: v for k, v in coords_dict.items() if len(v) > 1}
+        
+        if not duplicates:
+            # Keine Duplikate - gebe einfache Dict zurück
+            return {k: v[0] for k, v in coords_dict.items()}
+        
+        # Zeige Dialog
+        self.log(f"Gefunden: {len(duplicates)} doppelte Koordinaten", Qgis.Warning)
+        
+        dialog = DuplicateCoordinatesDialog(
+            parent=None,
+            duplicate_count=len(duplicates),
+            duplicate_details=duplicates
+        )
+        
+        if dialog.exec_() != QDialog.Accepted:
+            self.log("Duplikat-Behandlung abgebrochen", Qgis.Info)
+            return None
+        
+        action = dialog.get_selected_action()
+        
+        # Behandle basierend auf gewählter Aktion
+        result_dict = {}
+        
+        if action == DuplicateCoordinatesDialog.ACTION_AVERAGE:
+            # Mittelwert bilden
+            self.log("Bilde Mittelwerte für doppelte Koordinaten", Qgis.Info)
+            for coord, values in coords_dict.items():
+                result_dict[coord] = sum(values) / len(values)
+                
+        elif action == DuplicateCoordinatesDialog.ACTION_KEEP_FIRST:
+            # Erste behalten
+            self.log("Behalte erste Werte für doppelte Koordinaten", Qgis.Info)
+            for coord, values in coords_dict.items():
+                result_dict[coord] = values[0]
+        else:
+            # Sollte nicht passieren
+            return None
+        
+        return result_dict
+        
 # ERSTELLT NUMPY ARRAYS UM DIE DATEN FÜRS KRIGING VORZUBEREITEN
-    def prepare_data(self, layer, field_name, boundary_layer=None):
+    def prepare_data(self, layer, field_name, boundary_layer=None, check_duplicates=True):
         """Bereitet die Vektordaten für die Kriging-Interpolation vor.
         
         Transformiert die Eingabedaten in das für Kriging benötigte Format:
@@ -736,6 +837,26 @@ class IPlugIn:
         # Validate input data
         self.validate_input_data(layer, field_name, boundary_layer)
         
+        # Check for duplicate coordinates and handle them
+        if check_duplicates:
+            coords_values = self.check_and_handle_duplicate_coordinates(
+                layer, field_name, boundary_layer
+            )
+            
+            if coords_values is None:
+                # User cancelled
+                self.log("Datenaufbereitung abgebrochen (Duplikate)", Qgis.Info)
+                return None, None, None
+            
+            # Convert dict to arrays
+            x = np.array([coord[0] for coord in coords_values.keys()])
+            y = np.array([coord[1] for coord in coords_values.keys()])
+            z = np.array(list(coords_values.values()))
+            
+            self.log(f"Daten aufbereitet: {len(x)} Punkte (nach Duplikat-Behandlung)")
+            return x, y, z
+        
+        # Original code path (without duplicate check)
         # Initialize arrays for coordinates and values
         x = []
         y = []

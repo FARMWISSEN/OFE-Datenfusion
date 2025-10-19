@@ -1540,6 +1540,52 @@ apply_model_from_comparison_raster/point()
 
 **Vorteile**: Übersichtlicher Vergleich, objektive Selektion (RMSE/R²), CSV Export, keine Side-Effects
 
+### ✅ Duplikat-Koordinaten-Prüfung und -Behandlung (2025-10-19)
+
+**Problem**: "singular matrix" Fehler durch doppelte Koordinaten in Datensätzen
+
+**Lösung**: Automatische Prüfung und intelligente Behandlungsoptionen (`duplicate_coordinates_dialog.py`)
+
+**Features:**
+- Automatische Prüfung bei `prepare_data()` (Zeile 840-857)
+- Erkennung: Koordinaten auf 6 Dezimalstellen gerundet (ca. 10cm Toleranz)
+- Dialog mit 3 Optionen:
+  - **Mittelwert bilden** (empfohlen) - Durchschnitt aller Werte an gleicher Koordinate
+  - **Erste behalten** - Nur erstes Feature (Datenverlust!)
+  - **Abbrechen** - Manuelle Bereinigung
+- Details-Ansicht: Zeigt betroffene Koordinaten und Werte
+- Original-Layer bleibt unverändert
+
+**Implementierung (`i_plugin.py`):**
+```python
+# Neue Methode (Zeilen 693-791)
+check_and_handle_duplicate_coordinates(layer, field_name, boundary_layer)
+→ Gibt {(x,y): value} zurück oder None bei Abbruch
+
+# Integration in prepare_data (Zeile 794)
+prepare_data(layer, field_name, boundary_layer, check_duplicates=True)
+→ Prüft automatisch auf Duplikate vor Datenaufbereitung
+```
+
+**Beispiel-Dialog:**
+```
+⚠️ Doppelte Koordinaten gefunden
+Es wurden 3 Punkte mit identischen Koordinaten gefunden.
+
+⦿ Mittelwert bilden (empfohlen)
+  → Berechnet den Durchschnitt der Werte
+
+○ Erste behalten
+  → Behält nur das erste Feature (Datenverlust!)
+
+○ Abbrechen
+  → Manuelle Bereinigung erforderlich
+
+[Details anzeigen ▼]  [Fortfahren]  [Abbrechen]
+```
+
+**Vorteile**: Verhindert "singular matrix" Fehler, intelligente Mittelwert-Bildung, keine Datenmanipulation am Original
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-19  
