@@ -87,7 +87,7 @@
        <string>Attribut</string>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButton">
+     <widget class="QPushButton" name="add_DatenLayer">
       <property name="geometry">
        <rect>
         <x>410</x>
@@ -139,7 +139,7 @@
        <string>Wählen Sie einen Polygon-Layer für die Rastergrenzen (Feldgrenze oder Parzellen)</string>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButton_2">
+     <widget class="QPushButton" name="add_GrenzLayer">
       <property name="geometry">
        <rect>
         <x>410</x>
@@ -810,7 +810,7 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
        </rect>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButton_4">
+     <widget class="QPushButton" name="add_ZielLayer">
       <property name="geometry">
        <rect>
         <x>410</x>
@@ -882,7 +882,7 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
        </rect>
       </property>
      </widget>
-     <widget class="QPushButton" name="pushButton_5">
+     <widget class="QPushButton" name="add_CovLayer">
       <property name="geometry">
        <rect>
         <x>410</x>

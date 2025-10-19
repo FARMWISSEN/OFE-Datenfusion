@@ -1171,6 +1171,69 @@ setupUi() → setup_ui_components() → load_non_layer_settings()
 - ✅ Konsistent mit Interpolationsmethoden-System
 - ✅ Einfach erweiterbar für neue Modelle
 
+### ✅ Modellspezifische Default-Werte für Variogramm-Parameter (2025-10-19)
+
+**Problem**: Alle Modelle verwendeten gleiche Default-Werte
+
+**Lösung**: Modellspezifische Defaults in `config.py` (Zeilen 131-154)
+
+**Neue Konstanten:**
+- **Linear**: `DEFAULT_SLOPE = 0.001`, `DEFAULT_NUGGET_LINEAR = 0.0`
+- **Spherical**: `DEFAULT_RANGE_SPHERICAL = 100.0` (Basis)
+- **Exponential**: `DEFAULT_RANGE_EXPONENTIAL = 150.0` (größerer Range)
+- **Gaussian**: `DEFAULT_RANGE_GAUSSIAN = 80.0` (kleinerer Range)
+- Legacy Defaults für Rückwärtskompatibilität
+
+**Widget-Initialisierung** (`i_plugin_dialog.py`, Zeilen 127-318): Jedes Modell-Widget verwendet seine spezifischen Defaults
+
+**Vorteile**:
+- ✅ Bessere Startwerte pro Modell
+- ✅ Zentral konfigurierbar
+
+### ✅ Datenbasierte Berechnung von Variogramm-Startwerten (2025-10-19)
+
+**Problem**: Startwerte waren statisch und nicht an Daten angepasst
+
+**Lösung**: Automatische Berechnung aus Layer-Daten beim Add-Button
+
+#### **Berechnungsformeln:**
+
+**Basis**: `C = 0.9 × Var(z)`, `C₀ = 0.1 × Var(z)`, `rp = 0.5 × d_bbox`
+
+**Modellspezifisch**:
+- **Linear**: `slope = C/rp`, `nugget = C₀`
+- **Spherical**: `sill = C`, `range = rp`, `nugget = C₀`
+- **Exponential**: `sill = C`, `range = rp/3`, `nugget = C₀`
+- **Gaussian**: `sill = C`, `range = rp/1.73`, `nugget = C₀`
+
+#### **Komponenten:**
+
+**1. `_calculate_initial_variogram_parameters()` (Zeilen 603-726)**:
+- Extrahiert Feldwerte und Koordinaten
+- Berechnet Varianz und BBox-Diagonale
+- Berechnet modellspezifische Parameter für alle 4 Modelle
+- Robustes Error-Handling (NULL-Werte, Varianz=0, min. 3 Punkte)
+
+**2. Trigger über Add-Buttons (Zeilen 580-600)**:
+- `raster_interpolation_layer_add()` → `_calculate_and_set_initial_values_raster()`
+- `point_interpolation_layer_add()` → `_calculate_and_set_initial_values_point()`
+
+**3. Werte setzen (Zeilen 728-917)**:
+- Setzt berechnete Werte in **alle 4 Modell-Widgets** gleichzeitig
+- Fallback auf Config-Defaults bei Fehlern
+
+#### **Integration:**
+
+Datenfluss: Add-Button → Berechnung → Widgets → Variogramm-Analyse → Optimierung
+
+**Beispiel**: `Var(z)=2.5`, `d_bbox=1000m` → Spherical: `sill=2.25`, `range=500`, `nugget=0.25`
+
+**Vorteile**:
+- ✅ Startwerte basieren auf echten Daten
+- ✅ Schnellere Konvergenz bei Optimierung
+- ✅ Automatisch für alle Modelle
+- ✅ Vollständig in Variogramm-Analyse integriert
+
 ---
 
 **Letzte Aktualisierung**: 2025-10-19  
