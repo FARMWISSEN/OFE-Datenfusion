@@ -1290,7 +1290,7 @@ class IPlugIn:
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
             return None
 # DIE TATSÄCHLICHE INTERPOLATION MIT POINT LAYER FUNKTION IMPLEMENTIERT RETURNS Z-VALUE FOR GRID OR ADDS COLUMN TO THE DATA
-    def interpolate_ordinary_kriging(self, x, y, z, grid_x, grid_y, params, style = 'grid'):
+    def interpolate_ordinary_kriging(self, x, y, z, grid_x, grid_y, params, style='grid', return_variance=False):
         """Führt die Ordinary Kriging Interpolation durch.
         
         Der Prozess läuft in mehreren Schritten ab:
@@ -1315,13 +1315,14 @@ class IPlugIn:
                           - sill (float, optional): Startwert für Sill
                           - range (float, optional): Startwert für Range
                           - nugget (float, optional): Startwert für Nugget
+            style (str): 'grid' für Raster-Interpolation, 'points' für Punkt-Interpolation
+            return_variance (bool): Wenn True, wird zusätzlich die Kriging-Varianz zurückgegeben
             
         Returns:
-            dict: Interpolationsergebnisse mit:
-                 - 'values': Interpolierte Werte auf dem Grid
-                 - 'variance': Kriging-Varianz auf dem Grid
-                 - 'variogram_info': Details zur Variogramm-Analyse
-            oder None bei Fehler
+            Wenn return_variance=False:
+                np.array: Interpolierte Werte auf dem Grid
+            Wenn return_variance=True:
+                tuple: (z_pred, z_variance) - Interpolierte Werte und Kriging-Varianz (σ²)
             
         Raises:
             ValueError: Bei fehlgeschlagener Variogramm-Analyse
@@ -1388,9 +1389,16 @@ class IPlugIn:
             # Perform interpolation based on style
             if style == 'grid':
                 z_pred, z_std = ok.execute('grid', grid_x, grid_y)
+                if return_variance:
+                    # Varianz = Standardabweichung² (PyKrige gibt σ zurück, wir brauchen σ²)
+                    z_variance = z_std.data ** 2
+                    return z_pred.data, z_variance
                 return z_pred.data
             elif style == 'points':
                 z_pred, z_std = ok.execute('points', grid_x, grid_y)
+                if return_variance:
+                    z_variance = z_std ** 2
+                    return z_pred, z_variance
                 return z_pred
             else:
                 raise InterpolationCalculationError(
@@ -1845,6 +1853,89 @@ class IPlugIn:
                 Qgis.Warning
             )
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Info)
+            return False
+
+    def _apply_variance_styling(self, layer):
+        """Wendet eine spezielle Farbrampe für Varianz-Raster an.
+        
+        Verwendet eine Weiß → Gelb → Rot Farbrampe, da hohe Varianz = hohe Unsicherheit.
+        
+        Args:
+            layer (QgsRasterLayer): Das Varianz-Raster-Layer
+            
+        Returns:
+            bool: True bei Erfolg, False bei Fehler
+        """
+        try:
+            if not layer or not layer.isValid():
+                self.log("Ungültiger Layer für Varianz-Styling", Qgis.Warning)
+                return False
+            
+            provider = layer.dataProvider()
+            
+            # Berechne Statistiken
+            from qgis.core import QgsRasterBandStats
+            stats = provider.bandStatistics(
+                1, QgsRasterBandStats.All, provider.extent(), 0
+            )
+            
+            min_val = stats.minimumValue
+            max_val = stats.maximumValue
+            
+            # Prüfe auf ungültige Werte
+            import math
+            if math.isinf(min_val) or math.isinf(max_val) or math.isnan(min_val) or math.isnan(max_val):
+                self.log(f"Ungültige Varianz-Statistik - überspringe Styling", Qgis.Warning)
+                return False
+            
+            # Erstelle Renderer
+            renderer = QgsSingleBandPseudoColorRenderer(provider, 1)
+            
+            # Varianz-Farbrampe: Reiner Rot-Verlauf (hell → dunkel)
+            # Niedrige Varianz = hellrot/rosa, hohe Varianz = dunkelrot
+            color_ramp = QgsGradientColorRamp(
+                QColor(255, 230, 230),  # Start: Sehr helles Rosa (niedrige Varianz)
+                QColor(139, 0, 0)       # Ende: Dunkelrot (hohe Varianz)
+            )
+            color_ramp.setStops([
+                QgsGradientStop(0.25, QColor(255, 180, 180)),  # Hellrosa
+                QgsGradientStop(0.50, QColor(220, 100, 100)),  # Mittelrot
+                QgsGradientStop(0.75, QColor(180, 50, 50)),    # Rot
+            ])
+            
+            # Erstelle Shader
+            shader = QgsColorRampShader()
+            shader.setColorRampType(QgsColorRampShader.Interpolated)
+            
+            # Klassifiziere
+            num_classes = 10
+            color_ramp_items = []
+            
+            for i in range(num_classes):
+                fraction = i / (num_classes - 1)
+                value = min_val + fraction * (max_val - min_val)
+                color = color_ramp.color(fraction)
+                label = f"σ² = {value:.4f}"
+                color_ramp_items.append(
+                    QgsColorRampShader.ColorRampItem(value, color, label)
+                )
+            
+            shader.setColorRampItemList(color_ramp_items)
+            shader.setMinimumValue(min_val)
+            shader.setMaximumValue(max_val)
+            
+            raster_shader = QgsRasterShader()
+            raster_shader.setRasterShaderFunction(shader)
+            renderer.setShader(raster_shader)
+            
+            layer.setRenderer(renderer)
+            layer.triggerRepaint()
+            
+            self.log(f"Varianz-Styling angewendet: σ² = {min_val:.4f} - {max_val:.4f}")
+            return True
+            
+        except Exception as e:
+            self.log(f"Varianz-Styling fehlgeschlagen: {str(e)}", Qgis.Warning)
             return False
 
     def create_vector_layer_from_grid(self, grid_x, grid_y, interpolated_data, output_path, crs, mask=None, field_name="value"):
@@ -2858,9 +2949,9 @@ class IPlugIn:
             if progress.wasCanceled():
                 raise Exception("Interpolation wurde vom Benutzer abgebrochen")
             
-            # Perform Kriging interpolation
-            interpolated_data = self.interpolate_ordinary_kriging(
-                x, y, z, grid_x, grid_y, params
+            # Perform Kriging interpolation (mit Varianz)
+            interpolated_data, variance_data = self.interpolate_ordinary_kriging(
+                x, y, z, grid_x, grid_y, params, return_variance=True
             )
             
             QCoreApplication.processEvents()
@@ -2881,6 +2972,34 @@ class IPlugIn:
             
             # Save metadata
             self.save_metadata(output_dir, Path(output_path).stem, params, interpolation_type="raster")
+            
+            # Optional: Create variance raster (Kriging-Varianz σ²)
+            variance_created = False
+            variance_output_path = None
+            reply_variance = QMessageBox.question(
+                None,
+                'Kriging-Varianz erstellen?',
+                'Möchten Sie zusätzlich eine Karte der Kriging-Varianz (σ²) erstellen?\n\n'
+                'Die Varianz zeigt die Unsicherheit der Interpolation an.\n'
+                'Hohe Werte = hohe Unsicherheit (z.B. weit von Messpunkten entfernt).',
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply_variance == QMessageBox.Yes:
+                variance_output_path = str(output_dir / f"{Path(output_path).stem}_variance.tif")
+                self.create_raster_layer(
+                    variance_data,
+                    grid_extent,
+                    params['cell_size'],
+                    variance_output_path,
+                    target_crs,
+                    mask,
+                    x=grid_x,
+                    y=grid_y
+                )
+                variance_created = True
+                self.log(f"Varianz-Raster erstellt: {variance_output_path}")
             
             # Optional: Create vector layer
             vector_created = False
@@ -2905,7 +3024,12 @@ class IPlugIn:
                 )
             
             # Add layers to QGIS
-            self._add_raster_to_project(output_path, vector_output_path if vector_created else None, params)
+            self._add_raster_to_project(
+                output_path, 
+                vector_output_path if vector_created else None, 
+                params,
+                variance_path=variance_output_path if variance_created else None
+            )
             
             progress.close()
             
@@ -3070,13 +3194,14 @@ class IPlugIn:
 # ============================================================================
 # SHARED HELPERS - Gemeinsame Hilfsfunktionen für alle Workflows
 # ============================================================================
-    def _add_raster_to_project(self, raster_path, vector_path, params):
-        """Fügt Raster (und optional Vector) zum Projekt hinzu.
+    def _add_raster_to_project(self, raster_path, vector_path, params, variance_path=None):
+        """Fügt Raster (und optional Vector/Varianz) zum Projekt hinzu.
         
         Args:
             raster_path (str): Pfad zum Raster
             vector_path (str): Pfad zum Vector-Layer (optional)
             params (dict): Parameter für Success-Message
+            variance_path (str): Pfad zum Varianz-Raster (optional)
         """
         layer_name = Path(raster_path).stem
         layer = QgsRasterLayer(raster_path, layer_name)
@@ -3092,6 +3217,17 @@ class IPlugIn:
         # Apply color ramp styling
         self.apply_color_ramp_to_raster(layer)
         
+        # Add variance raster if provided
+        if variance_path and Path(variance_path).exists():
+            variance_layer_name = Path(variance_path).stem
+            variance_layer = QgsRasterLayer(variance_path, variance_layer_name)
+            if variance_layer.isValid():
+                QgsProject.instance().addMapLayer(variance_layer, False)
+                group.addLayer(variance_layer)
+                # Apply special styling for variance (different color ramp)
+                self._apply_variance_styling(variance_layer)
+                self.log(f"Varianz-Layer hinzugefügt: {variance_layer_name}")
+        
         # Add vector layer if provided
         if vector_path and Path(vector_path).exists():
             vector_layer = QgsVectorLayer(vector_path, f"{layer_name}_points", "ogr")
@@ -3106,7 +3242,8 @@ class IPlugIn:
             idw_power = params.get('idw_power', InterpolationConfig.DEFAULT_IDW_POWER)
             success_msg = f"IDW-Interpolation erfolgreich: {layer_name}\nPower: {idw_power}"
         else:
-            success_msg = f"Kriging-Interpolation erfolgreich: {layer_name}"
+            variance_info = " + Varianz-Karte" if variance_path else ""
+            success_msg = f"Kriging-Interpolation erfolgreich: {layer_name}{variance_info}"
         
         self.iface.messageBar().pushSuccess("I-PlugIn", success_msg)
 
