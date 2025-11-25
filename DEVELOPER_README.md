@@ -2,10 +2,12 @@
 
 ## Schnellübersicht
 
-**Zweck**: QGIS-Plugin für räumliche Interpolation mittels Ordinary Kriging für On-Farm Research  
+**Zweck**: QGIS-Plugin für räumliche Interpolation (Kriging + IDW) für On-Farm Research  
 **Sprache**: Python 3.7+  
 **Framework**: QGIS 3.x Plugin API  
-**Hauptbibliothek**: pykrige (Kriging-Implementierung)
+**Hauptbibliotheken**: 
+- `pykrige` (Ordinary Kriging)
+- `qgis.analysis` (IDW via QgsIDWInterpolator)
 
 ---
 
@@ -13,15 +15,45 @@
 
 ```
 interpolation/
-├── i_plugin.py              # Hauptlogik: Interpolation, Datenverarbeitung, CRS-Handling
+├── i_plugin.py              # Hauptlogik: Dispatcher + Interpolations-Workflows
 ├── i_plugin_dialog.py       # UI-Controller: Dialog-Management, User-Input
 ├── variogram_models.py      # Variogramm-Modelle (linear, spherical, exponential, gaussian)
 ├── variogram_plotter.py     # Matplotlib-basierte Variogramm-Visualisierung
 ├── variogram_dialog.py      # Dialog für Variogramm-Analyse-Ergebnisse
-├── config.py                # Zentrale Konfigurationskonstanten
+├── config.py                # Zentrale Konfigurationskonstanten + Methoden-Registry
 ├── exceptions.py            # Custom Exception-Hierarchie
-├── Optimierung.ui           # Qt Designer UI-Datei
+├── Optimierung.ui           # Qt Designer UI-Datei (mit Stacked Widgets für Methoden)
 └── resources.py             # Qt-Ressourcen (Icons, etc.)
+```
+
+---
+
+## Interpolationsmethoden
+
+### Unterstützte Methoden
+
+| Methode | Bibliothek | Beschreibung |
+|---------|------------|--------------|
+| **Ordinary Kriging** | pykrige | Geostatistische Interpolation mit Variogramm-Analyse |
+| **IDW** | qgis.analysis | Inverse Distance Weighting (QGIS-nativ) |
+
+### Dispatcher-Architektur (i_plugin.py)
+
+```
+run()                              # Dispatcher - zeigt Dialog, delegiert an Workflow
+├── run_kriging_interpolation()    # Kriging-Workflow (eigenständig)
+│   ├── prepare_data()             # x, y, z Arrays extrahieren
+│   ├── create_output_grid()       # Grid + Boundary-Maske
+│   ├── interpolate_ordinary_kriging()
+│   └── create_raster_layer()      # GeoTIFF mit GDAL
+│
+├── run_idw_interpolation()        # IDW-Workflow (eigenständig)
+│   ├── interpolate_idw()          # QgsIDWInterpolator + QgsGridFileWriter
+│   └── clip_raster_to_boundary()  # Optional: GDAL Clip mit Buffer
+│
+└── Shared Helpers
+    ├── _add_raster_to_project()   # Layer laden + Styling
+    └── _handle_interpolation_error()  # Zentrale Fehlerbehandlung
 ```
 
 ---
@@ -32,46 +64,45 @@ interpolation/
 
 **Verantwortlichkeiten:**
 - Plugin-Lifecycle (initGui, unload, run)
+- **Dispatcher für Interpolationsmethoden**
 - Datenvalidierung und -vorbereitung
 - Koordinatensystem-Transformationen (UTM)
-- Variogramm-Analyse und -Optimierung
-- Kriging-Interpolation (Raster + Punkt-zu-Punkt)
+- Variogramm-Analyse und -Optimierung (nur Kriging)
 - Raster-Layer-Erstellung (GeoTIFF)
-- Metadaten-Management (generisch für Raster + Punkt)
-- **Automatisches Backup-Management**
-- **Automatisches Farbrampen-Styling** für Raster
-- **Vector-Layer-Export** mit abgestufter Symbolisierung (neu)
+- **Boundary-Clipping** (mit Pixel-Buffer)
+- Metadaten-Management (generisch für alle Methoden)
+- Automatisches Backup-Management
+- Automatisches Farbrampen-Styling
 
 **Wichtige Methoden:**
 
-| Methode | Zweck | Zeilen |
-|---------|-------|--------|
-| `validate_input_data()` | Prüft Layer, Felder, CRS, Boundary | 522-669 |
-| `convert_to_utm()` | Automatische UTM-Konvertierung (mit Duplikat-Check) | 277-405 |
-| `prepare_data()` | Extrahiert x, y, z für Kriging | 674-763 |
-| `create_output_grid()` | Erstellt Interpolationsgrid mit Buffer | 765-837 |
-| `analyze_variogram()` | Variogramm-Analyse + Optimierung | 894-1058 |
-| `interpolate_ordinary_kriging()` | Führt Kriging durch (grid/points) | 1060-1147 |
-| `create_raster_layer()` | Erstellt GeoTIFF aus Interpolationsdaten | 1149-1227 |
-| **`apply_color_ramp_to_raster()`** | **Wendet automatisch Farbrampe auf Raster an** | **1253-1350** |
-| **`create_vector_layer_from_grid()`** | **Erstellt Vector-Layer aus Grid-Daten (neu)** | **1352-1430** |
-| **`apply_graduated_symbology_to_vector()`** | **Wendet abgestufte Symbolisierung auf Vector an (neu)** | **1432-1514** |
-| **`save_metadata()`** | **Speichert Metadaten (generisch für Raster + Punkt)** | **1516-1576** |
-| **`create_layer_backup()`** | **Erstellt Backup vor Layer-Modifikation** | **1366-1455** |
-| `update_target_layer()` | Aktualisiert Ziel-Layer mit interpolierten Werten | 1457-1550 |
-| `run_point_interpolation()` | Punkt-zu-Punkt Interpolation (mit Backup + Metadata) | 1552-1649 |
-| `run()` | Hauptworkflow für Raster-Interpolation | 1653-1907 |
+| Methode | Zweck |
+|---------|-------|
+| `run()` | **Dispatcher** - delegiert an Workflow basierend auf Methode |
+| `run_kriging_interpolation()` | Kompletter Kriging-Workflow |
+| `run_idw_interpolation()` | Kompletter IDW-Workflow |
+| `interpolate_ordinary_kriging()` | PyKrige-basierte Interpolation |
+| `interpolate_idw()` | QgsIDWInterpolator-basierte Interpolation |
+| `clip_raster_to_boundary()` | GDAL-Clip mit optionalem Pixel-Buffer |
+| `_add_raster_to_project()` | Shared: Layer laden + Styling |
+| `_handle_interpolation_error()` | Shared: Zentrale Fehlerbehandlung |
 
-**Datenfluss (Raster-Interpolation):**
+**Datenfluss (Kriging):**
 ```
-User Input (Dialog) 
-  → validate_input_data() 
+run() → run_kriging_interpolation()
   → prepare_data() [x, y, z arrays]
   → create_output_grid() [grid_x, grid_y, mask]
-  → analyze_variogram() [optimierte Parameter]
   → interpolate_ordinary_kriging() [z_pred]
   → create_raster_layer() [GeoTIFF]
-  → Layer zu QGIS hinzufügen
+  → _add_raster_to_project()
+```
+
+**Datenfluss (IDW):**
+```
+run() → run_idw_interpolation()
+  → interpolate_idw() [QgsIDWInterpolator → GeoTIFF]
+  → clip_raster_to_boundary() [optional, mit Buffer]
+  → _add_raster_to_project()
 ```
 
 ---
@@ -938,17 +969,21 @@ temp_file.close()
 - **`config.py`**: `InterpolationMethod` Klasse mit Registry (`get_all_methods()`, `get_method_index()`)
 - **`Optimierung.ui`**: `stackedWidget_method_params` (250px Höhe) mit Pages pro Methode
   - Page 0: `page_ordinary_kriging` (Variogramm, Lags, Sill, Range, Nugget, Analyse-Button)
-  - Page 1: `page_nearest_neighbor` (Info-Text, Test-Methode)
+  - Page 1: `page_idw` (Power/Distance Coefficient)
   - Analog: `stackedWidget_method_params_point` für Punkt-Tab
 - **`i_plugin_dialog.py`**: Signal `comboBox_method.currentTextChanged` → `on_interpolation_method_changed_raster()` wechselt StackedWidget-Index
 
-**Neue Methode hinzufügen (4 Schritte):**
-1. `config.py`: Methode in `get_all_methods()` registrieren
+**Neue Methode hinzufügen (5 Schritte):**
+1. `config.py`: Methode in `InterpolationMethod.get_all_methods()` registrieren + Konstanten
 2. `Optimierung.ui`: Neue Page mit Parametern im StackedWidget erstellen
-3. `i_plugin.py`: Backend-Logik implementieren
+3. `i_plugin.py`: 
+   - `run_xxx_interpolation()` Workflow-Methode erstellen
+   - `interpolate_xxx()` Interpolations-Methode implementieren
+   - Dispatch in `run()` hinzufügen
 4. `i_plugin_dialog.py`: Parameter-Sammlung in `get_parameters()` erweitern
+5. `save_metadata()`: Methoden-spezifische Parameter speichern
 
-**Status**: Test-Methode "Nearest Neighbor" implementiert (ohne Backend-Logik)
+**Beispiel**: IDW wurde nach diesem Schema implementiert (siehe `run_idw_interpolation()`, `interpolate_idw()`)
 
 ### ✅ Dynamisches Ausblenden von Range-Parameter für Linear-Variogramm (2025-10-15)
 

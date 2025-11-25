@@ -732,27 +732,84 @@
        </property>
       </widget>
      </widget>
-     <widget class="QWidget" name="page_nearest_neighbor">
-      <widget class="QLabel" name="label_nn_info">
+     <widget class="QWidget" name="page_idw">
+      <widget class="QLabel" name="label_idw_info">
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>20</y>
+         <y>10</y>
          <width>531</width>
-         <height>81</height>
+         <height>51</height>
         </rect>
        </property>
        <property name="text">
-        <string>Nearest Neighbor Interpolation (Test-Methode)
-
-Diese Methode ist noch nicht vollständig implementiert.
-Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
+        <string>IDW (Inverse Distance Weighting) verwendet die Distanz zu bekannten Punkten, um Werte zu interpolieren. Nähere Punkte haben mehr Einfluss.</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
        </property>
        <property name="wordWrap">
         <bool>true</bool>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_idw_power">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>70</y>
+         <width>200</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Power (Distance Coefficient):</string>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_idw_power">
+       <property name="geometry">
+        <rect>
+         <x>220</x>
+         <y>68</y>
+         <width>100</width>
+         <height>25</height>
+        </rect>
+       </property>
+       <property name="decimals">
+        <number>1</number>
+       </property>
+       <property name="minimum">
+        <double>0.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>100.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.500000000000000</double>
+       </property>
+       <property name="value">
+        <double>2.000000000000000</double>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_idw_power_hint">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>100</y>
+         <width>531</width>
+         <height>41</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Höhere Werte verstärken den Einfluss naher Punkte. Standard: 2.0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+       <property name="styleSheet">
+        <string>color: gray; font-style: italic;</string>
        </property>
       </widget>
      </widget>
@@ -1462,27 +1519,84 @@ Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
        </property>
       </widget>
      </widget>
-     <widget class="QWidget" name="page_nearest_neighbor_point">
-      <widget class="QLabel" name="label_nn_info_point">
+     <widget class="QWidget" name="page_idw_point">
+      <widget class="QLabel" name="label_idw_info_point">
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>20</y>
+         <y>10</y>
          <width>531</width>
-         <height>81</height>
+         <height>51</height>
         </rect>
        </property>
        <property name="text">
-        <string>Nearest Neighbor Interpolation (Test-Methode)
-
-Diese Methode ist noch nicht vollständig implementiert.
-Sie dient als Beispiel für die Erweiterbarkeit des Systems.</string>
+        <string>IDW (Inverse Distance Weighting) verwendet die Distanz zu bekannten Punkten, um Werte zu interpolieren. Nähere Punkte haben mehr Einfluss.</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
        </property>
        <property name="wordWrap">
         <bool>true</bool>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_idw_power_point">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>70</y>
+         <width>200</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Power (Distance Coefficient):</string>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_idw_power_point">
+       <property name="geometry">
+        <rect>
+         <x>220</x>
+         <y>68</y>
+         <width>100</width>
+         <height>25</height>
+        </rect>
+       </property>
+       <property name="decimals">
+        <number>1</number>
+       </property>
+       <property name="minimum">
+        <double>0.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>100.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.500000000000000</double>
+       </property>
+       <property name="value">
+        <double>2.000000000000000</double>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_idw_power_hint_point">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>100</y>
+         <width>531</width>
+         <height>41</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Höhere Werte verstärken den Einfluss naher Punkte. Standard: 2.0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+       <property name="styleSheet">
+        <string>color: gray; font-style: italic;</string>
        </property>
       </widget>
      </widget>

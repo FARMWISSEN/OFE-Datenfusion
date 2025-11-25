@@ -1280,95 +1280,78 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             Qgis.Info
         )
 
-    def get_variogram_parameters_raster(self):
-        """Get variogram parameters from raster tab based on selected model.
+    def _get_spinbox_value(self, widget_name, default):
+        """Hilfsmethode zum sicheren Auslesen von SpinBox-Werten.
         
+        Args:
+            widget_name (str): Name des Widgets
+            default: Fallback-Wert wenn Widget nicht existiert
+            
         Returns:
-            dict: Dictionary with sill, range, nugget, slope (depending on model)
+            Wert des Widgets oder default
         """
-        model_name = self.comboBox_variogram.currentText()
+        widget = getattr(self, widget_name, None)
+        return widget.value() if widget else default
+
+    def _get_variogram_params(self, model_name, suffix=""):
+        """Generische Methode zum Auslesen von Variogramm-Parametern.
         
-        if model_name == "Linear":
-            return {
-                'slope': self.doubleSpinBox_slope.value() if hasattr(self, 'doubleSpinBox_slope') else 0.001,
-                'nugget': self.doubleSpinBox_nugget.value() if hasattr(self, 'doubleSpinBox_nugget') else 0.0,
-                'sill': None,  # Linear has no sill
-                'range': None  # Linear has no range
-            }
-        elif model_name == "Spherical":
-            return {
-                'sill': self.doubleSpinBox_sill_sph.value() if hasattr(self, 'doubleSpinBox_sill_sph') else 0.1,
-                'range': self.doubleSpinBox_range_sph.value() if hasattr(self, 'doubleSpinBox_range_sph') else 100.0,
-                'nugget': self.doubleSpinBox_nugget_sph.value() if hasattr(self, 'doubleSpinBox_nugget_sph') else 0.0,
+        Args:
+            model_name (str): Name des Variogramm-Modells
+            suffix (str): Widget-Suffix für Punkt-Tab ("_point") oder leer für Raster
+            
+        Returns:
+            dict: Dictionary mit sill, range, nugget, slope
+        """
+        # Widget-Namen basierend auf Modell und Suffix
+        widget_map = {
+            "Linear": {
+                'slope': (f'doubleSpinBox_slope{suffix}', InterpolationConfig.DEFAULT_SLOPE),
+                'nugget': (f'doubleSpinBox_nugget{"_lin" + suffix if suffix else ""}', InterpolationConfig.DEFAULT_NUGGET),
+                'sill': None,
+                'range': None
+            },
+            "Spherical": {
+                'sill': (f'doubleSpinBox_sill_sph{suffix}', InterpolationConfig.DEFAULT_SILL_SPHERICAL),
+                'range': (f'doubleSpinBox_range_sph{suffix}', InterpolationConfig.DEFAULT_RANGE_SPHERICAL),
+                'nugget': (f'doubleSpinBox_nugget_sph{suffix}', InterpolationConfig.DEFAULT_NUGGET_SPHERICAL),
+                'slope': None
+            },
+            "Exponential": {
+                'sill': (f'doubleSpinBox_sill_exp{suffix}', InterpolationConfig.DEFAULT_SILL_EXPONENTIAL),
+                'range': (f'doubleSpinBox_range_exp{suffix}', InterpolationConfig.DEFAULT_RANGE_EXPONENTIAL),
+                'nugget': (f'doubleSpinBox_nugget_exp{suffix}', InterpolationConfig.DEFAULT_NUGGET_EXPONENTIAL),
+                'slope': None
+            },
+            "Gaussian": {
+                'sill': (f'doubleSpinBox_sill_gau{suffix}', InterpolationConfig.DEFAULT_SILL_GAUSSIAN),
+                'range': (f'doubleSpinBox_range_gau{suffix}', InterpolationConfig.DEFAULT_RANGE_GAUSSIAN),
+                'nugget': (f'doubleSpinBox_nugget_gau{suffix}', InterpolationConfig.DEFAULT_NUGGET_GAUSSIAN),
                 'slope': None
             }
-        elif model_name == "Exponential":
-            return {
-                'sill': self.doubleSpinBox_sill_exp.value() if hasattr(self, 'doubleSpinBox_sill_exp') else 0.1,
-                'range': self.doubleSpinBox_range_exp.value() if hasattr(self, 'doubleSpinBox_range_exp') else 100.0,
-                'nugget': self.doubleSpinBox_nugget_exp.value() if hasattr(self, 'doubleSpinBox_nugget_exp') else 0.0,
-                'slope': None
-            }
-        elif model_name == "Gaussian":
-            return {
-                'sill': self.doubleSpinBox_sill_gau.value() if hasattr(self, 'doubleSpinBox_sill_gau') else 0.1,
-                'range': self.doubleSpinBox_range_gau.value() if hasattr(self, 'doubleSpinBox_range_gau') else 100.0,
-                'nugget': self.doubleSpinBox_nugget_gau.value() if hasattr(self, 'doubleSpinBox_nugget_gau') else 0.0,
-                'slope': None
-            }
-        else:
-            # Fallback
-            return {
-                'sill': 0.1,
-                'range': 100.0,
-                'nugget': 0.0,
-                'slope': None
-            }
+        }
+        
+        # Fallback für unbekannte Modelle
+        if model_name not in widget_map:
+            return {'sill': 0.1, 'range': 100.0, 'nugget': 0.0, 'slope': None}
+        
+        params = {}
+        for param, config in widget_map[model_name].items():
+            if config is None:
+                params[param] = None
+            else:
+                widget_name, default = config
+                params[param] = self._get_spinbox_value(widget_name, default)
+        
+        return params
+
+    def get_variogram_parameters_raster(self):
+        """Get variogram parameters from raster tab based on selected model."""
+        return self._get_variogram_params(self.comboBox_variogram.currentText())
 
     def get_variogram_parameters_point(self):
-        """Get variogram parameters from point tab based on selected model.
-        
-        Returns:
-            dict: Dictionary with sill, range, nugget, slope (depending on model)
-        """
-        model_name = self.comboBox_variogram_point.currentText()
-        
-        if model_name == "Linear":
-            return {
-                'slope': self.doubleSpinBox_slope_point.value() if hasattr(self, 'doubleSpinBox_slope_point') else 0.001,
-                'nugget': self.doubleSpinBox_nugget_lin_point.value() if hasattr(self, 'doubleSpinBox_nugget_lin_point') else 0.0,
-                'sill': None,  # Linear has no sill
-                'range': None  # Linear has no range
-            }
-        elif model_name == "Spherical":
-            return {
-                'sill': self.doubleSpinBox_sill_sph_point.value() if hasattr(self, 'doubleSpinBox_sill_sph_point') else 0.1,
-                'range': self.doubleSpinBox_range_sph_point.value() if hasattr(self, 'doubleSpinBox_range_sph_point') else 100.0,
-                'nugget': self.doubleSpinBox_nugget_sph_point.value() if hasattr(self, 'doubleSpinBox_nugget_sph_point') else 0.0,
-                'slope': None
-            }
-        elif model_name == "Exponential":
-            return {
-                'sill': self.doubleSpinBox_sill_exp_point.value() if hasattr(self, 'doubleSpinBox_sill_exp_point') else 0.1,
-                'range': self.doubleSpinBox_range_exp_point.value() if hasattr(self, 'doubleSpinBox_range_exp_point') else 100.0,
-                'nugget': self.doubleSpinBox_nugget_exp_point.value() if hasattr(self, 'doubleSpinBox_nugget_exp_point') else 0.0,
-                'slope': None
-            }
-        elif model_name == "Gaussian":
-            return {
-                'sill': self.doubleSpinBox_sill_gau_point.value() if hasattr(self, 'doubleSpinBox_sill_gau_point') else 0.1,
-                'range': self.doubleSpinBox_range_gau_point.value() if hasattr(self, 'doubleSpinBox_range_gau_point') else 100.0,
-                'nugget': self.doubleSpinBox_nugget_gau_point.value() if hasattr(self, 'doubleSpinBox_nugget_gau_point') else 0.0,
-                'slope': None
-            }
-        else:
-            # Fallback
-            return {
-                'sill': 0.1,
-                'range': 100.0,
-                'nugget': 0.0,
-                'slope': None
-            }
+        """Get variogram parameters from point tab based on selected model."""
+        return self._get_variogram_params(self.comboBox_variogram_point.currentText(), "_point")
 
     def get_point_interpolation_parameters(self):
         """Sammelt die Parameter für die Punkt-Interpolation."""
@@ -1722,49 +1705,65 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         self.plugin_dir = directory
 
     def get_parameters(self):
-        """Get parameters from dialog."""
-        # Get variogram parameters from the appropriate widget based on selected model
-        variogram_params = self.get_variogram_parameters_raster()
+        """Sammelt alle Parameter für die Raster-Interpolation.
         
+        Returns:
+            dict: Parameter-Dictionary basierend auf ausgewählter Methode
+        """
+        selected_method = self.comboBox_method.currentText()
+        
+        # Basis-Parameter (für alle Methoden)
         params = {
             'input_layer': self.mMapLayerComboBox.currentLayer(),
             'input_field': self.mFieldComboBox.currentField(),
-            'method': 'ordinary_kriging',
             'cell_size': self.doubleSpinBox_cellsize.value(),
             'boundary_layer': self.mMapLayerComboBox_boundary.currentLayer(),
-            'variogram_model': self.comboBox_variogram.currentText(),
-            'sill': variogram_params.get('sill'),
-            'range': variogram_params.get('range'),
-            'nugget': variogram_params.get('nugget'),
-            'slope': variogram_params.get('slope'),
-            'nlags': self.spinBox_lags.value()
         }
         
-        # Add variogram_info if available from analysis
+        # Methoden-spezifische Parameter
+        if selected_method == InterpolationMethod.IDW:
+            params.update(self._get_idw_parameters())
+        else:
+            params.update(self._get_kriging_raster_parameters())
+        
+        return params
+
+    def _get_idw_parameters(self):
+        """IDW-spezifische Parameter sammeln."""
+        return {
+            'method': 'idw',
+            'idw_power': self._get_spinbox_value('doubleSpinBox_idw_power', InterpolationConfig.DEFAULT_IDW_POWER)
+        }
+
+    def _get_kriging_raster_parameters(self):
+        """Kriging-spezifische Parameter für Raster-Tab sammeln."""
+        variogram_params = self.get_variogram_parameters_raster()
+        
+        params = {
+            'method': 'ordinary_kriging',
+            'variogram_model': self.comboBox_variogram.currentText(),
+            'nlags': self.spinBox_lags.value(),
+            **variogram_params  # sill, range, nugget, slope
+        }
+        
+        # Variogram-Info hinzufügen falls vorhanden
         if self.variogram_info_raster:
             params['variogram_info'] = self.variogram_info_raster
         
         return params
 
     def get_kriging_parameters(self):
-        """Get current kriging parameters from UI."""
-        try:
-            variogram_params = self.get_variogram_parameters_raster()
-            return {
-                'variogram_model': self.comboBox_variogram.currentText().lower(),
-                'nugget': variogram_params.get('nugget'),
-                'range': variogram_params.get('range'),
-                'sill': variogram_params.get('sill'),
-                'slope': variogram_params.get('slope'),
-                'nlags': self.spinBox_lags.value()
-            }
-        except Exception as e:
-            QgsMessageLog.logMessage(
-                f"Failed to get kriging parameters: {str(e)}",
-                "I-PlugIn",
-                Qgis.Critical
-            )
-            return None
+        """Get current kriging parameters from UI for variogram analysis.
+        
+        Returns:
+            dict: Kriging-Parameter mit variogram_model in lowercase
+        """
+        variogram_params = self.get_variogram_parameters_raster()
+        return {
+            'variogram_model': self.comboBox_variogram.currentText().lower(),
+            'nlags': self.spinBox_lags.value(),
+            **variogram_params  # sill, range, nugget, slope
+        }
 # VALIDIERT DIE EINBEBENEN SACHEN
     def validate_inputs(self):
         """Validate user inputs."""

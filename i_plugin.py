@@ -21,14 +21,19 @@
  *                                                                         *
  ***************************************************************************/
 """
+import os
 import os.path
 import json
+import shutil
+import tempfile
+import math
+import traceback
 from datetime import datetime
 from pathlib import Path
+
 import numpy as np
 from osgeo import gdal
 import matplotlib.pyplot as plt
-import tempfile
 
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt, QVariant
 from qgis.PyQt.QtGui import QIcon
@@ -1282,7 +1287,6 @@ class IPlugIn:
             
         except Exception as e:
             self.log(f"Variogram analysis failed: {str(e)}", Qgis.Critical)
-            import traceback
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
             return None
 # DIE TATSÄCHLICHE INTERPOLATION MIT POINT LAYER FUNKTION IMPLEMENTIERT RETURNS Z-VALUE FOR GRID OR ADDS COLUMN TO THE DATA
@@ -1396,9 +1400,193 @@ class IPlugIn:
                 
         except Exception as e:
             self.log(f"Interpolation failed: {str(e)}", Qgis.Critical)
-            import traceback
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
             raise
+
+    def interpolate_idw(self, input_layer, field_name, extent, cell_size, output_path, params):
+        """Führt IDW-Interpolation mit QGIS Analysis-Bibliothek durch.
+        
+        Verwendet QgsIDWInterpolator direkt für zuverlässigere Ergebnisse.
+        
+        Args:
+            input_layer (QgsVectorLayer): Input-Layer mit Punktdaten
+            field_name (str): Name des zu interpolierenden Feldes
+            extent (QgsRectangle): Extent für das Output-Raster
+            cell_size (float): Pixelgröße des Output-Rasters
+            output_path (str): Pfad für das Output-Raster
+            params (dict): Parameter für die Interpolation:
+                          - idw_power (float): Distance coefficient (Default: 2.0)
+            
+        Returns:
+            str: Pfad zum erstellten Raster
+            
+        Raises:
+            InterpolationCalculationError: Bei Fehlern während der Interpolation
+        """
+        try:
+            from qgis.analysis import QgsIDWInterpolator, QgsInterpolator, QgsGridFileWriter
+            
+            # IDW Power (Distance Coefficient)
+            idw_power = params.get('idw_power', InterpolationConfig.DEFAULT_IDW_POWER)
+            
+            # Finde den Feldindex
+            field_index = input_layer.fields().indexOf(field_name)
+            if field_index < 0:
+                raise InterpolationCalculationError(
+                    f"Feld '{field_name}' nicht im Layer gefunden."
+                )
+            
+            self.log(f"IDW Interpolation gestartet:")
+            self.log(f"  - Layer: {input_layer.name()}")
+            self.log(f"  - Feld: {field_name} (Index: {field_index})")
+            self.log(f"  - Power: {idw_power}")
+            self.log(f"  - Zellgröße: {cell_size}")
+            self.log(f"  - Extent: {extent.toString()}")
+            
+            # Erstelle LayerData für den Interpolator
+            layer_data = QgsInterpolator.LayerData()
+            layer_data.source = input_layer
+            layer_data.valueSource = QgsInterpolator.ValueAttribute
+            layer_data.interpolationAttribute = field_index
+            layer_data.sourceType = QgsInterpolator.SourcePoints
+            
+            # Erstelle IDW Interpolator
+            interpolator = QgsIDWInterpolator([layer_data])
+            interpolator.setDistanceCoefficient(idw_power)
+            
+            # Berechne Raster-Dimensionen
+            cols = int((extent.xMaximum() - extent.xMinimum()) / cell_size)
+            rows = int((extent.yMaximum() - extent.yMinimum()) / cell_size)
+            
+            self.log(f"  - Raster-Größe: {cols} x {rows} Pixel")
+            
+            # Erstelle Grid File Writer
+            writer = QgsGridFileWriter(
+                interpolator,
+                output_path,
+                extent,
+                cols,
+                rows
+            )
+            
+            # Schreibe das Raster
+            result = writer.writeFile()
+            
+            if result != 0:  # 0 = Erfolg
+                raise InterpolationCalculationError(
+                    f"IDW-Interpolation fehlgeschlagen: Writer returned {result}"
+                )
+            
+            self.log(f"IDW Interpolation erfolgreich: {output_path}")
+            return output_path
+                
+        except Exception as e:
+            self.log(f"IDW Interpolation failed: {str(e)}", Qgis.Critical)
+            self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
+            raise InterpolationCalculationError(f"IDW-Interpolation fehlgeschlagen: {str(e)}")
+
+    def clip_raster_to_boundary(self, raster_path, boundary_layer, output_path=None, buffer_pixels=1):
+        """Clippt ein Raster auf eine Boundary-Geometrie mit optionalem Pixel-Buffer.
+        
+        Verwendet gdal:cliprasterbymasklayer für präzises Clipping.
+        Die Boundary wird vor dem Clipping um buffer_pixels * cell_size gebuffert,
+        sodass eine Pixelreihe außerhalb der Boundary erhalten bleibt.
+        
+        Args:
+            raster_path (str): Pfad zum Input-Raster
+            boundary_layer (QgsVectorLayer): Layer mit Boundary-Polygon(en)
+            output_path (str, optional): Pfad für Output. Wenn None, wird das Original überschrieben.
+            buffer_pixels (int): Anzahl Pixel-Reihen außerhalb der Boundary (Default: 1)
+            
+        Returns:
+            str: Pfad zum geclippten Raster
+        """
+        try:
+            if output_path is None:
+                temp_path = tempfile.mktemp(suffix='.tif')
+            else:
+                temp_path = output_path
+            
+            # Hole Pixelgröße aus dem Raster
+            ds = gdal.Open(raster_path)
+            if ds:
+                gt = ds.GetGeoTransform()
+                cell_size = gt[1]  # Pixel width
+                ds = None
+            else:
+                cell_size = 10.0  # Fallback
+            
+            # Buffer-Distanz berechnen
+            buffer_distance = cell_size * buffer_pixels
+            
+            self.log(f"Clippe Raster auf Boundary (Buffer: {buffer_pixels} Pixel = {buffer_distance}m)...")
+            
+            # Erstelle gebufferte Boundary als temporären Layer
+            buffered_layer = None
+            if buffer_pixels > 0:
+                # Buffer die Boundary-Geometrie
+                buffer_params = {
+                    'INPUT': boundary_layer,
+                    'DISTANCE': buffer_distance,
+                    'SEGMENTS': 5,
+                    'END_CAP_STYLE': 0,  # Round
+                    'JOIN_STYLE': 0,  # Round
+                    'MITER_LIMIT': 2,
+                    'DISSOLVE': True,
+                    'OUTPUT': 'memory:'
+                }
+                
+                feedback = QgsProcessingFeedback()
+                buffer_result = processing.run("native:buffer", buffer_params, feedback=feedback)
+                
+                if buffer_result and 'OUTPUT' in buffer_result:
+                    buffered_layer = buffer_result['OUTPUT']
+                else:
+                    buffered_layer = boundary_layer  # Fallback
+            else:
+                buffered_layer = boundary_layer
+            
+            # Parameter für gdal:cliprasterbymasklayer
+            clip_params = {
+                'INPUT': raster_path,
+                'MASK': buffered_layer,
+                'SOURCE_CRS': None,
+                'TARGET_CRS': None,
+                'TARGET_EXTENT': None,
+                'NODATA': -9999,
+                'ALPHA_BAND': False,
+                'CROP_TO_CUTLINE': True,
+                'KEEP_RESOLUTION': True,
+                'SET_RESOLUTION': False,
+                'X_RESOLUTION': None,
+                'Y_RESOLUTION': None,
+                'MULTITHREADING': False,
+                'OPTIONS': '',
+                'DATA_TYPE': 0,
+                'EXTRA': '',
+                'OUTPUT': temp_path
+            }
+            
+            feedback = QgsProcessingFeedback()
+            result = processing.run("gdal:cliprasterbymasklayer", clip_params, feedback=feedback)
+            
+            if result and 'OUTPUT' in result:
+                if output_path is None:
+                    os.remove(raster_path)
+                    shutil.move(temp_path, raster_path)
+                    self.log(f"Raster erfolgreich auf Boundary geclippt (+{buffer_pixels} Pixel Buffer)")
+                    return raster_path
+                else:
+                    self.log(f"Raster erfolgreich auf Boundary geclippt: {output_path}")
+                    return output_path
+            else:
+                self.log("Clipping fehlgeschlagen - verwende ungeclipptes Raster", Qgis.Warning)
+                return raster_path
+                
+        except Exception as e:
+            self.log(f"Clipping fehlgeschlagen: {str(e)} - verwende ungeclipptes Raster", Qgis.Warning)
+            return raster_path
+
 # ERSTELLT EIN RASTERLAYER WELCHES AUS DEN VECTORDATEN EIN RASTER MACHT 
     def create_raster_layer(self, data, extent, cell_size, output_path, crs, mask=None, x=None, y=None):
         """Create and save interpolated raster layer."""
@@ -1494,10 +1682,29 @@ class IPlugIn:
             
             # Hole Daten-Provider und Band-Statistiken
             provider = layer.dataProvider()
-            stats = provider.bandStatistics(1)  # Band 1
+            
+            # Berechne Statistiken mit korrekten Flags (ignoriere NoData)
+            from qgis.core import QgsRasterBandStats
+            stats = provider.bandStatistics(
+                1,  # Band 1
+                QgsRasterBandStats.All,
+                provider.extent(),
+                0  # Sample size (0 = alle Pixel)
+            )
             
             min_val = stats.minimumValue
             max_val = stats.maximumValue
+            
+            # Prüfe auf ungültige Werte (inf, nan, oder absurd große Werte)
+            import math
+            if math.isinf(min_val) or math.isinf(max_val) or math.isnan(min_val) or math.isnan(max_val):
+                self.log(f"Ungültige Statistik-Werte (min={min_val}, max={max_val}) - überspringe Styling", Qgis.Warning)
+                return False
+            
+            # Prüfe auf absurd große Werte (typisch für nicht gesetzte NoData)
+            if abs(min_val) > 1e30 or abs(max_val) > 1e30:
+                self.log(f"Statistik-Werte außerhalb des gültigen Bereichs (min={min_val}, max={max_val}) - überspringe Styling", Qgis.Warning)
+                return False
             
             
             # Erstelle Renderer mit Pseudo-Color
@@ -1572,7 +1779,6 @@ class IPlugIn:
                 "Layer wird in Graustufen angezeigt.",
                 Qgis.Warning
             )
-            import traceback
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Info)
             return False
 
@@ -1650,7 +1856,6 @@ class IPlugIn:
                 
         except Exception as e:
             self.log(f"Failed to create vector layer: {str(e)}", Qgis.Warning)
-            import traceback
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Warning)
             return False
 
@@ -1744,7 +1949,6 @@ class IPlugIn:
             
         except Exception as e:
             self.log(f"Fehler beim Anwenden der Symbolisierung: {str(e)}", Qgis.Warning)
-            import traceback
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Warning)
             return False
 
@@ -1801,62 +2005,72 @@ class IPlugIn:
             str: Pfad zur erstellten Metadaten-Datei oder None bei Fehler
         """
         try:
-            # Prüfe ob optimierte Variogramm-Parameter vorhanden sind
-            variogram_info = params.get('variogram_info', {})
-            optimized_params = variogram_info.get('parameters', {})
+            method = params.get("method", "ordinary_kriging")
             
-            # Verwende optimierte Parameter falls vorhanden, sonst Startwerte
-            if optimized_params:
-                model_type = params.get("variogram_model", "").lower()
-                is_linear = model_type == 'linear'
-                
-                kriging_params = {
-                    "variogram_model": params.get("variogram_model"),
-                    "nlags": params.get("nlags"),
-                    "nugget": optimized_params.get("nugget"),
-                    "optimized": True  # Markierung dass diese Werte optimiert sind
+            # Methoden-spezifische Parameter
+            if method == 'idw':
+                # IDW-Parameter
+                method_params = {
+                    "idw_power": params.get("idw_power", InterpolationConfig.DEFAULT_IDW_POWER)
                 }
-                
-                # Linear-Modell: slope statt range/sill
-                if is_linear:
-                    kriging_params["slope"] = optimized_params.get("slope")
-                else:
-                    kriging_params["sill"] = optimized_params.get("sill")
-                    kriging_params["range"] = optimized_params.get("range")
-                
-                # Füge Metriken hinzu falls vorhanden
-                metrics = variogram_info.get('metrics', {})
-                if metrics:
-                    kriging_params["metrics"] = {
-                        "rmse": metrics.get("rmse"),
-                        "r2": metrics.get("r2"),
-                        "aic": metrics.get("aic")
-                    }
             else:
-                # Fallback: Startwerte aus UI
-                model_type = params.get("variogram_model", "").lower()
-                is_linear = model_type == 'linear'
+                # Kriging-Parameter
+                # Prüfe ob optimierte Variogramm-Parameter vorhanden sind
+                variogram_info = params.get('variogram_info', {})
+                optimized_params = variogram_info.get('parameters', {})
                 
-                kriging_params = {
-                    "variogram_model": params.get("variogram_model"),
-                    "nlags": params.get("nlags"),
-                    "nugget": params.get("nugget"),
-                    "optimized": False  # Markierung dass diese Werte NICHT optimiert sind
-                }
-                
-                # Linear-Modell: slope statt range/sill
-                if is_linear:
-                    kriging_params["slope"] = params.get("slope", InterpolationConfig.DEFAULT_SLOPE)
+                # Verwende optimierte Parameter falls vorhanden, sonst Startwerte
+                if optimized_params:
+                    model_type = params.get("variogram_model", "").lower()
+                    is_linear = model_type == 'linear'
+                    
+                    method_params = {
+                        "variogram_model": params.get("variogram_model"),
+                        "nlags": params.get("nlags"),
+                        "nugget": optimized_params.get("nugget"),
+                        "optimized": True  # Markierung dass diese Werte optimiert sind
+                    }
+                    
+                    # Linear-Modell: slope statt range/sill
+                    if is_linear:
+                        method_params["slope"] = optimized_params.get("slope")
+                    else:
+                        method_params["sill"] = optimized_params.get("sill")
+                        method_params["range"] = optimized_params.get("range")
+                    
+                    # Füge Metriken hinzu falls vorhanden
+                    metrics = variogram_info.get('metrics', {})
+                    if metrics:
+                        method_params["metrics"] = {
+                            "rmse": metrics.get("rmse"),
+                            "r2": metrics.get("r2"),
+                            "aic": metrics.get("aic")
+                        }
                 else:
-                    kriging_params["sill"] = params.get("sill")
-                    kriging_params["range"] = params.get("range")
+                    # Fallback: Startwerte aus UI
+                    model_type = params.get("variogram_model", "").lower()
+                    is_linear = model_type == 'linear'
+                    
+                    method_params = {
+                        "variogram_model": params.get("variogram_model"),
+                        "nlags": params.get("nlags"),
+                        "nugget": params.get("nugget"),
+                        "optimized": False  # Markierung dass diese Werte NICHT optimiert sind
+                    }
+                    
+                    # Linear-Modell: slope statt range/sill
+                    if is_linear:
+                        method_params["slope"] = params.get("slope", InterpolationConfig.DEFAULT_SLOPE)
+                    else:
+                        method_params["sill"] = params.get("sill")
+                        method_params["range"] = params.get("range")
             
             # Basis-Metadaten (für beide Typen gleich)
             metadata = {
                 "interpolation_type": interpolation_type,
                 "timestamp": datetime.now().isoformat(),
-                "method": params.get("method", "ordinary_kriging"),
-                "kriging_parameters": kriging_params
+                "method": method,
+                "parameters": method_params
             }
             
             # Typ-spezifische Metadaten
@@ -1915,6 +2129,7 @@ class IPlugIn:
         # Map method names to descriptive directory names
         method_dir_mapping = {
             'ordinary_kriging': InterpolationConfig.RASTER_INTERPOLATION_DIR,
+            'idw': InterpolationConfig.IDW_INTERPOLATION_DIR,
             'point_interpolation': InterpolationConfig.POINT_INTERPOLATION_DIR
         }
         
@@ -2013,7 +2228,6 @@ class IPlugIn:
                 
         except Exception as e:
             self.log(f"Fehler beim Erstellen der Layer-Kopie: {str(e)}", Qgis.Critical)
-            import traceback
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
             return None
 
@@ -2104,7 +2318,6 @@ class IPlugIn:
                 
         except Exception as e:
             self.log(f"Fehler beim Erstellen des Backups: {str(e)}", Qgis.Critical)
-            import traceback
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
             return None, False
 
@@ -2289,10 +2502,15 @@ class IPlugIn:
             raise
    
                 
-# HIER WERDEN DIE GANZEN FUNTKIONEN GECALLED UND DER PROGRESS GEHANDELT 
+# ============================================================================
+# DISPATCHER - Haupteinstiegspunkt für Raster-Interpolation
+# ============================================================================
     def run(self):
-        """Run method that performs all the real work"""
+        """Dispatcher für Raster-Interpolation.
         
+        Zeigt den Dialog an und delegiert basierend auf der gewählten
+        Interpolationsmethode an die entsprechende Workflow-Methode.
+        """
         # Check if required libraries are available
         if not INTERPOLATION_LIBS_AVAILABLE:
             QMessageBox.critical(
@@ -2302,317 +2520,313 @@ class IPlugIn:
             )
             return
 
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+        # Create the dialog (only once)
         if self.first_start:
             self.first_start = False
             from .i_plugin_dialog import IPlugInDialog
             self.dlg = IPlugInDialog(self.iface)
-            self.dlg.plugin = self  # Store reference to plugin instance
+            self.dlg.plugin = self
             
-        # show the dialog
+        # Show dialog and wait for result
         self.dlg.show()
-        # Run the dialog event loop
         result = self.dlg.exec_()
         
-        # See if OK was pressed
         if result:
-            # Create a dialog with busy indicator
-            progress = QProgressDialog(self.tr("Interpolation läuft..."), self.tr("Abbrechen"), 0, 0, self.iface.mainWindow())
-            progress.setWindowTitle("I-PlugIn")
-            progress.setWindowModality(Qt.WindowModal)
-            progress.setMinimumDuration(0)
-            progress.setAutoClose(True)
-            progress.setAutoReset(True)
-            progress.setMinimum(0)
-            progress.setMaximum(0)  # Indeterminate mode
+            # Get parameters from dialog
+            params = self.dlg.get_parameters()
+            method = params.get('method', 'ordinary_kriging')
             
-            try:
-                # Show the progress dialog
-                progress.show()
-                
-                # Get parameters from dialog
-                params = self.dlg.get_parameters()
-                
-                # Setup output paths
-                output_path, output_dir = self.setup_output_paths(
-                    params['input_layer'],
-                    params['input_field'],
-                    params['method']
-                )
-                if not output_path:
-                    progress.close()
-                    return
-                    
-                params['output_path'] = output_path
-                
-                # Process events to keep UI responsive
-                from qgis.PyQt.QtCore import QCoreApplication
-                QCoreApplication.processEvents()
-                
-                # Check for cancellation
-                if progress.wasCanceled():
-                    raise Exception("Interpolation wurde vom Benutzer abgebrochen")
-                
-                # Prepare data
-                x, y, z = self.prepare_data(
-                    params['input_layer'],
-                    params['input_field'],
-                    params.get('boundary_layer')
-                )
-                
-                if x is None or y is None or z is None:
-                    raise ValueError("Keine gültigen Daten für die Interpolation gefunden")
-                
-                # Get CRS from input layer
-                target_crs = params['input_layer'].crs()
-                
-                QCoreApplication.processEvents()
-                if progress.wasCanceled():
-                    raise Exception("Interpolation wurde vom Benutzer abgebrochen")
-                
-                # Bestimme die Extent für Grid-Erstellung
-                if params.get('boundary_layer'):
-                    grid_extent = params['boundary_layer'].extent()
-                    self.log("Using boundary extent for grid")
-                else:
-                    grid_extent = params['input_layer'].extent()
-                    self.log("Using input layer extent for grid")
-                
-                # Create output grid (Buffer wird automatisch durch GRID_BUFFER_MULTIPLIER hinzugefügt)
-                grid_x, grid_y, mask = self.create_output_grid(
-                    grid_extent,
-                    params['cell_size'],
-                    params.get('boundary_layer')
-                )
-                
-                QCoreApplication.processEvents()
-                if progress.wasCanceled():
-                    raise Exception("Interpolation wurde vom Benutzer abgebrochen")
-                
-                # Perform interpolation
-                interpolated_data = self.interpolate_ordinary_kriging(
-                    x, y, z, grid_x, grid_y, params
-                )
-                
-                QCoreApplication.processEvents()
-                if progress.wasCanceled():
-                    raise Exception("Interpolation wurde vom Benutzer abgebrochen")
-                
-                # Create and save raster layer
-                # Verwende die erweiterte Extent für das Raster
-                extent = grid_extent
-                    
-                self.create_raster_layer(
-                    interpolated_data,
-                    extent,
-                    params['cell_size'],
-                    output_path,
-                    target_crs,
-                    mask,
-                    x=grid_x,
-                    y=grid_y
-                )
-                
-                # Save metadata
-                self.save_metadata(output_dir, Path(output_path).stem, params, interpolation_type="raster")
-                
-                # Ask user if they want to create a vector layer
-                from qgis.PyQt.QtWidgets import QMessageBox
-                reply = QMessageBox.question(
-                    None,
-                    'Vector-Layer erstellen?',
-                    'Möchten Sie zusätzlich zum Raster auch einen Punkt-Vector-Layer erstellen?\n\n'
-                    'Der Vector-Layer enthält die interpolierten Werte als Punkt-Features und kann für weitere Analysen verwendet werden.',
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No  # Default: No
-                )
-                
-                vector_created = False
-                if reply == QMessageBox.Yes:
-                    # Create vector layer from interpolated grid points
-                    vector_output_path = str(output_dir / f"{Path(output_path).stem}_points.shp")
-                    vector_created = self.create_vector_layer_from_grid(
-                        grid_x, grid_y, interpolated_data,
-                        vector_output_path,
-                        target_crs,
-                        mask=mask,
-                        field_name=params['input_field']
-                    )
-                
-                # Add layer to QGIS
-                layer_name = Path(output_path).stem
-                layer = QgsRasterLayer(output_path, layer_name)
-                
-                if layer.isValid():
-                    # Add to layer group
-                    group = self.get_layer_group()
-                    QgsProject.instance().addMapLayer(layer, False)
-                    group.addLayer(layer)
-                    
-                    # Apply color ramp styling
-                    self.apply_color_ramp_to_raster(layer)
-                    
-                    # Add vector layer to project if created successfully
-                    if vector_created and Path(vector_output_path).exists():
-                        vector_layer = QgsVectorLayer(vector_output_path, f"{layer_name}_points", "ogr")
-                        if vector_layer.isValid():
-                            # Wende abgestufte Symbolisierung an
-                            self.apply_graduated_symbology_to_vector(vector_layer, params['input_field'])
-                            
-                            QgsProject.instance().addMapLayer(vector_layer, False)
-                            group.addLayer(vector_layer)
-                    
-                    # Get variogram info from params
-                    variogram_info = params.get('variogram_info', {})
-                    if variogram_info:
-                        metrics = variogram_info.get('metrics', {})
-                        parameters = variogram_info.get('parameters', {})
-                        
-                        # Format values safely
-                        rmse = metrics.get('rmse')
-                        r2 = metrics.get('r2')
-                        nugget = parameters.get('nugget')
-                        
-                        rmse_str = f"{rmse:.3f}" if rmse is not None else "N/A"
-                        r2_str = f"{r2:.3f}" if r2 is not None else "N/A"
-                        nugget_str = f"{nugget:.2f}" if nugget is not None else "N/A"
-                        
-                        # Check if linear model (has slope instead of range/sill)
-                        is_linear = parameters.get('slope') is not None and parameters.get('range') is None
-                        
-                        if is_linear:
-                            slope = parameters.get('slope')
-                            slope_str = f"{slope:.6f}" if slope is not None else "N/A"
-                            
-                            success_msg = (
-                                f"Interpolation erfolgreich abgeschlossen: {layer_name}\n"
-                                f"Variogramm Modell: {params['variogram_model']}\n"
-                                f"RMSE: {rmse_str}\n"
-                                f"R²: {r2_str}\n"
-                                f"Slope: {slope_str}\n"
-                                f"Nugget: {nugget_str}"
-                            )
-                        else:
-                            range_val = parameters.get('range')
-                            sill = parameters.get('sill')
-                            
-                            range_str = f"{range_val:.2f}" if range_val is not None else "N/A"
-                            sill_str = f"{sill:.2f}" if sill is not None else "N/A"
-                            
-                            success_msg = (
-                                f"Interpolation erfolgreich abgeschlossen: {layer_name}\n"
-                                f"Variogramm Modell: {params['variogram_model']}\n"
-                                f"RMSE: {rmse_str}\n"
-                                f"R²: {r2_str}\n"
-                                f"Range: {range_str}\n"
-                                f"Sill: {sill_str}\n"
-                                f"Nugget: {nugget_str}"
-                            )
-                    else:
-                        success_msg = f"Interpolation erfolgreich abgeschlossen: {layer_name}"
-                    
-                    self.iface.messageBar().pushSuccess(
-                        "I-PlugIn",
-                        success_msg
-                    )
-                else:
-                    progress.close()
-                    raise Exception("Failed to load output layer")
-                    
-                # Close the progress dialog
+            # Dispatch to appropriate workflow
+            if method == 'idw':
+                self.run_idw_interpolation(params)
+            else:
+                self.run_kriging_interpolation(params)
+
+# ============================================================================
+# KRIGING WORKFLOW - Ordinary Kriging mit PyKrige
+# ============================================================================
+    def run_kriging_interpolation(self, params):
+        """Führt Ordinary Kriging Interpolation durch.
+        
+        Kompletter Workflow für Kriging-basierte Raster-Interpolation:
+        1. Daten vorbereiten (x, y, z Arrays)
+        2. Output-Grid erstellen
+        3. Kriging-Interpolation durchführen
+        4. Raster erstellen und speichern
+        5. Optional: Vector-Layer erstellen
+        
+        Args:
+            params (dict): Parameter aus dem Dialog
+        """
+        progress = QProgressDialog(
+            self.tr("Kriging-Interpolation läuft..."), 
+            self.tr("Abbrechen"), 0, 0, 
+            self.iface.mainWindow()
+        )
+        progress.setWindowTitle("I-PlugIn - Kriging")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setMinimum(0)
+        progress.setMaximum(0)
+        
+        try:
+            progress.show()
+            
+            # Setup output paths
+            output_path, output_dir = self.setup_output_paths(
+                params['input_layer'],
+                params['input_field'],
+                'ordinary_kriging'
+            )
+            if not output_path:
                 progress.close()
-                    
-            except DataValidationError as e:
-                # Close progress dialog if it exists
-                if 'progress' in locals():
-                    progress.close()
-                    
-                self.iface.messageBar().pushWarning(
-                    "I-PlugIn - Datenvalidierung",
-                    f"Daten-Problem: {str(e)}"
+                return
+            
+            QCoreApplication.processEvents()
+            if progress.wasCanceled():
+                raise Exception("Interpolation wurde vom Benutzer abgebrochen")
+            
+            # Prepare data (extract x, y, z arrays)
+            x, y, z = self.prepare_data(
+                params['input_layer'],
+                params['input_field'],
+                params.get('boundary_layer')
+            )
+            
+            if x is None or y is None or z is None:
+                raise ValueError("Keine gültigen Daten für die Interpolation gefunden")
+            
+            target_crs = params['input_layer'].crs()
+            
+            # Determine extent
+            if params.get('boundary_layer'):
+                grid_extent = params['boundary_layer'].extent()
+                self.log("Using boundary extent for grid")
+            else:
+                grid_extent = params['input_layer'].extent()
+                self.log("Using input layer extent for grid")
+            
+            QCoreApplication.processEvents()
+            if progress.wasCanceled():
+                raise Exception("Interpolation wurde vom Benutzer abgebrochen")
+            
+            # Create output grid
+            grid_x, grid_y, mask = self.create_output_grid(
+                grid_extent,
+                params['cell_size'],
+                params.get('boundary_layer')
+            )
+            
+            QCoreApplication.processEvents()
+            if progress.wasCanceled():
+                raise Exception("Interpolation wurde vom Benutzer abgebrochen")
+            
+            # Perform Kriging interpolation
+            interpolated_data = self.interpolate_ordinary_kriging(
+                x, y, z, grid_x, grid_y, params
+            )
+            
+            QCoreApplication.processEvents()
+            if progress.wasCanceled():
+                raise Exception("Interpolation wurde vom Benutzer abgebrochen")
+            
+            # Create raster layer
+            self.create_raster_layer(
+                interpolated_data,
+                grid_extent,
+                params['cell_size'],
+                output_path,
+                target_crs,
+                mask,
+                x=grid_x,
+                y=grid_y
+            )
+            
+            # Save metadata
+            self.save_metadata(output_dir, Path(output_path).stem, params, interpolation_type="raster")
+            
+            # Optional: Create vector layer
+            vector_created = False
+            vector_output_path = None
+            reply = QMessageBox.question(
+                None,
+                'Vector-Layer erstellen?',
+                'Möchten Sie zusätzlich zum Raster auch einen Punkt-Vector-Layer erstellen?\n\n'
+                'Der Vector-Layer enthält die interpolierten Werte als Punkt-Features.',
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                vector_output_path = str(output_dir / f"{Path(output_path).stem}_points.shp")
+                vector_created = self.create_vector_layer_from_grid(
+                    grid_x, grid_y, interpolated_data,
+                    vector_output_path,
+                    target_crs,
+                    mask=mask,
+                    field_name=params['input_field']
                 )
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "Datenvalidierung fehlgeschlagen",
-                    str(e)
+            
+            # Add layers to QGIS
+            self._add_raster_to_project(output_path, vector_output_path if vector_created else None, params)
+            
+            progress.close()
+            
+        except Exception as e:
+            if 'progress' in locals():
+                progress.close()
+            self._handle_interpolation_error(e)
+
+# ============================================================================
+# IDW WORKFLOW - Inverse Distance Weighting mit QGIS-Bordmitteln
+# ============================================================================
+    def run_idw_interpolation(self, params):
+        """Führt IDW-Interpolation mit QGIS-Bordmitteln durch.
+        
+        Schlanker Workflow für IDW:
+        1. Output-Pfad erstellen
+        2. QGIS-Algorithmus aufrufen (erstellt Raster direkt)
+        3. Raster laden und stylen
+        
+        Args:
+            params (dict): Parameter aus dem Dialog
+        """
+        progress = QProgressDialog(
+            self.tr("IDW-Interpolation läuft..."), 
+            self.tr("Abbrechen"), 0, 0, 
+            self.iface.mainWindow()
+        )
+        progress.setWindowTitle("I-PlugIn - IDW")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setMinimum(0)
+        progress.setMaximum(0)
+        
+        try:
+            progress.show()
+            
+            # Setup output paths
+            output_path, output_dir = self.setup_output_paths(
+                params['input_layer'],
+                params['input_field'],
+                'idw'
+            )
+            if not output_path:
+                progress.close()
+                return
+            
+            QCoreApplication.processEvents()
+            if progress.wasCanceled():
+                raise Exception("Interpolation wurde vom Benutzer abgebrochen")
+            
+            # Determine extent
+            if params.get('boundary_layer'):
+                extent = params['boundary_layer'].extent()
+            else:
+                extent = params['input_layer'].extent()
+            
+            # Run IDW interpolation (creates raster directly)
+            self.interpolate_idw(
+                params['input_layer'],
+                params['input_field'],
+                extent,
+                params['cell_size'],
+                output_path,
+                params
+            )
+            
+            # Clip to boundary if provided
+            if params.get('boundary_layer'):
+                output_path = self.clip_raster_to_boundary(
+                    output_path, 
+                    params['boundary_layer']
                 )
-                
-            except GeometryError as e:
-                # Close progress dialog if it exists
-                if 'progress' in locals():
-                    progress.close()
-                    
-                self.iface.messageBar().pushWarning(
-                    "I-PlugIn - Geometrie",
-                    f"Geometrie-Problem: {str(e)}"
-                )
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "Geometrie-Problem",
-                    str(e)
-                )
-                
-            except CoordinateSystemError as e:
-                # Close progress dialog if it exists
-                if 'progress' in locals():
-                    progress.close()
-                    
-                self.iface.messageBar().pushWarning(
-                    "I-PlugIn - Koordinatensystem",
-                    f"CRS-Problem: {str(e)}"
-                )
-                QMessageBox.warning(
-                    self.iface.mainWindow(),
-                    "Koordinatensystem-Problem",
-                    str(e)
-                )
-                
-            except InterpolationCalculationError as e:
-                # Close progress dialog if it exists
-                if 'progress' in locals():
-                    progress.close()
-                    
-                self.iface.messageBar().pushCritical(
-                    "I-PlugIn - Berechnung",
-                    f"Interpolations-Fehler: {str(e)}"
-                )
-                QMessageBox.critical(
-                    self.iface.mainWindow(),
-                    "Interpolation fehlgeschlagen",
-                    str(e)
-                )
-                
-            except InterpolationError as e:
-                # Catch all other plugin-specific errors
-                if 'progress' in locals():
-                    progress.close()
-                    
-                self.iface.messageBar().pushCritical(
-                    "I-PlugIn",
-                    f"Plugin-Fehler: {str(e)}"
-                )
-                QMessageBox.critical(
-                    self.iface.mainWindow(),
-                    "Fehler",
-                    str(e)
-                )
-                
-            except Exception as e:
-                # Unexpected errors
-                if 'progress' in locals():
-                    progress.close()
-                    
-                self.log(f"Unerwarteter Fehler: {str(e)}", Qgis.Critical)
-                import traceback
-                self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
-                    
-                self.iface.messageBar().pushCritical(
-                    "I-PlugIn - Unerwarteter Fehler",
-                    f"Ein unerwarteter Fehler ist aufgetreten: {str(e)}"
-                )
-                QMessageBox.critical(
-                    self.iface.mainWindow(),
-                    "Unerwarteter Fehler",
-                    f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}\n\nBitte prüfen Sie das Log für Details."
-                )
+            
+            # Save metadata
+            self.save_metadata(output_dir, Path(output_path).stem, params, interpolation_type="raster")
+            
+            # Add raster to project
+            self._add_raster_to_project(output_path, None, params)
+            
+            progress.close()
+            
+        except Exception as e:
+            if 'progress' in locals():
+                progress.close()
+            self._handle_interpolation_error(e)
+
+# ============================================================================
+# SHARED HELPERS - Gemeinsame Hilfsfunktionen für alle Workflows
+# ============================================================================
+    def _add_raster_to_project(self, raster_path, vector_path, params):
+        """Fügt Raster (und optional Vector) zum Projekt hinzu.
+        
+        Args:
+            raster_path (str): Pfad zum Raster
+            vector_path (str): Pfad zum Vector-Layer (optional)
+            params (dict): Parameter für Success-Message
+        """
+        layer_name = Path(raster_path).stem
+        layer = QgsRasterLayer(raster_path, layer_name)
+        
+        if not layer.isValid():
+            raise Exception(f"Raster-Layer konnte nicht geladen werden: {raster_path}")
+        
+        # Add to layer group
+        group = self.get_layer_group()
+        QgsProject.instance().addMapLayer(layer, False)
+        group.addLayer(layer)
+        
+        # Apply color ramp styling
+        self.apply_color_ramp_to_raster(layer)
+        
+        # Add vector layer if provided
+        if vector_path and Path(vector_path).exists():
+            vector_layer = QgsVectorLayer(vector_path, f"{layer_name}_points", "ogr")
+            if vector_layer.isValid():
+                self.apply_graduated_symbology_to_vector(vector_layer, params['input_field'])
+                QgsProject.instance().addMapLayer(vector_layer, False)
+                group.addLayer(vector_layer)
+        
+        # Show success message
+        method = params.get('method', 'ordinary_kriging')
+        if method == 'idw':
+            idw_power = params.get('idw_power', InterpolationConfig.DEFAULT_IDW_POWER)
+            success_msg = f"IDW-Interpolation erfolgreich: {layer_name}\nPower: {idw_power}"
+        else:
+            success_msg = f"Kriging-Interpolation erfolgreich: {layer_name}"
+        
+        self.iface.messageBar().pushSuccess("I-PlugIn", success_msg)
+
+    def _handle_interpolation_error(self, error):
+        """Zentrale Fehlerbehandlung für Interpolations-Workflows.
+        
+        Args:
+            error (Exception): Die aufgetretene Exception
+        """
+        error_msg = str(error)
+        
+        if isinstance(error, DataValidationError):
+            self.iface.messageBar().pushWarning("I-PlugIn", f"Daten-Problem: {error_msg}")
+            QMessageBox.warning(self.iface.mainWindow(), "Datenvalidierung", error_msg)
+        elif isinstance(error, GeometryError):
+            self.iface.messageBar().pushWarning("I-PlugIn", f"Geometrie-Problem: {error_msg}")
+            QMessageBox.warning(self.iface.mainWindow(), "Geometrie-Problem", error_msg)
+        elif isinstance(error, CoordinateSystemError):
+            self.iface.messageBar().pushWarning("I-PlugIn", f"CRS-Problem: {error_msg}")
+            QMessageBox.warning(self.iface.mainWindow(), "Koordinatensystem", error_msg)
+        elif isinstance(error, InterpolationCalculationError):
+            self.iface.messageBar().pushCritical("I-PlugIn", f"Berechnung: {error_msg}")
+            QMessageBox.critical(self.iface.mainWindow(), "Interpolation fehlgeschlagen", error_msg)
+        elif isinstance(error, InterpolationError):
+            self.iface.messageBar().pushCritical("I-PlugIn", f"Plugin-Fehler: {error_msg}")
+            QMessageBox.critical(self.iface.mainWindow(), "Fehler", error_msg)
+        else:
+            self.log(f"Unerwarteter Fehler: {error_msg}", Qgis.Critical)
+            self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
+            self.iface.messageBar().pushCritical("I-PlugIn", f"Unerwarteter Fehler: {error_msg}")
+            QMessageBox.critical(
+                self.iface.mainWindow(),
+                "Unerwarteter Fehler",
+                f"Ein unerwarteter Fehler ist aufgetreten:\n\n{error_msg}"
+            )
