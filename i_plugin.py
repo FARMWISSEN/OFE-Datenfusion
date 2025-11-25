@@ -2456,56 +2456,60 @@ class IPlugIn:
         except Exception as e:
             self.log(f"Fehler beim Aktualisieren des Ziel-Layers: {str(e)}", Qgis.Critical)
             raise
-# HIER WIRD DIE PUNKT ZU PUNKT INTERPOLATION DEFINIERT
+
+# ============================================================================
+# PUNKT-INTERPOLATION DISPATCHER
+# ============================================================================
     def run_point_interpolation(self, params):
-        """Führt die Punkt-zu-Punkt Interpolation durch."""
+        """Dispatcher für Punkt-zu-Punkt Interpolation.
+        
+        Delegiert basierend auf der gewählten Methode an die entsprechende
+        Workflow-Methode.
+        
+        Args:
+            params (dict): Parameter aus dem Dialog inkl. 'method'
+        """
+        method = params.get('method', 'ordinary_kriging')
+        
+        if method == 'idw':
+            self._run_point_interpolation_idw(params)
+        elif method == 'nearest_neighbor':
+            self._run_point_interpolation_nn(params)
+        else:
+            self._run_point_interpolation_kriging(params)
+
+    def _run_point_interpolation_kriging(self, params):
+        """Führt Kriging Punkt-zu-Punkt Interpolation durch."""
         try:
-            # Validiere Parameter
-            required_params = ['covariate_layer', 'covariate_field', 'target_layer', 'variogram_model', 
-                             'nlags', 'sill', 'range', 'nugget']
+            # Validiere Kriging-spezifische Parameter
+            required_params = ['covariate_layer', 'covariate_field', 'target_layer', 
+                             'variogram_model', 'nlags', 'sill', 'range', 'nugget']
             for param in required_params:
                 if param not in params:
                     raise ValueError(f"Fehlender Parameter: {param}")
     
-            # Hole Kovariaten-Daten als Input
             covariate_layer = params['covariate_layer']
             covariate_field = params['covariate_field']
             target_layer = params['target_layer']
             
-            # Debug: Zeige Kovariaten-Daten
-            self.log(f"Kovariaten-Layer: {covariate_layer.name()}, Feld: {covariate_field}")
+            self.log(f"Kriging Punkt-Interpolation: {covariate_layer.name()} → {target_layer.name()}")
             
             # Bereite Kovariaten-Daten vor
             x, y, z = self.prepare_data(covariate_layer, covariate_field, None)
             if x is None:
                 raise ValueError("Keine gültigen Kovariaten-Daten gefunden")
             
-            # Debug: Zeige Input-Daten
-            self.log(f"Input-Daten: x={len(x)}, y={len(y)}, z={len(z)}")
+            self.log(f"  - Kovariaten: {len(x)} Punkte")
                     
             # Hole Koordinaten vom Ziel-Layer
-            target_points = []
-            target_features = []
-            
-            for feature in target_layer.getFeatures():
-                geom = feature.geometry()
-                if geom and geom.isGeosValid():
-                    point = geom.asPoint()
-                    target_points.append((point.x(), point.y()))
-                    target_features.append(feature)
-            
-            # Debug: Zeige Ziel-Punkte
-            self.log(f"Anzahl Zielpunkte: {len(target_points)}")
-                        
-            if not target_points:
-                raise ValueError("Keine gültigen Zielpunkte gefunden")
+            target_points, target_features = self._extract_target_points(target_layer)
+            self.log(f"  - Zielpunkte: {len(target_points)}")
                         
             x_points, y_points = zip(*target_points)
             
-            # Debug: Parameter für Kriging
-            self.log(f"Kriging Parameter: model={params['variogram_model']}, sill={params['sill']}, range={params['range']}, nugget={params['nugget']}")
+            self.log(f"  - Variogramm: {params['variogram_model']}, sill={params['sill']}, range={params['range']}, nugget={params['nugget']}")
             
-            # Führe Interpolation durch
+            # Führe Kriging-Interpolation durch
             interpolated_values = self.interpolate_ordinary_kriging(
                 x, y, z, 
                 np.array(x_points),
@@ -2514,62 +2518,224 @@ class IPlugIn:
                 style='points'
             )
             
-            # Debug: Zeige interpolierte Werte
-            if interpolated_values is not None:
-                self.log(f"Interpolierte Werte: min={np.min(interpolated_values)}, max={np.max(interpolated_values)}, len={len(interpolated_values)}")
-            
             if interpolated_values is None:
-                raise ValueError("Interpolation fehlgeschlagen")
-        
-            # Erstelle Kopie des Ziel-Layers für Interpolation
-            copied_layer = self.create_layer_copy_for_interpolation(target_layer, covariate_field)
-            if not copied_layer:
-                raise ValueError("Layer-Kopie konnte nicht erstellt werden")
+                raise ValueError("Kriging-Interpolation fehlgeschlagen")
             
-            # Speichere Kopie-Info für Success-Nachricht
-            params['copied_layer_name'] = copied_layer.name()
-            params['copied_layer_path'] = copied_layer.source()
-        
-            # Hole Features vom kopierten Layer (nicht vom Original!)
-            copied_features = []
-            for feature in copied_layer.getFeatures():
-                copied_features.append(feature)
+            self.log(f"  - Interpoliert: min={np.min(interpolated_values):.2f}, max={np.max(interpolated_values):.2f}")
             
-            # Aktualisiere kopierten Layer mit neuem Feld
-            # Generiere kurzen Feldnamen für Shapefile (max. 10 Zeichen)
-            # Entferne Sonderzeichen und kürze wenn nötig
-            clean_name = ''.join(c for c in covariate_field if c.isalnum())
-            field_name = f"{clean_name[:InterpolationConfig.FIELD_NAME_TRUNCATE]}INT"
-            self.update_target_layer(copied_layer, copied_features, interpolated_values, field_name)
-            
-            # Speichere Metadaten für Punkt-Interpolation
-            params['interpolated_points_count'] = len(interpolated_values)
-            
-            # Erstelle Output-Verzeichnis für Metadaten
-            project_dir = self.get_project_dir()
-            if project_dir:
-                metadata_dir = project_dir / InterpolationConfig.POINT_INTERPOLATION_DIR
-                metadata_dir.mkdir(exist_ok=True)
-                
-                # Generiere Base-Name für Metadaten
-                base_name = self.generate_output_name(
-                    covariate_layer, 
-                    covariate_field, 
-                    InterpolationConfig.POINT_INTERPOLATION_DIR
-                )
-                
-                # Speichere Metadaten
-                self.save_metadata(metadata_dir, base_name, params, interpolation_type="point")
-            
-            self.log("Punkt-Interpolation erfolgreich abgeschlossen", Qgis.Success)
+            # Finalisiere: Layer-Kopie erstellen und Werte schreiben
+            self._finalize_point_interpolation(params, target_layer, covariate_field, interpolated_values)
         
         except Exception as e:
-            self.log(f"Fehler bei der Punkt-Interpolation: {str(e)}", Qgis.Critical)
+            self.log(f"Kriging Punkt-Interpolation fehlgeschlagen: {str(e)}", Qgis.Critical)
             raise
-   
-                
+
+    def _run_point_interpolation_idw(self, params):
+        """Führt IDW Punkt-zu-Punkt Interpolation durch."""
+        try:
+            required_params = ['covariate_layer', 'covariate_field', 'target_layer', 'idw_power']
+            for param in required_params:
+                if param not in params:
+                    raise ValueError(f"Fehlender Parameter: {param}")
+    
+            covariate_layer = params['covariate_layer']
+            covariate_field = params['covariate_field']
+            target_layer = params['target_layer']
+            idw_power = params.get('idw_power', InterpolationConfig.DEFAULT_IDW_POWER)
+            
+            self.log(f"IDW Punkt-Interpolation: {covariate_layer.name()} → {target_layer.name()}")
+            self.log(f"  - Power: {idw_power}")
+            
+            # Bereite Kovariaten-Daten vor
+            x, y, z = self.prepare_data(covariate_layer, covariate_field, None)
+            if x is None:
+                raise ValueError("Keine gültigen Kovariaten-Daten gefunden")
+            
+            self.log(f"  - Kovariaten: {len(x)} Punkte")
+                    
+            # Hole Koordinaten vom Ziel-Layer
+            target_points, _ = self._extract_target_points(target_layer)
+            self.log(f"  - Zielpunkte: {len(target_points)}")
+            
+            # IDW-Interpolation für jeden Zielpunkt
+            interpolated_values = self._interpolate_idw_points(x, y, z, target_points, idw_power)
+            
+            self.log(f"  - Interpoliert: min={np.min(interpolated_values):.2f}, max={np.max(interpolated_values):.2f}")
+            
+            # Finalisiere
+            self._finalize_point_interpolation(params, target_layer, covariate_field, interpolated_values)
+        
+        except Exception as e:
+            self.log(f"IDW Punkt-Interpolation fehlgeschlagen: {str(e)}", Qgis.Critical)
+            raise
+
+    def _run_point_interpolation_nn(self, params):
+        """Führt Nearest Neighbor Punkt-zu-Punkt Interpolation durch."""
+        try:
+            required_params = ['covariate_layer', 'covariate_field', 'target_layer']
+            for param in required_params:
+                if param not in params:
+                    raise ValueError(f"Fehlender Parameter: {param}")
+    
+            covariate_layer = params['covariate_layer']
+            covariate_field = params['covariate_field']
+            target_layer = params['target_layer']
+            nn_radius = params.get('nn_radius', InterpolationConfig.DEFAULT_NN_RADIUS)
+            
+            self.log(f"Nearest Neighbor Punkt-Interpolation: {covariate_layer.name()} → {target_layer.name()}")
+            self.log(f"  - Suchradius: {nn_radius} (0 = unbegrenzt)")
+            
+            # Bereite Kovariaten-Daten vor
+            x, y, z = self.prepare_data(covariate_layer, covariate_field, None)
+            if x is None:
+                raise ValueError("Keine gültigen Kovariaten-Daten gefunden")
+            
+            self.log(f"  - Kovariaten: {len(x)} Punkte")
+                    
+            # Hole Koordinaten vom Ziel-Layer
+            target_points, _ = self._extract_target_points(target_layer)
+            self.log(f"  - Zielpunkte: {len(target_points)}")
+            
+            # Nearest Neighbor für jeden Zielpunkt
+            interpolated_values = self._interpolate_nn_points(x, y, z, target_points, nn_radius)
+            
+            self.log(f"  - Interpoliert: min={np.min(interpolated_values):.2f}, max={np.max(interpolated_values):.2f}")
+            
+            # Finalisiere
+            self._finalize_point_interpolation(params, target_layer, covariate_field, interpolated_values)
+        
+        except Exception as e:
+            self.log(f"Nearest Neighbor Punkt-Interpolation fehlgeschlagen: {str(e)}", Qgis.Critical)
+            raise
+
+    def _extract_target_points(self, target_layer):
+        """Extrahiert Koordinaten und Features vom Ziel-Layer.
+        
+        Returns:
+            tuple: (target_points, target_features)
+        """
+        target_points = []
+        target_features = []
+        
+        for feature in target_layer.getFeatures():
+            geom = feature.geometry()
+            if geom and geom.isGeosValid():
+                point = geom.asPoint()
+                target_points.append((point.x(), point.y()))
+                target_features.append(feature)
+        
+        if not target_points:
+            raise ValueError("Keine gültigen Zielpunkte gefunden")
+        
+        return target_points, target_features
+
+    def _interpolate_idw_points(self, x, y, z, target_points, power):
+        """IDW-Interpolation für Zielpunkte.
+        
+        Args:
+            x, y, z: Kovariaten-Koordinaten und Werte
+            target_points: Liste von (x, y) Tupeln
+            power: IDW Power-Parameter
+            
+        Returns:
+            np.array: Interpolierte Werte
+        """
+        interpolated = []
+        
+        for tx, ty in target_points:
+            # Berechne Distanzen zu allen Kovariaten-Punkten
+            distances = np.sqrt((x - tx)**2 + (y - ty)**2)
+            
+            # Vermeide Division durch 0
+            distances = np.maximum(distances, 1e-10)
+            
+            # IDW-Gewichte
+            weights = 1.0 / (distances ** power)
+            weights /= np.sum(weights)
+            
+            # Gewichteter Mittelwert
+            value = np.sum(weights * z)
+            interpolated.append(value)
+        
+        return np.array(interpolated)
+
+    def _interpolate_nn_points(self, x, y, z, target_points, radius):
+        """Nearest Neighbor Interpolation für Zielpunkte.
+        
+        Args:
+            x, y, z: Kovariaten-Koordinaten und Werte
+            target_points: Liste von (x, y) Tupeln
+            radius: Suchradius (0 = unbegrenzt)
+            
+        Returns:
+            np.array: Interpolierte Werte (nächster Nachbar)
+        """
+        interpolated = []
+        nodata = InterpolationConfig.DEFAULT_NN_NODATA
+        
+        for tx, ty in target_points:
+            # Berechne Distanzen zu allen Kovariaten-Punkten
+            distances = np.sqrt((x - tx)**2 + (y - ty)**2)
+            
+            # Finde nächsten Nachbarn
+            min_idx = np.argmin(distances)
+            min_dist = distances[min_idx]
+            
+            # Prüfe Radius (0 = unbegrenzt)
+            if radius > 0 and min_dist > radius:
+                interpolated.append(nodata)
+            else:
+                interpolated.append(z[min_idx])
+        
+        return np.array(interpolated)
+
+    def _finalize_point_interpolation(self, params, target_layer, covariate_field, interpolated_values):
+        """Finalisiert die Punkt-Interpolation: Layer-Kopie und Metadaten.
+        
+        Args:
+            params: Parameter-Dictionary
+            target_layer: Original Ziel-Layer
+            covariate_field: Name des Kovariaten-Feldes
+            interpolated_values: Array mit interpolierten Werten
+        """
+        # Erstelle Kopie des Ziel-Layers
+        copied_layer = self.create_layer_copy_for_interpolation(target_layer, covariate_field)
+        if not copied_layer:
+            raise ValueError("Layer-Kopie konnte nicht erstellt werden")
+        
+        params['copied_layer_name'] = copied_layer.name()
+        params['copied_layer_path'] = copied_layer.source()
+    
+        # Hole Features vom kopierten Layer
+        copied_features = list(copied_layer.getFeatures())
+        
+        # Generiere Feldnamen (max. 10 Zeichen für Shapefile)
+        clean_name = ''.join(c for c in covariate_field if c.isalnum())
+        field_name = f"{clean_name[:InterpolationConfig.FIELD_NAME_TRUNCATE]}INT"
+        
+        # Schreibe Werte
+        self.update_target_layer(copied_layer, copied_features, interpolated_values, field_name)
+        
+        # Metadaten speichern
+        params['interpolated_points_count'] = len(interpolated_values)
+        
+        project_dir = self.get_project_dir()
+        if project_dir:
+            metadata_dir = project_dir / InterpolationConfig.POINT_INTERPOLATION_DIR
+            metadata_dir.mkdir(exist_ok=True)
+            
+            base_name = self.generate_output_name(
+                params['covariate_layer'], 
+                covariate_field, 
+                InterpolationConfig.POINT_INTERPOLATION_DIR
+            )
+            
+            self.save_metadata(metadata_dir, base_name, params, interpolation_type="point")
+        
+        self.log("Punkt-Interpolation erfolgreich abgeschlossen", Qgis.Success)
+
 # ============================================================================
-# DISPATCHER - Haupteinstiegspunkt für Raster-Interpolation
+# RASTER-INTERPOLATION DISPATCHER
 # ============================================================================
     def run(self):
         """Dispatcher für Raster-Interpolation.

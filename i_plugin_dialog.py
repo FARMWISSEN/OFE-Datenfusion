@@ -1064,9 +1064,8 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.comboBox_method_point.currentTextChanged.connect(self.on_interpolation_method_changed_point)
         
         # Connect interpolation buttons
-        #self.interpolate_button.clicked.connect(self.accept)
         self.button_interpolate_points.clicked.connect(self.interpolate_points)
-        self.button_interpolate_points_2.clicked.connect(self.interpolate_raster)  # Geändert: accept → interpolate_raster
+        self.button_interpolate_points_2.clicked.connect(self.interpolate_raster)
         
         # Connect variogram analysis buttons
         self.analyze_variogram_button.clicked.connect(self.show_variogram_analysis)
@@ -1354,21 +1353,53 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         return self._get_variogram_params(self.comboBox_variogram_point.currentText(), "_point")
 
     def get_point_interpolation_parameters(self):
-        """Sammelt die Parameter für die Punkt-Interpolation."""
-        # Get variogram parameters from the appropriate widget based on selected model
-        variogram_params = self.get_variogram_parameters_point()
+        """Sammelt die Parameter für die Punkt-Interpolation.
         
+        Returns:
+            dict: Parameter-Dictionary basierend auf ausgewählter Methode
+        """
+        selected_method = self.comboBox_method_point.currentText()
+        
+        # Basis-Parameter (für alle Methoden)
         params = {
             'target_layer': self.mMapLayerComboBox_target_layer.currentLayer(),
             'covariate_layer': self.mMapLayerComboBox_covariate_point.currentLayer(),
             'covariate_field': self.mFieldComboBox_covariate.currentField(),
+        }
+        
+        # Methoden-spezifische Parameter
+        if selected_method == InterpolationMethod.IDW:
+            params.update(self._get_idw_parameters_point())
+        elif selected_method == InterpolationMethod.NEAREST_NEIGHBOR:
+            params.update(self._get_nearest_neighbor_parameters_point())
+        else:
+            params.update(self._get_kriging_point_parameters())
+        
+        return params
+
+    def _get_idw_parameters_point(self):
+        """IDW-spezifische Parameter für Punkt-Tab sammeln."""
+        return {
+            'method': 'idw',
+            'idw_power': self._get_spinbox_value('doubleSpinBox_idw_power_point', InterpolationConfig.DEFAULT_IDW_POWER)
+        }
+
+    def _get_nearest_neighbor_parameters_point(self):
+        """Nearest Neighbor-spezifische Parameter für Punkt-Tab sammeln."""
+        return {
+            'method': 'nearest_neighbor',
+            'nn_radius': self._get_spinbox_value('doubleSpinBox_nn_radius_point', InterpolationConfig.DEFAULT_NN_RADIUS)
+        }
+
+    def _get_kriging_point_parameters(self):
+        """Kriging-spezifische Parameter für Punkt-Tab sammeln."""
+        variogram_params = self.get_variogram_parameters_point()
+        
+        params = {
             'method': 'ordinary_kriging',
             'variogram_model': self.comboBox_variogram_point.currentText(),
-            'sill': variogram_params.get('sill'),
-            'range': variogram_params.get('range'),
-            'nugget': variogram_params.get('nugget'),
-            'slope': variogram_params.get('slope'),
-            'nlags': self.spinBox_lags_point.value()
+            'nlags': self.spinBox_lags_point.value(),
+            **variogram_params  # sill, range, nugget, slope
         }
         
         # Use stored variogram_info if available from analysis, otherwise create fallback
@@ -1379,10 +1410,10 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             params['variogram_info'] = {
                 'metrics': {},
                 'parameters': {
-                    'nugget': params['nugget'],
-                    'range': params['range'],
-                    'sill': params['sill'],
-                    'slope': params['slope'],
+                    'nugget': variogram_params.get('nugget'),
+                    'range': variogram_params.get('range'),
+                    'sill': variogram_params.get('sill'),
+                    'slope': variogram_params.get('slope'),
                     'model_type': params['variogram_model']
                 },
                 'experimental': {'lags': [], 'semivariance': []},
@@ -1773,7 +1804,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             'nlags': self.spinBox_lags.value(),
             **variogram_params  # sill, range, nugget, slope
         }
-# VALIDIERT DIE EINBEBENEN SACHEN
+
     def validate_inputs(self):
         """Validate user inputs."""
         # Check input layer
