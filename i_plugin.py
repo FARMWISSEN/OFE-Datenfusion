@@ -126,7 +126,7 @@ class IPlugIn:
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&OFR 3. Kartenerzeugen und Datensätze anreichern')
+        self.menu = self.tr(u'&Praxisversuche')
         self.dlg = None
 
         # Check if plugin was started the first time in current QGIS session
@@ -182,7 +182,7 @@ class IPlugIn:
         icon_path = f'{self.plugin_dir}/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'OFR I Interpolation'),
+            text=self.tr(u'OFR Interpolation'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -2495,7 +2495,8 @@ class IPlugIn:
             self.log(f"Kriging Punkt-Interpolation: {covariate_layer.name()} → {target_layer.name()}")
             
             # Bereite Kovariaten-Daten vor
-            x, y, z = self.prepare_data(covariate_layer, covariate_field, None)
+            # check_duplicates=False, da bereits bei Variogram-Analyse geprüft
+            x, y, z = self.prepare_data(covariate_layer, covariate_field, None, check_duplicates=False)
             if x is None:
                 raise ValueError("Keine gültigen Kovariaten-Daten gefunden")
             
@@ -2821,10 +2822,12 @@ class IPlugIn:
                 raise Exception("Interpolation wurde vom Benutzer abgebrochen")
             
             # Prepare data (extract x, y, z arrays)
+            # check_duplicates=False, da bereits bei Variogram-Analyse geprüft
             x, y, z = self.prepare_data(
                 params['input_layer'],
                 params['input_field'],
-                params.get('boundary_layer')
+                params.get('boundary_layer'),
+                check_duplicates=False
             )
             
             if x is None or y is None or z is None:

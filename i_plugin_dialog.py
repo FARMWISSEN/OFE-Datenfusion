@@ -977,7 +977,8 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             boundary = None  # Optional: use a boundary if relevant for points
 
             # Prepare data (x, y, z from covariate layer)
-            x, y, z = self.plugin.prepare_data(covariate_layer, covariate_field, boundary)
+            # check_duplicates=True hier, da Variogram-Analyse der erste Schritt ist
+            x, y, z = self.plugin.prepare_data(covariate_layer, covariate_field, boundary, check_duplicates=True)
             if x is None or len(x) == 0:
                 progress.close()
                 QgsMessageLog.logMessage(
@@ -2128,7 +2129,8 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             boundary = self.mMapLayerComboBox_boundary.currentLayer()
             
             # Prepare data
-            x, y, z = self.plugin.prepare_data(layer, field, boundary)
+            # check_duplicates=True hier, da Variogram-Analyse der erste Schritt ist
+            x, y, z = self.plugin.prepare_data(layer, field, boundary, check_duplicates=True)
             if x is None or len(x) == 0:
                 progress.close()
                 QgsMessageLog.logMessage(
