@@ -2495,7 +2495,8 @@ class IPlugIn:
             self.log(f"Kriging Punkt-Interpolation: {covariate_layer.name()} → {target_layer.name()}")
             
             # Bereite Kovariaten-Daten vor
-            x, y, z = self.prepare_data(covariate_layer, covariate_field, None)
+            # check_duplicates=False, da bereits bei Variogram-Analyse geprüft
+            x, y, z = self.prepare_data(covariate_layer, covariate_field, None, check_duplicates=False)
             if x is None:
                 raise ValueError("Keine gültigen Kovariaten-Daten gefunden")
             
@@ -2821,10 +2822,12 @@ class IPlugIn:
                 raise Exception("Interpolation wurde vom Benutzer abgebrochen")
             
             # Prepare data (extract x, y, z arrays)
+            # check_duplicates=False, da bereits bei Variogram-Analyse geprüft
             x, y, z = self.prepare_data(
                 params['input_layer'],
                 params['input_field'],
-                params.get('boundary_layer')
+                params.get('boundary_layer'),
+                check_duplicates=False
             )
             
             if x is None or y is None or z is None:
