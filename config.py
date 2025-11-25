@@ -10,21 +10,24 @@ the plugin to ensure consistency and easy maintenance.
 class InterpolationMethod:
     """Enum-ähnliche Klasse für Interpolationsmethoden."""
     ORDINARY_KRIGING = "Ordinary Kriging"
-    NEAREST_NEIGHBOR = "Nearest Neighbor"
+    IDW = "IDW (Inverse Distance Weighting)"
     # Zukünftige Methoden können hier hinzugefügt werden:
     # UNIVERSAL_KRIGING = "Universal Kriging"
-    # IDW = "Inverse Distance Weighting"
+    # TIN = "TIN Interpolation"
     # SPLINE = "Spline"
-    # RBF = "Radial Basis Function"
     
     @classmethod
     def get_all_methods(cls):
         """Gibt alle verfügbaren Interpolationsmethoden zurück."""
         return [
             cls.ORDINARY_KRIGING,
-            cls.NEAREST_NEIGHBOR,  # Test-Methode (noch nicht implementiert)
-            # Weitere Methoden hier hinzufügen wenn implementiert
+            cls.IDW,
         ]
+    
+    @classmethod
+    def requires_variogram(cls, method_name):
+        """Prüft ob eine Methode Variogramm-Analyse benötigt."""
+        return method_name == cls.ORDINARY_KRIGING
     
     @classmethod
     def get_method_index(cls, method_name):
@@ -190,3 +193,9 @@ class InterpolationConfig:
     VARIOGRAM_METRICS_TEXT_HEIGHT = 100  # Höhe des Metrics-Textfeldes
     VARIOGRAM_IMAGE_WIDTH = 550  # Breite des angezeigten Bildes
     VARIOGRAM_IMAGE_HEIGHT = 400  # Höhe des angezeigten Bildes
+    
+    # IDW-Parameter
+    DEFAULT_IDW_POWER = 2.0  # Distance coefficient (Potenz für Gewichtung)
+    DEFAULT_IDW_POWER_MIN = 0.0
+    DEFAULT_IDW_POWER_MAX = 100.0
+    IDW_INTERPOLATION_DIR = "idw_interpolation"  # Output-Verzeichnis für IDW
