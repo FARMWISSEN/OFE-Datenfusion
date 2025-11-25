@@ -126,7 +126,7 @@ class IPlugIn:
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&OFR 3. Kartenerzeugen und Datensätze anreichern')
+        self.menu = self.tr(u'&Praxisversuche')
         self.dlg = None
 
         # Check if plugin was started the first time in current QGIS session
@@ -182,7 +182,7 @@ class IPlugIn:
         icon_path = f'{self.plugin_dir}/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'OFR I Interpolation'),
+            text=self.tr(u'OFR Interpolation'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
