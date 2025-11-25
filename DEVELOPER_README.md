@@ -41,6 +41,7 @@ interpolation/
 
 ### Dispatcher-Architektur (i_plugin.py)
 
+**Raster-Interpolation:**
 ```
 run()                                    # Dispatcher - zeigt Dialog, delegiert an Workflow
 ├── run_kriging_interpolation()          # Kriging-Workflow
@@ -62,6 +63,23 @@ run()                                    # Dispatcher - zeigt Dialog, delegiert 
     └── _handle_interpolation_error()    # Zentrale Fehlerbehandlung
 ```
 
+**Punkt-zu-Punkt-Interpolation:**
+```
+run_point_interpolation()                # Dispatcher für Punkt-Interpolation
+├── _run_point_interpolation_kriging()   # PyKrige
+│   └── interpolate_ordinary_kriging(..., style='points')
+│
+├── _run_point_interpolation_idw()       # Eigene numpy-Implementierung
+│   └── _interpolate_idw_points()
+│
+├── _run_point_interpolation_nn()        # Eigene numpy-Implementierung
+│   └── _interpolate_nn_points()
+│
+└── Shared Helpers
+    ├── _extract_target_points()         # Zielpunkte extrahieren
+    └── _finalize_point_interpolation()  # Layer-Kopie + Metadaten
+```
+
 ---
 
 ## Kernkomponenten
@@ -80,37 +98,43 @@ run()                                    # Dispatcher - zeigt Dialog, delegiert 
 - Automatisches Backup-Management
 - Automatisches Farbrampen-Styling
 
-**Wichtige Methoden:**
+**Wichtige Methoden (Raster):**
 
 | Methode | Zweck |
 |---------|-------|
-| `run()` | **Dispatcher** - delegiert an Workflow basierend auf Methode |
-| `run_kriging_interpolation()` | Kompletter Kriging-Workflow |
-| `run_idw_interpolation()` | Kompletter IDW-Workflow |
-| `run_nearest_neighbor_interpolation()` | Kompletter Nearest Neighbor-Workflow |
-| `interpolate_ordinary_kriging()` | PyKrige-basierte Interpolation |
-| `interpolate_idw()` | QgsIDWInterpolator-basierte Interpolation |
-| `interpolate_nearest_neighbor()` | GDAL-basierte Nearest Neighbor Interpolation |
-| `clip_raster_to_boundary()` | GDAL-Clip mit optionalem Pixel-Buffer |
-| `_add_raster_to_project()` | Shared: Layer laden + Styling |
-| `_handle_interpolation_error()` | Shared: Zentrale Fehlerbehandlung |
+| `run()` | **Dispatcher** - delegiert an Raster-Workflow |
+| `run_kriging_interpolation()` | Kriging-Workflow (PyKrige) |
+| `run_idw_interpolation()` | IDW-Workflow (QgsIDWInterpolator) |
+| `run_nearest_neighbor_interpolation()` | NN-Workflow (GDAL) |
+| `clip_raster_to_boundary()` | GDAL-Clip mit Pixel-Buffer |
+| `_add_raster_to_project()` | Layer laden + Styling |
 
-**Datenfluss (Kriging):**
+**Wichtige Methoden (Punkt-zu-Punkt):**
+
+| Methode | Zweck |
+|---------|-------|
+| `run_point_interpolation()` | **Dispatcher** - delegiert an Punkt-Workflow |
+| `_run_point_interpolation_kriging()` | Kriging für Punkte (PyKrige) |
+| `_run_point_interpolation_idw()` | IDW für Punkte (numpy) |
+| `_run_point_interpolation_nn()` | NN für Punkte (numpy) |
+| `_interpolate_idw_points()` | IDW-Berechnung für Punkt-Arrays |
+| `_interpolate_nn_points()` | NN-Berechnung für Punkt-Arrays |
+| `_finalize_point_interpolation()` | Layer-Kopie + Metadaten |
+
+**Datenfluss (Raster-Interpolation):**
 ```
-run() → run_kriging_interpolation()
-  → prepare_data() [x, y, z arrays]
-  → create_output_grid() [grid_x, grid_y, mask]
-  → interpolate_ordinary_kriging() [z_pred]
-  → create_raster_layer() [GeoTIFF]
+run() → run_xxx_interpolation()
+  → interpolate_xxx() [GeoTIFF]
+  → clip_raster_to_boundary() [optional]
   → _add_raster_to_project()
 ```
 
-**Datenfluss (IDW / Nearest Neighbor):**
+**Datenfluss (Punkt-Interpolation):**
 ```
-run() → run_idw_interpolation() / run_nearest_neighbor_interpolation()
-  → interpolate_idw() / interpolate_nearest_neighbor() [GeoTIFF]
-  → clip_raster_to_boundary() [optional, mit Buffer]
-  → _add_raster_to_project()
+run_point_interpolation() → _run_point_interpolation_xxx()
+  → prepare_data() + _extract_target_points()
+  → _interpolate_xxx_points() [numpy array]
+  → _finalize_point_interpolation() [Layer-Kopie]
 ```
 
 ---
