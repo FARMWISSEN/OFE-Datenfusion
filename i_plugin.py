@@ -65,8 +65,16 @@ from qgis.core import (
     QgsMarkerSymbol
 )
 from qgis.PyQt.QtGui import QColor
-from pykrige import OrdinaryKriging
 import processing
+
+# Optional: PyKrige für Kriging-Interpolation
+# Falls nicht installiert, wird Kriging deaktiviert
+PYKRIGE_AVAILABLE = False
+try:
+    from pykrige import OrdinaryKriging
+    PYKRIGE_AVAILABLE = True
+except ImportError:
+    OrdinaryKriging = None  # Placeholder
 
 from .i_plugin_dialog import IPlugInDialog
 from .variogram_models import (
@@ -88,6 +96,40 @@ from .exceptions import (
 )
 
 INTERPOLATION_LIBS_AVAILABLE = True
+
+
+def check_pykrige_available():
+    """Prüft ob PyKrige verfügbar ist und zeigt ggf. Installationsanleitung.
+    
+    Returns:
+        bool: True wenn PyKrige verfügbar, False sonst
+    """
+    if PYKRIGE_AVAILABLE:
+        return True
+    
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Warning)
+    msg.setWindowTitle("PyKrige nicht installiert")
+    msg.setText("Kriging-Interpolation ist nicht verfügbar.")
+    msg.setInformativeText(
+        "Das Python-Paket 'pykrige' ist nicht installiert.\n\n"
+        "Bitte installieren Sie es mit folgendem Befehl in der\n"
+        "OSGeo4W Shell (Windows) oder Terminal (Mac/Linux):\n\n"
+        "pip install pykrige\n\n"
+        "Alternativ können Sie IDW oder Nearest Neighbor verwenden."
+    )
+    msg.setDetailedText(
+        "Installation unter Windows:\n"
+        "1. OSGeo4W Shell öffnen (als Administrator)\n"
+        "2. python -m pip install pykrige\n\n"
+        "Installation unter Mac/Linux:\n"
+        "1. Terminal öffnen\n"
+        "2. Den Python-Pfad von QGIS finden\n"
+        "3. /path/to/qgis/python -m pip install pykrige\n\n"
+        "Nach der Installation QGIS neu starten."
+    )
+    msg.exec_()
+    return False
 
 
 class IPlugIn:
@@ -1069,6 +1111,13 @@ class IPlugIn:
                 - plot_path: Pfad zur Variogramm-Visualisierung
         """
         try:
+            # Prüfe ob PyKrige verfügbar ist
+            if not PYKRIGE_AVAILABLE:
+                raise InterpolationCalculationError(
+                    "PyKrige ist nicht installiert. Variogramm-Analyse nicht verfügbar.\n"
+                    "Bitte installieren Sie PyKrige: pip install pykrige"
+                )
+            
             # Prüfe auf ungültige Werte (None, QVariant, NaN) und breche ggf. mit Fehlermeldung ab
             from qgis.PyQt.QtCore import QVariant
             for xi, yi, zi in zip(x, y, z):
@@ -1330,9 +1379,16 @@ class IPlugIn:
         Notes:
             - Loggt detaillierte Informationen zur Variogramm-Analyse
             - Speichert Variogramm-Parameter für spätere Verwendung
-            - Verwendet GSTools für die eigentliche Interpolation
+            - Verwendet PyKrige für die eigentliche Interpolation
         """
         try:
+            # Prüfe ob PyKrige verfügbar ist
+            if not PYKRIGE_AVAILABLE:
+                raise InterpolationCalculationError(
+                    "PyKrige ist nicht installiert. Kriging-Interpolation nicht verfügbar.\n"
+                    "Bitte installieren Sie PyKrige: pip install pykrige"
+                )
+            
             # Modellabhängige Variogramm-Parameter
             is_linear = params['variogram_model'].lower() == 'linear'
             

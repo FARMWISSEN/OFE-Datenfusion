@@ -35,6 +35,15 @@ from qgis.core import (QgsMapLayerProxyModel, QgsFieldProxyModel, QgsProject, Qg
 from .variogram_dialog import VariogramDialog
 from .model_comparison_dialog import ModelComparisonDialog
 from .config import InterpolationConfig, InterpolationMethod
+
+# Prüfe ob PyKrige verfügbar ist (für UI-Anpassungen)
+PYKRIGE_AVAILABLE = False
+try:
+    from pykrige import OrdinaryKriging
+    PYKRIGE_AVAILABLE = True
+except ImportError:
+    pass
+
 from .exceptions import (
     InterpolationError,
     DataValidationError,
@@ -432,6 +441,75 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.add_ZielLayer.clicked.connect(self.target_layer_add)
         if hasattr(self, 'add_GrenzLayer'):
             self.add_GrenzLayer.clicked.connect(self.boundary_layer_add)
+        
+        # --- PyKrige-Verfügbarkeit prüfen und UI anpassen ---
+        self._check_pykrige_and_update_ui()
+
+    def _check_pykrige_and_update_ui(self):
+        """Prüft ob PyKrige verfügbar ist und passt die UI entsprechend an.
+        
+        Wenn PyKrige nicht installiert ist:
+        - Variogramm-Analyse Buttons werden deaktiviert
+        - Kriging wird aus der Methoden-Auswahl entfernt oder deaktiviert
+        - Warnung wird im Log angezeigt
+        """
+        if PYKRIGE_AVAILABLE:
+            return  # Alles OK, keine Änderungen nötig
+        
+        # Log-Warnung
+        QgsMessageLog.logMessage(
+            "PyKrige ist nicht installiert. Kriging-Interpolation und Variogramm-Analyse "
+            "sind nicht verfügbar. Bitte installieren Sie PyKrige: pip install pykrige",
+            "I-PlugIn",
+            Qgis.Warning
+        )
+        
+        # Variogramm-Analyse Buttons deaktivieren (Raster-Tab)
+        if hasattr(self, 'pushButton_variogram'):
+            self.pushButton_variogram.setEnabled(False)
+            self.pushButton_variogram.setToolTip(
+                "PyKrige nicht installiert.\nBitte installieren: pip install pykrige"
+            )
+        
+        # Variogramm-Analyse Buttons deaktivieren (Point-Tab)
+        if hasattr(self, 'pushButton_variogram_point'):
+            self.pushButton_variogram_point.setEnabled(False)
+            self.pushButton_variogram_point.setToolTip(
+                "PyKrige nicht installiert.\nBitte installieren: pip install pykrige"
+            )
+        
+        # Modellvergleich Buttons deaktivieren
+        if hasattr(self, 'pushButton_model_comparison'):
+            self.pushButton_model_comparison.setEnabled(False)
+            self.pushButton_model_comparison.setToolTip(
+                "PyKrige nicht installiert.\nBitte installieren: pip install pykrige"
+            )
+        if hasattr(self, 'pushButton_model_comparison_point'):
+            self.pushButton_model_comparison_point.setEnabled(False)
+            self.pushButton_model_comparison_point.setToolTip(
+                "PyKrige nicht installiert.\nBitte installieren: pip install pykrige"
+            )
+        
+        # Kriging aus Methoden-ComboBox entfernen oder markieren
+        # Raster-Tab: Kriging ist die einzige Methode, daher nur Warnung
+        if hasattr(self, 'comboBox_method'):
+            # Füge Hinweis zum Tooltip hinzu
+            self.comboBox_method.setToolTip(
+                "Kriging nicht verfügbar (PyKrige fehlt).\n"
+                "IDW und Nearest Neighbor funktionieren."
+            )
+        
+        # Point-Tab: Kriging aus der Liste entfernen
+        if hasattr(self, 'comboBox_method_point'):
+            # Finde und entferne "Ordinary Kriging" aus der ComboBox
+            for i in range(self.comboBox_method_point.count()):
+                if 'kriging' in self.comboBox_method_point.itemText(i).lower():
+                    self.comboBox_method_point.removeItem(i)
+                    break
+            self.comboBox_method_point.setToolTip(
+                "Kriging nicht verfügbar (PyKrige fehlt).\n"
+                "IDW und Nearest Neighbor funktionieren."
+            )
 
     def create_optimized_parameter_labels_raster(self):
         """DEPRECATED: Labels werden nicht mehr verwendet.
