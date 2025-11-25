@@ -11,6 +11,7 @@ class InterpolationMethod:
     """Enum-ähnliche Klasse für Interpolationsmethoden."""
     ORDINARY_KRIGING = "Ordinary Kriging"
     IDW = "IDW (Inverse Distance Weighting)"
+    NEAREST_NEIGHBOR = "Nearest Neighbor"
     # Zukünftige Methoden können hier hinzugefügt werden:
     # UNIVERSAL_KRIGING = "Universal Kriging"
     # TIN = "TIN Interpolation"
@@ -22,6 +23,7 @@ class InterpolationMethod:
         return [
             cls.ORDINARY_KRIGING,
             cls.IDW,
+            cls.NEAREST_NEIGHBOR,
         ]
     
     @classmethod
@@ -199,3 +201,10 @@ class InterpolationConfig:
     DEFAULT_IDW_POWER_MIN = 0.0
     DEFAULT_IDW_POWER_MAX = 100.0
     IDW_INTERPOLATION_DIR = "idw_interpolation"  # Output-Verzeichnis für IDW
+    
+    # Nearest Neighbor-Parameter
+    DEFAULT_NN_RADIUS = 0.0  # 0 = automatisch (alle Punkte durchsuchen)
+    DEFAULT_NN_RADIUS_MIN = 0.0
+    DEFAULT_NN_RADIUS_MAX = 10000.0
+    DEFAULT_NN_NODATA = -9999.0  # NoData-Wert für leere Zellen
+    NN_INTERPOLATION_DIR = "nearest_neighbor_interpolation"  # Output-Verzeichnis

@@ -813,6 +813,90 @@
        </property>
       </widget>
      </widget>
+     <widget class="QWidget" name="page_nearest_neighbor">
+      <widget class="QLabel" name="label_nn_info">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>531</width>
+         <height>51</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Nearest Neighbor weist jedem Rasterpunkt den Wert des nächstgelegenen Messpunkts zu. Keine Glättung oder Interpolation.</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_nn_radius">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>70</y>
+         <width>200</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Suchradius (0 = unbegrenzt):</string>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_nn_radius">
+       <property name="geometry">
+        <rect>
+         <x>220</x>
+         <y>68</y>
+         <width>100</width>
+         <height>25</height>
+        </rect>
+       </property>
+       <property name="suffix">
+        <string> m</string>
+       </property>
+       <property name="decimals">
+        <number>1</number>
+       </property>
+       <property name="minimum">
+        <double>0.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>10000.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>10.000000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.000000000000000</double>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_nn_radius_hint">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>100</y>
+         <width>531</width>
+         <height>41</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Maximaler Suchradius für den nächsten Nachbarn. Bei 0 wird der gesamte Datensatz durchsucht.</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+       <property name="styleSheet">
+        <string>color: gray; font-style: italic;</string>
+       </property>
+      </widget>
+     </widget>
     </widget>
     <widget class="QPushButton" name="button_interpolate_points_2">
      <property name="geometry">
@@ -1588,6 +1672,90 @@
        </property>
        <property name="text">
         <string>Höhere Werte verstärken den Einfluss naher Punkte. Standard: 2.0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+       <property name="styleSheet">
+        <string>color: gray; font-style: italic;</string>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="page_nearest_neighbor_point">
+      <widget class="QLabel" name="label_nn_info_point">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>531</width>
+         <height>51</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Nearest Neighbor weist jedem Zielpunkt den Wert des nächstgelegenen Messpunkts zu. Keine Glättung oder Interpolation.</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_nn_radius_point">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>70</y>
+         <width>200</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Suchradius (0 = unbegrenzt):</string>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_nn_radius_point">
+       <property name="geometry">
+        <rect>
+         <x>220</x>
+         <y>68</y>
+         <width>100</width>
+         <height>25</height>
+        </rect>
+       </property>
+       <property name="suffix">
+        <string> m</string>
+       </property>
+       <property name="decimals">
+        <number>1</number>
+       </property>
+       <property name="minimum">
+        <double>0.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>10000.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>10.000000000000000</double>
+       </property>
+       <property name="value">
+        <double>0.000000000000000</double>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_nn_radius_hint_point">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>100</y>
+         <width>531</width>
+         <height>41</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Maximaler Suchradius für den nächsten Nachbarn. Bei 0 wird der gesamte Datensatz durchsucht.</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
