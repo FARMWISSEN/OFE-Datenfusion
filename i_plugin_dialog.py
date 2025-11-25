@@ -49,12 +49,20 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 
 
 class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
+    
+    # StyleSheet für optimierte (grüne) Spinboxes
+    OPTIMIZED_SPINBOX_STYLE = "QDoubleSpinBox { color: #2E7D32; font-weight: bold; }"
+    DEFAULT_SPINBOX_STYLE = ""  # Zurück zum Standard
+    
     def __init__(self, iface, parent=None):
         """Constructor."""
         super(IPlugInDialog, self).__init__(parent)
         self.iface = iface
         self.plugin = None  # Will be set by the plugin instance
         self.plugin_dir = None
+        
+        # Track which spinboxes have optimized values (for reset on manual change)
+        self._optimized_spinboxes = set()
         
         # Storage for variogram analysis results (for model comparison)
         self.variogram_results_raster = []  # List of dicts with model, parameters, metrics
@@ -426,77 +434,69 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             self.add_GrenzLayer.clicked.connect(self.boundary_layer_add)
 
     def create_optimized_parameter_labels_raster(self):
-        """Create labels to display optimized variogram parameters for raster tab."""
-        parent_widget = self.page_kriging_3 if hasattr(self, 'page_kriging_3') else self
+        """DEPRECATED: Labels werden nicht mehr verwendet.
         
-        # Create a group box for optimized parameters
-        self.optimized_params_group_raster = QtWidgets.QGroupBox("Optimierte Parameter:", parent_widget)
-        self.optimized_params_group_raster.setVisible(False)  # Hidden initially
-        self.optimized_params_group_raster.setFixedHeight(110)  # Feste Höhe
-        self.optimized_params_group_raster.setFixedWidth(250)  # Feste Breite
-        
-        # Create layout for the group box
-        params_layout = QtWidgets.QFormLayout()
-        
-        # Create labels for optimized values
-        self.label_optimized_nugget_raster = QtWidgets.QLabel("—")
-        self.label_optimized_range_raster = QtWidgets.QLabel("—")
-        self.label_optimized_sill_raster = QtWidgets.QLabel("—")
-        
-        # Create label for range row (to be able to hide it)
-        self.label_optimized_range_label_raster = QtWidgets.QLabel("Range:")
-        
-        # Style labels
-        for label in [self.label_optimized_nugget_raster, self.label_optimized_range_raster, self.label_optimized_sill_raster]:
-            label.setStyleSheet("QLabel { color: #2E7D32; font-weight: bold; }")
-        
-        # Add to layout
-        params_layout.addRow("Sill:", self.label_optimized_sill_raster)
-        params_layout.addRow(self.label_optimized_range_label_raster, self.label_optimized_range_raster)
-        params_layout.addRow("Nugget:", self.label_optimized_nugget_raster)
-        
-        self.optimized_params_group_raster.setLayout(params_layout)
-        
-        # Add to page layout
-        layout = parent_widget.layout()
-        if layout:
-            layout.addWidget(self.optimized_params_group_raster)
+        Optimierte Werte werden jetzt direkt in den Spinboxes grün dargestellt.
+        Diese Methode bleibt als Stub für Rückwärtskompatibilität.
+        """
+        pass
 
     def create_optimized_parameter_labels_point(self):
-        """Create labels to display optimized variogram parameters for point tab."""
-        parent_widget = self.page_kriging_4 if hasattr(self, 'page_kriging_4') else self
+        """DEPRECATED: Labels werden nicht mehr verwendet.
         
-        # Create a group box for optimized parameters
-        self.optimized_params_group_point = QtWidgets.QGroupBox("Optimierte Parameter:", parent_widget)
-        self.optimized_params_group_point.setVisible(False)  # Hidden initially
-        self.optimized_params_group_point.setFixedHeight(110)  # Feste Höhe
-        self.optimized_params_group_point.setFixedWidth(250)  # Feste Breite        
-        # Create layout for the group box
-        params_layout = QtWidgets.QFormLayout()
+        Optimierte Werte werden jetzt direkt in den Spinboxes grün dargestellt.
+        Diese Methode bleibt als Stub für Rückwärtskompatibilität.
+        """
+        pass
+
+    def _set_spinbox_optimized(self, spinbox, value):
+        """Setzt einen Wert in eine Spinbox und färbt sie grün (optimiert).
         
-        # Create labels for optimized values
-        self.label_optimized_nugget_point = QtWidgets.QLabel("—")
-        self.label_optimized_range_point = QtWidgets.QLabel("—")
-        self.label_optimized_sill_point = QtWidgets.QLabel("—")
+        Args:
+            spinbox: QDoubleSpinBox - Die zu aktualisierende Spinbox
+            value: float - Der zu setzende Wert
+        """
+        if spinbox is None or value is None:
+            return
+        spinbox.setValue(value)
+        spinbox.setStyleSheet(self.OPTIMIZED_SPINBOX_STYLE)
+        self._optimized_spinboxes.add(spinbox)
+
+    def _reset_spinbox_style(self, spinbox):
+        """Setzt das Styling einer Spinbox auf Standard zurück.
         
-        # Create label for range row (to be able to hide it)
-        self.label_optimized_range_label_point = QtWidgets.QLabel("Range:")
+        Args:
+            spinbox: QDoubleSpinBox - Die zurückzusetzende Spinbox
+        """
+        if spinbox is None:
+            return
+        spinbox.setStyleSheet(self.DEFAULT_SPINBOX_STYLE)
+        self._optimized_spinboxes.discard(spinbox)
+
+    def _reset_all_variogram_spinbox_styles(self, point_tab=False):
+        """Setzt alle Variogramm-Spinboxes auf Standard-Styling zurück.
         
-        # Style labels
-        for label in [self.label_optimized_nugget_point, self.label_optimized_range_point, self.label_optimized_sill_point]:
-            label.setStyleSheet("QLabel { color: #2E7D32; font-weight: bold; }")
+        Args:
+            point_tab: bool - True für Point-Tab, False für Raster-Tab
+        """
+        if point_tab:
+            spinboxes = [
+                'doubleSpinBox_slope_point', 'doubleSpinBox_nugget_lin_point',
+                'doubleSpinBox_sill_sph_point', 'doubleSpinBox_range_sph_point', 'doubleSpinBox_nugget_sph_point',
+                'doubleSpinBox_sill_exp_point', 'doubleSpinBox_range_exp_point', 'doubleSpinBox_nugget_exp_point',
+                'doubleSpinBox_sill_gau_point', 'doubleSpinBox_range_gau_point', 'doubleSpinBox_nugget_gau_point'
+            ]
+        else:
+            spinboxes = [
+                'doubleSpinBox_slope', 'doubleSpinBox_nugget',
+                'doubleSpinBox_sill_sph', 'doubleSpinBox_range_sph', 'doubleSpinBox_nugget_sph',
+                'doubleSpinBox_sill_exp', 'doubleSpinBox_range_exp', 'doubleSpinBox_nugget_exp',
+                'doubleSpinBox_sill_gau', 'doubleSpinBox_range_gau', 'doubleSpinBox_nugget_gau'
+            ]
         
-        # Add to layout
-        params_layout.addRow("Sill:", self.label_optimized_sill_point)
-        params_layout.addRow(self.label_optimized_range_label_point, self.label_optimized_range_point)
-        params_layout.addRow("Nugget:", self.label_optimized_nugget_point)
-        
-        self.optimized_params_group_point.setLayout(params_layout)
-        
-        # Add to page layout
-        layout = parent_widget.layout()
-        if layout:
-            layout.addWidget(self.optimized_params_group_point)
+        for name in spinboxes:
+            if hasattr(self, name):
+                self._reset_spinbox_style(getattr(self, name))
 
 # VERBINDUNG DER SIGNAL
     def _validate_and_add_layer(self, layer_combo, field_combo=None, layer_type_name="Layer"):
@@ -1233,6 +1233,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         Switches the visible parameter widget in the stacked widget based on
         the selected variogram model. Each model has its own parameter page.
+        Also resets the green "optimized" styling on spinboxes.
         
         Args:
             model_name (str): Name of the selected variogram model
@@ -1247,6 +1248,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Switch to the corresponding parameter page
         self.StartwerteVariogramModel.setCurrentIndex(model_index)
         
+        # Reset green styling on all variogram spinboxes (Raster tab)
+        self._reset_all_variogram_spinbox_styles(point_tab=False)
+        
         # Log the change
         QgsMessageLog.logMessage(
             f"Raster tab: Switched to parameter page {model_index} for variogram model '{model_name}'",
@@ -1259,6 +1263,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         Switches the visible parameter widget in the stacked widget based on
         the selected variogram model. Each model has its own parameter page.
+        Also resets the green "optimized" styling on spinboxes.
         
         Args:
             model_name (str): Name of the selected variogram model
@@ -1272,6 +1277,9 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         
         # Switch to the corresponding parameter page
         self.StartwerteVariogramModel_point.setCurrentIndex(model_index)
+        
+        # Reset green styling on all variogram spinboxes (Point tab)
+        self._reset_all_variogram_spinbox_styles(point_tab=True)
         
         # Log the change
         QgsMessageLog.logMessage(
@@ -2472,11 +2480,11 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             )
 
     def update_variogram_parameters(self, parameters, point_tab=False):
-        """Update optimized variogram parameters in labels AND spinboxes.
+        """Update optimized variogram parameters - färbt Spinboxes grün.
         
-        Die optimierten Werte werden sowohl in die Anzeige-Labels als auch in die
-        Spinboxes geschrieben, damit die Interpolation diese Werte verwendet.
-        Der User kann die Werte danach immer noch manuell anpassen.
+        Die optimierten Werte werden in die Spinboxes geschrieben und diese
+        werden grün eingefärbt, um anzuzeigen dass sie optimiert wurden.
+        Die separate Label-Anzeige wird nicht mehr verwendet.
         """
         try:
             if not parameters:
@@ -2484,61 +2492,37 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
 
             # Check if this is a linear model (has slope instead of range/sill)
             is_linear = parameters.get('slope') is not None and parameters.get('range') is None
+            nugget = parameters.get('nugget')
 
             if point_tab:
-                # Update optimized parameter labels for point tab
-                nugget = parameters.get('nugget')
-                nugget_str = f"{nugget:.3f}" if nugget is not None else "N/A"
-                
-                self.label_optimized_nugget_point.setText(nugget_str)
-                
-                if is_linear:
-                    # Linear model: show slope instead of range/sill
-                    slope = parameters.get('slope')
-                    slope_str = f"{slope:.6f}" if slope is not None else "N/A"
-                    self.label_optimized_range_point.setText(f"Slope: {slope_str}")
-                    self.label_optimized_sill_point.setText("N/A (Linear)")
-                else:
-                    # Other models: show range and sill
-                    range_val = parameters.get('range')
-                    sill = parameters.get('sill')
-                    range_str = f"{range_val:.2f}" if range_val is not None else "N/A"
-                    sill_str = f"{sill:.3f}" if sill is not None else "N/A"
-                    self.label_optimized_range_point.setText(range_str)
-                    self.label_optimized_sill_point.setText(sill_str)
-                
-                # Show the optimized parameters group box
-                self.optimized_params_group_point.setVisible(True)
-                
-                # UPDATE SPINBOXES with optimized values (Point tab)
-                # Get current model to determine which spinboxes to update
+                # UPDATE SPINBOXES with optimized values (Point tab) - mit grünem Styling
                 current_model = self.comboBox_variogram_point.currentText()
                 if is_linear and current_model == "Linear":
-                    if hasattr(self, 'doubleSpinBox_slope_point') and parameters.get('slope') is not None:
-                        self.doubleSpinBox_slope_point.setValue(parameters['slope'])
-                    if hasattr(self, 'doubleSpinBox_nugget_lin_point') and nugget is not None:
-                        self.doubleSpinBox_nugget_lin_point.setValue(nugget)
+                    if hasattr(self, 'doubleSpinBox_slope_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_slope_point, parameters.get('slope'))
+                    if hasattr(self, 'doubleSpinBox_nugget_lin_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_nugget_lin_point, nugget)
                 elif current_model == "Spherical":
-                    if hasattr(self, 'doubleSpinBox_sill_sph_point') and parameters.get('sill') is not None:
-                        self.doubleSpinBox_sill_sph_point.setValue(parameters['sill'])
-                    if hasattr(self, 'doubleSpinBox_range_sph_point') and parameters.get('range') is not None:
-                        self.doubleSpinBox_range_sph_point.setValue(parameters['range'])
-                    if hasattr(self, 'doubleSpinBox_nugget_sph_point') and nugget is not None:
-                        self.doubleSpinBox_nugget_sph_point.setValue(nugget)
+                    if hasattr(self, 'doubleSpinBox_sill_sph_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_sill_sph_point, parameters.get('sill'))
+                    if hasattr(self, 'doubleSpinBox_range_sph_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_range_sph_point, parameters.get('range'))
+                    if hasattr(self, 'doubleSpinBox_nugget_sph_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_nugget_sph_point, nugget)
                 elif current_model == "Exponential":
-                    if hasattr(self, 'doubleSpinBox_sill_exp_point') and parameters.get('sill') is not None:
-                        self.doubleSpinBox_sill_exp_point.setValue(parameters['sill'])
-                    if hasattr(self, 'doubleSpinBox_range_exp_point') and parameters.get('range') is not None:
-                        self.doubleSpinBox_range_exp_point.setValue(parameters['range'])
-                    if hasattr(self, 'doubleSpinBox_nugget_exp_point') and nugget is not None:
-                        self.doubleSpinBox_nugget_exp_point.setValue(nugget)
+                    if hasattr(self, 'doubleSpinBox_sill_exp_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_sill_exp_point, parameters.get('sill'))
+                    if hasattr(self, 'doubleSpinBox_range_exp_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_range_exp_point, parameters.get('range'))
+                    if hasattr(self, 'doubleSpinBox_nugget_exp_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_nugget_exp_point, nugget)
                 elif current_model == "Gaussian":
-                    if hasattr(self, 'doubleSpinBox_sill_gau_point') and parameters.get('sill') is not None:
-                        self.doubleSpinBox_sill_gau_point.setValue(parameters['sill'])
-                    if hasattr(self, 'doubleSpinBox_range_gau_point') and parameters.get('range') is not None:
-                        self.doubleSpinBox_range_gau_point.setValue(parameters['range'])
-                    if hasattr(self, 'doubleSpinBox_nugget_gau_point') and nugget is not None:
-                        self.doubleSpinBox_nugget_gau_point.setValue(nugget)
+                    if hasattr(self, 'doubleSpinBox_sill_gau_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_sill_gau_point, parameters.get('sill'))
+                    if hasattr(self, 'doubleSpinBox_range_gau_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_range_gau_point, parameters.get('range'))
+                    if hasattr(self, 'doubleSpinBox_nugget_gau_point'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_nugget_gau_point, nugget)
                 
                 # Use a dedicated metrics label for the point tab
                 if not hasattr(self, 'metrics_label_points'):
@@ -2551,59 +2535,34 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     layout.addWidget(self.metrics_label_points)
                 metrics_label = self.metrics_label_points
             else:
-                # Update optimized parameter labels for raster tab
-                nugget = parameters.get('nugget')
-                nugget_str = f"{nugget:.3f}" if nugget is not None else "N/A"
-                
-                self.label_optimized_nugget_raster.setText(nugget_str)
-                
-                if is_linear:
-                    # Linear model: show slope instead of range/sill
-                    slope = parameters.get('slope')
-                    slope_str = f"{slope:.6f}" if slope is not None else "N/A"
-                    self.label_optimized_range_raster.setText(f"Slope: {slope_str}")
-                    self.label_optimized_sill_raster.setText("N/A (Linear)")
-                else:
-                    # Other models: show range and sill
-                    range_val = parameters.get('range')
-                    sill = parameters.get('sill')
-                    range_str = f"{range_val:.2f}" if range_val is not None else "N/A"
-                    sill_str = f"{sill:.3f}" if sill is not None else "N/A"
-                    self.label_optimized_range_raster.setText(range_str)
-                    self.label_optimized_sill_raster.setText(sill_str)
-                
-                # Show the optimized parameters group box
-                self.optimized_params_group_raster.setVisible(True)
-                
-                # UPDATE SPINBOXES with optimized values (Raster tab)
-                # Get current model to determine which spinboxes to update
+                # UPDATE SPINBOXES with optimized values (Raster tab) - mit grünem Styling
                 current_model = self.comboBox_variogram.currentText()
                 if is_linear and current_model == "Linear":
-                    if hasattr(self, 'doubleSpinBox_slope') and parameters.get('slope') is not None:
-                        self.doubleSpinBox_slope.setValue(parameters['slope'])
-                    if hasattr(self, 'doubleSpinBox_nugget') and nugget is not None:
-                        self.doubleSpinBox_nugget.setValue(nugget)
+                    if hasattr(self, 'doubleSpinBox_slope'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_slope, parameters.get('slope'))
+                    if hasattr(self, 'doubleSpinBox_nugget'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_nugget, nugget)
                 elif current_model == "Spherical":
-                    if hasattr(self, 'doubleSpinBox_sill_sph') and parameters.get('sill') is not None:
-                        self.doubleSpinBox_sill_sph.setValue(parameters['sill'])
-                    if hasattr(self, 'doubleSpinBox_range_sph') and parameters.get('range') is not None:
-                        self.doubleSpinBox_range_sph.setValue(parameters['range'])
-                    if hasattr(self, 'doubleSpinBox_nugget_sph') and nugget is not None:
-                        self.doubleSpinBox_nugget_sph.setValue(nugget)
+                    if hasattr(self, 'doubleSpinBox_sill_sph'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_sill_sph, parameters.get('sill'))
+                    if hasattr(self, 'doubleSpinBox_range_sph'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_range_sph, parameters.get('range'))
+                    if hasattr(self, 'doubleSpinBox_nugget_sph'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_nugget_sph, nugget)
                 elif current_model == "Exponential":
-                    if hasattr(self, 'doubleSpinBox_sill_exp') and parameters.get('sill') is not None:
-                        self.doubleSpinBox_sill_exp.setValue(parameters['sill'])
-                    if hasattr(self, 'doubleSpinBox_range_exp') and parameters.get('range') is not None:
-                        self.doubleSpinBox_range_exp.setValue(parameters['range'])
-                    if hasattr(self, 'doubleSpinBox_nugget_exp') and nugget is not None:
-                        self.doubleSpinBox_nugget_exp.setValue(nugget)
+                    if hasattr(self, 'doubleSpinBox_sill_exp'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_sill_exp, parameters.get('sill'))
+                    if hasattr(self, 'doubleSpinBox_range_exp'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_range_exp, parameters.get('range'))
+                    if hasattr(self, 'doubleSpinBox_nugget_exp'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_nugget_exp, nugget)
                 elif current_model == "Gaussian":
-                    if hasattr(self, 'doubleSpinBox_sill_gau') and parameters.get('sill') is not None:
-                        self.doubleSpinBox_sill_gau.setValue(parameters['sill'])
-                    if hasattr(self, 'doubleSpinBox_range_gau') and parameters.get('range') is not None:
-                        self.doubleSpinBox_range_gau.setValue(parameters['range'])
-                    if hasattr(self, 'doubleSpinBox_nugget_gau') and nugget is not None:
-                        self.doubleSpinBox_nugget_gau.setValue(nugget)
+                    if hasattr(self, 'doubleSpinBox_sill_gau'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_sill_gau, parameters.get('sill'))
+                    if hasattr(self, 'doubleSpinBox_range_gau'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_range_gau, parameters.get('range'))
+                    if hasattr(self, 'doubleSpinBox_nugget_gau'):
+                        self._set_spinbox_optimized(self.doubleSpinBox_nugget_gau, nugget)
                 
                 # Use a dedicated metrics label for the raster tab
                 if not hasattr(self, 'metrics_label_raster'):

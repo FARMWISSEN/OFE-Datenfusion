@@ -337,17 +337,7 @@
       <widget class="QWidget" name="page_kriging" native="true">
        <property name="geometry">
         <rect>
-         <x>400</x>
-         <y>99</y>
-         <width>151</width>
-         <height>111</height>
-        </rect>
-       </property>
-      </widget>
-      <widget class="QWidget" name="page_kriging_3" native="true">
-       <property name="geometry">
-        <rect>
-         <x>230</x>
+         <x>380</x>
          <y>99</y>
          <width>151</width>
          <height>111</height>
@@ -359,12 +349,12 @@
         <rect>
          <x>0</x>
          <y>120</y>
-         <width>221</width>
+         <width>281</width>
          <height>91</height>
         </rect>
        </property>
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="linearStartwerte">
         <widget class="QLabel" name="label_nugget_3">
@@ -383,7 +373,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_lin">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>60</y>
            <width>80</width>
            <height>29</height>
@@ -415,7 +405,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_slope">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>10</y>
            <width>80</width>
            <height>29</height>
@@ -449,7 +439,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_sph">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>0</y>
            <width>80</width>
            <height>29</height>
@@ -468,7 +458,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_range_sph">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>30</y>
            <width>80</width>
            <height>29</height>
@@ -497,7 +487,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_sph">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>60</y>
            <width>80</width>
            <height>29</height>
@@ -544,7 +534,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_exp">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>60</y>
            <width>80</width>
            <height>29</height>
@@ -563,7 +553,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_range_exp">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>30</y>
            <width>80</width>
            <height>29</height>
@@ -579,7 +569,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_exp">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>0</y>
            <width>80</width>
            <height>29</height>
@@ -626,7 +616,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_gau">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>60</y>
            <width>80</width>
            <height>29</height>
@@ -658,7 +648,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_range_gau">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>30</y>
            <width>80</width>
            <height>29</height>
@@ -700,7 +690,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_gau">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>0</y>
            <width>80</width>
            <height>29</height>
@@ -799,6 +789,9 @@
          <height>41</height>
         </rect>
        </property>
+       <property name="styleSheet">
+        <string>color: gray; font-style: italic;</string>
+       </property>
        <property name="text">
         <string>Höhere Werte verstärken den Einfluss naher Punkte. Standard: 2.0</string>
        </property>
@@ -807,9 +800,6 @@
        </property>
        <property name="wordWrap">
         <bool>true</bool>
-       </property>
-       <property name="styleSheet">
-        <string>color: gray; font-style: italic;</string>
        </property>
       </widget>
      </widget>
@@ -883,6 +873,9 @@
          <height>41</height>
         </rect>
        </property>
+       <property name="styleSheet">
+        <string>color: gray; font-style: italic;</string>
+       </property>
        <property name="text">
         <string>Maximaler Suchradius für den nächsten Nachbarn. Bei 0 wird der gesamte Datensatz durchsucht.</string>
        </property>
@@ -891,9 +884,6 @@
        </property>
        <property name="wordWrap">
         <bool>true</bool>
-       </property>
-       <property name="styleSheet">
-        <string>color: gray; font-style: italic;</string>
        </property>
       </widget>
      </widget>
@@ -1208,19 +1198,9 @@
       <widget class="QWidget" name="page_kriging_2" native="true">
        <property name="geometry">
         <rect>
-         <x>410</x>
+         <x>380</x>
          <y>99</y>
          <width>141</width>
-         <height>111</height>
-        </rect>
-       </property>
-      </widget>
-      <widget class="QWidget" name="page_kriging_4" native="true">
-       <property name="geometry">
-        <rect>
-         <x>230</x>
-         <y>99</y>
-         <width>161</width>
          <height>111</height>
         </rect>
        </property>
@@ -1230,7 +1210,7 @@
         <rect>
          <x>0</x>
          <y>120</y>
-         <width>221</width>
+         <width>281</width>
          <height>91</height>
         </rect>
        </property>
@@ -1254,7 +1234,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_lin_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>60</y>
            <width>80</width>
            <height>29</height>
@@ -1286,7 +1266,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_slope_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>10</y>
            <width>80</width>
            <height>29</height>
@@ -1320,7 +1300,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_sph_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>0</y>
            <width>80</width>
            <height>29</height>
@@ -1339,7 +1319,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_range_sph_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>30</y>
            <width>80</width>
            <height>29</height>
@@ -1368,7 +1348,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_sph_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>60</y>
            <width>80</width>
            <height>29</height>
@@ -1415,7 +1395,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_exp_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>60</y>
            <width>80</width>
            <height>29</height>
@@ -1434,7 +1414,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_range_exp_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>30</y>
            <width>80</width>
            <height>29</height>
@@ -1450,7 +1430,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_exp_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>0</y>
            <width>80</width>
            <height>29</height>
@@ -1497,7 +1477,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_nugget_gau_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>60</y>
            <width>80</width>
            <height>29</height>
@@ -1529,7 +1509,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_range_gau_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>30</y>
            <width>80</width>
            <height>29</height>
@@ -1571,7 +1551,7 @@
         <widget class="QDoubleSpinBox" name="doubleSpinBox_sill_gau_point">
          <property name="geometry">
           <rect>
-           <x>120</x>
+           <x>140</x>
            <y>0</y>
            <width>80</width>
            <height>29</height>
@@ -1670,6 +1650,9 @@
          <height>41</height>
         </rect>
        </property>
+       <property name="styleSheet">
+        <string>color: gray; font-style: italic;</string>
+       </property>
        <property name="text">
         <string>Höhere Werte verstärken den Einfluss naher Punkte. Standard: 2.0</string>
        </property>
@@ -1678,9 +1661,6 @@
        </property>
        <property name="wordWrap">
         <bool>true</bool>
-       </property>
-       <property name="styleSheet">
-        <string>color: gray; font-style: italic;</string>
        </property>
       </widget>
      </widget>
@@ -1754,6 +1734,9 @@
          <height>41</height>
         </rect>
        </property>
+       <property name="styleSheet">
+        <string>color: gray; font-style: italic;</string>
+       </property>
        <property name="text">
         <string>Maximaler Suchradius für den nächsten Nachbarn. Bei 0 wird der gesamte Datensatz durchsucht.</string>
        </property>
@@ -1762,9 +1745,6 @@
        </property>
        <property name="wordWrap">
         <bool>true</bool>
-       </property>
-       <property name="styleSheet">
-        <string>color: gray; font-style: italic;</string>
        </property>
       </widget>
      </widget>
