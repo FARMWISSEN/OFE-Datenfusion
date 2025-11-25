@@ -2,12 +2,13 @@
 
 ## Schnellübersicht
 
-**Zweck**: QGIS-Plugin für räumliche Interpolation (Kriging + IDW) für On-Farm Research  
+**Zweck**: QGIS-Plugin für räumliche Interpolation für On-Farm Research  
 **Sprache**: Python 3.7+  
 **Framework**: QGIS 3.x Plugin API  
 **Hauptbibliotheken**: 
 - `pykrige` (Ordinary Kriging)
 - `qgis.analysis` (IDW via QgsIDWInterpolator)
+- `GDAL` (Nearest Neighbor via gdal:gridnearestneighbor)
 
 ---
 
@@ -36,24 +37,29 @@ interpolation/
 |---------|------------|--------------|
 | **Ordinary Kriging** | pykrige | Geostatistische Interpolation mit Variogramm-Analyse |
 | **IDW** | qgis.analysis | Inverse Distance Weighting (QGIS-nativ) |
+| **Nearest Neighbor** | GDAL | Nächster-Nachbar-Zuweisung ohne Glättung |
 
 ### Dispatcher-Architektur (i_plugin.py)
 
 ```
-run()                              # Dispatcher - zeigt Dialog, delegiert an Workflow
-├── run_kriging_interpolation()    # Kriging-Workflow (eigenständig)
-│   ├── prepare_data()             # x, y, z Arrays extrahieren
-│   ├── create_output_grid()       # Grid + Boundary-Maske
+run()                                    # Dispatcher - zeigt Dialog, delegiert an Workflow
+├── run_kriging_interpolation()          # Kriging-Workflow
+│   ├── prepare_data()                   # x, y, z Arrays extrahieren
+│   ├── create_output_grid()             # Grid + Boundary-Maske
 │   ├── interpolate_ordinary_kriging()
-│   └── create_raster_layer()      # GeoTIFF mit GDAL
+│   └── create_raster_layer()            # GeoTIFF mit GDAL
 │
-├── run_idw_interpolation()        # IDW-Workflow (eigenständig)
-│   ├── interpolate_idw()          # QgsIDWInterpolator + QgsGridFileWriter
-│   └── clip_raster_to_boundary()  # Optional: GDAL Clip mit Buffer
+├── run_idw_interpolation()              # IDW-Workflow
+│   ├── interpolate_idw()                # QgsIDWInterpolator
+│   └── clip_raster_to_boundary()        # Optional: GDAL Clip mit Buffer
+│
+├── run_nearest_neighbor_interpolation() # Nearest Neighbor-Workflow
+│   ├── interpolate_nearest_neighbor()   # gdal:gridnearestneighbor
+│   └── clip_raster_to_boundary()        # Optional: GDAL Clip mit Buffer
 │
 └── Shared Helpers
-    ├── _add_raster_to_project()   # Layer laden + Styling
-    └── _handle_interpolation_error()  # Zentrale Fehlerbehandlung
+    ├── _add_raster_to_project()         # Layer laden + Styling
+    └── _handle_interpolation_error()    # Zentrale Fehlerbehandlung
 ```
 
 ---
@@ -81,8 +87,10 @@ run()                              # Dispatcher - zeigt Dialog, delegiert an Wor
 | `run()` | **Dispatcher** - delegiert an Workflow basierend auf Methode |
 | `run_kriging_interpolation()` | Kompletter Kriging-Workflow |
 | `run_idw_interpolation()` | Kompletter IDW-Workflow |
+| `run_nearest_neighbor_interpolation()` | Kompletter Nearest Neighbor-Workflow |
 | `interpolate_ordinary_kriging()` | PyKrige-basierte Interpolation |
 | `interpolate_idw()` | QgsIDWInterpolator-basierte Interpolation |
+| `interpolate_nearest_neighbor()` | GDAL-basierte Nearest Neighbor Interpolation |
 | `clip_raster_to_boundary()` | GDAL-Clip mit optionalem Pixel-Buffer |
 | `_add_raster_to_project()` | Shared: Layer laden + Styling |
 | `_handle_interpolation_error()` | Shared: Zentrale Fehlerbehandlung |
@@ -97,10 +105,10 @@ run() → run_kriging_interpolation()
   → _add_raster_to_project()
 ```
 
-**Datenfluss (IDW):**
+**Datenfluss (IDW / Nearest Neighbor):**
 ```
-run() → run_idw_interpolation()
-  → interpolate_idw() [QgsIDWInterpolator → GeoTIFF]
+run() → run_idw_interpolation() / run_nearest_neighbor_interpolation()
+  → interpolate_idw() / interpolate_nearest_neighbor() [GeoTIFF]
   → clip_raster_to_boundary() [optional, mit Buffer]
   → _add_raster_to_project()
 ```

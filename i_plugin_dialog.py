@@ -1723,6 +1723,8 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Methoden-spezifische Parameter
         if selected_method == InterpolationMethod.IDW:
             params.update(self._get_idw_parameters())
+        elif selected_method == InterpolationMethod.NEAREST_NEIGHBOR:
+            params.update(self._get_nearest_neighbor_parameters())
         else:
             params.update(self._get_kriging_raster_parameters())
         
@@ -1733,6 +1735,13 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         return {
             'method': 'idw',
             'idw_power': self._get_spinbox_value('doubleSpinBox_idw_power', InterpolationConfig.DEFAULT_IDW_POWER)
+        }
+
+    def _get_nearest_neighbor_parameters(self):
+        """Nearest Neighbor-spezifische Parameter sammeln."""
+        return {
+            'method': 'nearest_neighbor',
+            'nn_radius': self._get_spinbox_value('doubleSpinBox_nn_radius', InterpolationConfig.DEFAULT_NN_RADIUS)
         }
 
     def _get_kriging_raster_parameters(self):

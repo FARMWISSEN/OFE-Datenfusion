@@ -1485,6 +1485,71 @@ class IPlugIn:
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
             raise InterpolationCalculationError(f"IDW-Interpolation fehlgeschlagen: {str(e)}")
 
+    def interpolate_nearest_neighbor(self, input_layer, field_name, extent, cell_size, output_path, params):
+        """Führt Nearest Neighbor Interpolation mit GDAL durch.
+        
+        Verwendet gdal:gridnearestneighbor für die Interpolation.
+        Jeder Rasterpunkt erhält den Wert des nächstgelegenen Messpunkts.
+        
+        Args:
+            input_layer (QgsVectorLayer): Input-Layer mit Punktdaten
+            field_name (str): Name des zu interpolierenden Feldes
+            extent (QgsRectangle): Extent für das Output-Raster
+            cell_size (float): Pixelgröße des Output-Rasters
+            output_path (str): Pfad für das Output-Raster
+            params (dict): Parameter für die Interpolation:
+                          - nn_radius (float): Suchradius (0 = unbegrenzt)
+            
+        Returns:
+            str: Pfad zum erstellten Raster
+            
+        Raises:
+            InterpolationCalculationError: Bei Fehlern während der Interpolation
+        """
+        try:
+            # Nearest Neighbor Parameter
+            nn_radius = params.get('nn_radius', InterpolationConfig.DEFAULT_NN_RADIUS)
+            nodata = InterpolationConfig.DEFAULT_NN_NODATA
+            
+            self.log(f"Nearest Neighbor Interpolation gestartet:")
+            self.log(f"  - Layer: {input_layer.name()}")
+            self.log(f"  - Feld: {field_name}")
+            self.log(f"  - Suchradius: {nn_radius} (0 = unbegrenzt)")
+            self.log(f"  - Zellgröße: {cell_size}")
+            self.log(f"  - Extent: {extent.toString()}")
+            
+            # GDAL Grid Nearest Neighbor Parameter
+            gdal_params = {
+                'INPUT': input_layer,
+                'Z_FIELD': field_name,
+                'RADIUS_1': nn_radius,  # X-Radius der Suchellipse
+                'RADIUS_2': nn_radius,  # Y-Radius der Suchellipse (kreisförmig)
+                'ANGLE': 0.0,           # Keine Rotation
+                'NODATA': nodata,
+                'DATA_TYPE': 5,         # Float32
+                'OUTPUT': output_path,
+                'OPTIONS': '',
+                'EXTRA': f'-txe {extent.xMinimum()} {extent.xMaximum()} -tye {extent.yMinimum()} {extent.yMaximum()} -outsize {int((extent.xMaximum() - extent.xMinimum()) / cell_size)} {int((extent.yMaximum() - extent.yMinimum()) / cell_size)}'
+            }
+            
+            self.log(f"  - GDAL Extra: {gdal_params['EXTRA']}")
+            
+            # Führe GDAL Grid Nearest Neighbor aus
+            result = processing.run("gdal:gridnearestneighbor", gdal_params)
+            
+            if result and result.get('OUTPUT'):
+                self.log(f"Nearest Neighbor Interpolation erfolgreich: {result['OUTPUT']}")
+                return result['OUTPUT']
+            else:
+                raise InterpolationCalculationError(
+                    "Nearest Neighbor Interpolation fehlgeschlagen: Kein Output erstellt"
+                )
+                
+        except Exception as e:
+            self.log(f"Nearest Neighbor Interpolation failed: {str(e)}", Qgis.Critical)
+            self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
+            raise InterpolationCalculationError(f"Nearest Neighbor Interpolation fehlgeschlagen: {str(e)}")
+
     def clip_raster_to_boundary(self, raster_path, boundary_layer, output_path=None, buffer_pixels=1):
         """Clippt ein Raster auf eine Boundary-Geometrie mit optionalem Pixel-Buffer.
         
@@ -2130,6 +2195,7 @@ class IPlugIn:
         method_dir_mapping = {
             'ordinary_kriging': InterpolationConfig.RASTER_INTERPOLATION_DIR,
             'idw': InterpolationConfig.IDW_INTERPOLATION_DIR,
+            'nearest_neighbor': InterpolationConfig.NN_INTERPOLATION_DIR,
             'point_interpolation': InterpolationConfig.POINT_INTERPOLATION_DIR
         }
         
@@ -2539,6 +2605,8 @@ class IPlugIn:
             # Dispatch to appropriate workflow
             if method == 'idw':
                 self.run_idw_interpolation(params)
+            elif method == 'nearest_neighbor':
+                self.run_nearest_neighbor_interpolation(params)
             else:
                 self.run_kriging_interpolation(params)
 
@@ -2727,6 +2795,81 @@ class IPlugIn:
             
             # Run IDW interpolation (creates raster directly)
             self.interpolate_idw(
+                params['input_layer'],
+                params['input_field'],
+                extent,
+                params['cell_size'],
+                output_path,
+                params
+            )
+            
+            # Clip to boundary if provided
+            if params.get('boundary_layer'):
+                output_path = self.clip_raster_to_boundary(
+                    output_path, 
+                    params['boundary_layer']
+                )
+            
+            # Save metadata
+            self.save_metadata(output_dir, Path(output_path).stem, params, interpolation_type="raster")
+            
+            # Add raster to project
+            self._add_raster_to_project(output_path, None, params)
+            
+            progress.close()
+            
+        except Exception as e:
+            if 'progress' in locals():
+                progress.close()
+            self._handle_interpolation_error(e)
+
+    def run_nearest_neighbor_interpolation(self, params):
+        """Führt die Nearest Neighbor Raster-Interpolation durch.
+        
+        Workflow:
+        1. GDAL Grid Nearest Neighbor ausführen
+        2. Optional: Auf Boundary clippen
+        3. Raster laden und stylen
+        
+        Args:
+            params (dict): Parameter aus dem Dialog
+        """
+        progress = QProgressDialog(
+            self.tr("Nearest Neighbor Interpolation läuft..."), 
+            self.tr("Abbrechen"), 0, 0, 
+            self.iface.mainWindow()
+        )
+        progress.setWindowTitle("I-PlugIn - Nearest Neighbor")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setMinimum(0)
+        progress.setMaximum(0)
+        
+        try:
+            progress.show()
+            
+            # Setup output paths
+            output_path, output_dir = self.setup_output_paths(
+                params['input_layer'],
+                params['input_field'],
+                'nearest_neighbor'
+            )
+            if not output_path:
+                progress.close()
+                return
+            
+            QCoreApplication.processEvents()
+            if progress.wasCanceled():
+                raise Exception("Interpolation wurde vom Benutzer abgebrochen")
+            
+            # Determine extent
+            if params.get('boundary_layer'):
+                extent = params['boundary_layer'].extent()
+            else:
+                extent = params['input_layer'].extent()
+            
+            # Run Nearest Neighbor interpolation
+            self.interpolate_nearest_neighbor(
                 params['input_layer'],
                 params['input_field'],
                 extent,
