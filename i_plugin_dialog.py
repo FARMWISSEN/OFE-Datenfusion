@@ -2059,22 +2059,37 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Lösche alle gespeicherten Plugin-Settings
         settings.remove("IPlugIn")
         
-        # Block signals während Reset
+        # Block signals während Reset - Raster Tab
         widgets_to_block = [
             self.mMapLayerComboBox, self.mFieldComboBox, self.mMapLayerComboBox_boundary,
-            self.doubleSpinBox_cellsize, self.comboBox_variogram, self.spinBox_lags
+            self.doubleSpinBox_cellsize, self.comboBox_variogram, self.spinBox_lags,
+            # Point Tab Widgets
+            self.mMapLayerComboBox_covariate_point, self.mFieldComboBox_covariate,
+            self.mMapLayerComboBox_target_layer, self.comboBox_variogram_point,
+            self.spinBox_lags_point, self.comboBox_method_point
         ]
         for widget in widgets_to_block:
             if widget:
                 widget.blockSignals(True)
         
-        # Setze alle UI-Elemente auf Defaults zurück
+        # === RASTER TAB RESET ===
         self.mMapLayerComboBox.setLayer(None)
         self.mFieldComboBox.setField("")
         self.mMapLayerComboBox_boundary.setLayer(None)
         self.doubleSpinBox_cellsize.setValue(InterpolationConfig.DEFAULT_CELL_SIZE)
-        self.comboBox_variogram.setCurrentIndex(1)  # Index 2 (Spherical)
+        self.comboBox_variogram.setCurrentIndex(1)  # Index 1 (Spherical)
         self.spinBox_lags.setValue(InterpolationConfig.DEFAULT_NLAGS)
+        
+        # === POINT TAB RESET ===
+        self.mMapLayerComboBox_covariate_point.setLayer(None)
+        self.mFieldComboBox_covariate.setField("")
+        self.mMapLayerComboBox_target_layer.setLayer(None)
+        if hasattr(self, 'comboBox_variogram_point'):
+            self.comboBox_variogram_point.setCurrentIndex(1)  # Spherical
+        if hasattr(self, 'spinBox_lags_point'):
+            self.spinBox_lags_point.setValue(InterpolationConfig.DEFAULT_NLAGS)
+        if hasattr(self, 'comboBox_method_point'):
+            self.comboBox_method_point.setCurrentIndex(0)  # Erste Methode (Kriging)
         
         # Setze Variogramm-Parameter auf Defaults (alle Modelle)
         # Linear
@@ -2107,11 +2122,60 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         if hasattr(self, 'doubleSpinBox_nugget_gau'):
             self.doubleSpinBox_nugget_gau.setValue(InterpolationConfig.DEFAULT_NUGGET)
         
+        # === POINT TAB VARIOGRAMM-PARAMETER RESET ===
+        # Linear (Point)
+        if hasattr(self, 'doubleSpinBox_slope_point'):
+            self.doubleSpinBox_slope_point.setValue(InterpolationConfig.DEFAULT_SLOPE)
+        if hasattr(self, 'doubleSpinBox_nugget_lin_point'):
+            self.doubleSpinBox_nugget_lin_point.setValue(InterpolationConfig.DEFAULT_NUGGET_LINEAR)
+        
+        # Spherical (Point)
+        if hasattr(self, 'doubleSpinBox_sill_sph_point'):
+            self.doubleSpinBox_sill_sph_point.setValue(InterpolationConfig.DEFAULT_SILL_SPHERICAL)
+        if hasattr(self, 'doubleSpinBox_range_sph_point'):
+            self.doubleSpinBox_range_sph_point.setValue(InterpolationConfig.DEFAULT_RANGE_SPHERICAL)
+        if hasattr(self, 'doubleSpinBox_nugget_sph_point'):
+            self.doubleSpinBox_nugget_sph_point.setValue(InterpolationConfig.DEFAULT_NUGGET_SPHERICAL)
+        
+        # Exponential (Point)
+        if hasattr(self, 'doubleSpinBox_sill_exp_point'):
+            self.doubleSpinBox_sill_exp_point.setValue(InterpolationConfig.DEFAULT_SILL_EXPONENTIAL)
+        if hasattr(self, 'doubleSpinBox_range_exp_point'):
+            self.doubleSpinBox_range_exp_point.setValue(InterpolationConfig.DEFAULT_RANGE_EXPONENTIAL)
+        if hasattr(self, 'doubleSpinBox_nugget_exp_point'):
+            self.doubleSpinBox_nugget_exp_point.setValue(InterpolationConfig.DEFAULT_NUGGET_EXPONENTIAL)
+        
+        # Gaussian (Point)
+        if hasattr(self, 'doubleSpinBox_sill_gau_point'):
+            self.doubleSpinBox_sill_gau_point.setValue(InterpolationConfig.DEFAULT_SILL_GAUSSIAN)
+        if hasattr(self, 'doubleSpinBox_range_gau_point'):
+            self.doubleSpinBox_range_gau_point.setValue(InterpolationConfig.DEFAULT_RANGE_GAUSSIAN)
+        if hasattr(self, 'doubleSpinBox_nugget_gau_point'):
+            self.doubleSpinBox_nugget_gau_point.setValue(InterpolationConfig.DEFAULT_NUGGET_GAUSSIAN)
+        
+        # Reset Spinbox-Styling (grüne optimierte Werte entfernen)
+        self._reset_all_variogram_spinbox_styles(point_tab=False)
+        self._reset_all_variogram_spinbox_styles(point_tab=True)
+        
         # Verstecke optimierte Parameter-Gruppen
         if hasattr(self, 'optimized_params_group_raster'):
             self.optimized_params_group_raster.setVisible(False)
         if hasattr(self, 'optimized_params_group_point'):
             self.optimized_params_group_point.setVisible(False)
+        
+        # Reset Variogramm-Metriken Labels (RMSE, R²)
+        if hasattr(self, 'metrics_label_raster'):
+            self.metrics_label_raster.setText("")
+            self.metrics_label_raster.setVisible(False)
+        if hasattr(self, 'metrics_label_points'):
+            self.metrics_label_points.setText("")
+            self.metrics_label_points.setVisible(False)
+        
+        # Reset gespeicherte Variogramm-Analyse Ergebnisse
+        self.variogram_info_raster = None
+        self.variogram_info_point = None
+        self.variogram_results_raster = []
+        self.variogram_results_point = []
         
         # Unblock signals
         for widget in widgets_to_block:
