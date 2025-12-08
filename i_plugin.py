@@ -458,10 +458,24 @@ class IPlugIn:
                 f"Der erstellte UTM-Layer für '{layer.name()}' ist ungültig."
             )
 
-        # Add to layer group
-        group = self.get_layer_group()
-        project.addMapLayer(new_layer, False)  # False = don't add to root
-        group.addLayer(new_layer)
+        # Blockiere Dialog-ComboBoxes während Layer hinzugefügt wird
+        if self.dlg:
+            self.dlg.mMapLayerComboBox.blockSignals(True)
+            self.dlg.mMapLayerComboBox_target_layer.blockSignals(True)
+            self.dlg.mMapLayerComboBox_covariate_point.blockSignals(True)
+            self.dlg.mMapLayerComboBox_boundary.blockSignals(True)
+        
+        try:
+            # Add to layer group
+            group = self.get_layer_group()
+            project.addMapLayer(new_layer, False)  # False = don't add to root
+            group.addLayer(new_layer)
+        finally:
+            if self.dlg:
+                self.dlg.mMapLayerComboBox.blockSignals(False)
+                self.dlg.mMapLayerComboBox_target_layer.blockSignals(False)
+                self.dlg.mMapLayerComboBox_covariate_point.blockSignals(False)
+                self.dlg.mMapLayerComboBox_boundary.blockSignals(False)
         
         self.log(
             f"UTM-Layer '{display_name}' erfolgreich erstellt "
@@ -2422,10 +2436,22 @@ class IPlugIn:
                 copied_layer = QgsVectorLayer(result['OUTPUT'], display_name, "ogr")
                 
                 if copied_layer.isValid():
-                    # Füge zur Layer-Gruppe hinzu
-                    group = self.get_layer_group()
-                    project.addMapLayer(copied_layer, False)
-                    group.addLayer(copied_layer)
+                    # Blockiere Dialog-ComboBoxes während Layer hinzugefügt wird
+                    # um zu verhindern, dass die Auswahl automatisch wechselt
+                    if self.dlg:
+                        self.dlg.mMapLayerComboBox_target_layer.blockSignals(True)
+                        self.dlg.mMapLayerComboBox_covariate_point.blockSignals(True)
+                    
+                    try:
+                        # Füge zur Layer-Gruppe hinzu
+                        group = self.get_layer_group()
+                        project.addMapLayer(copied_layer, False)
+                        group.addLayer(copied_layer)
+                    finally:
+                        # Signale wieder freigeben
+                        if self.dlg:
+                            self.dlg.mMapLayerComboBox_target_layer.blockSignals(False)
+                            self.dlg.mMapLayerComboBox_covariate_point.blockSignals(False)
                     
                     self.log(
                         f"Layer-Kopie erfolgreich erstellt: {filename}",
@@ -3265,32 +3291,48 @@ class IPlugIn:
         if not layer.isValid():
             raise Exception(f"Raster-Layer konnte nicht geladen werden: {raster_path}")
         
-        # Add to layer group
-        group = self.get_layer_group()
-        QgsProject.instance().addMapLayer(layer, False)
-        group.addLayer(layer)
+        # Blockiere Dialog-ComboBoxes während Layer hinzugefügt werden
+        # um zu verhindern, dass die Auswahl automatisch wechselt
+        if self.dlg:
+            self.dlg.mMapLayerComboBox.blockSignals(True)
+            self.dlg.mMapLayerComboBox_target_layer.blockSignals(True)
+            self.dlg.mMapLayerComboBox_covariate_point.blockSignals(True)
+            self.dlg.mMapLayerComboBox_boundary.blockSignals(True)
         
-        # Apply color ramp styling
-        self.apply_color_ramp_to_raster(layer)
-        
-        # Add variance raster if provided
-        if variance_path and Path(variance_path).exists():
-            variance_layer_name = Path(variance_path).stem
-            variance_layer = QgsRasterLayer(variance_path, variance_layer_name)
-            if variance_layer.isValid():
-                QgsProject.instance().addMapLayer(variance_layer, False)
-                group.addLayer(variance_layer)
-                # Apply special styling for variance (different color ramp)
-                self._apply_variance_styling(variance_layer)
-                self.log(f"Varianz-Layer hinzugefügt: {variance_layer_name}")
-        
-        # Add vector layer if provided
-        if vector_path and Path(vector_path).exists():
-            vector_layer = QgsVectorLayer(vector_path, f"{layer_name}_points", "ogr")
-            if vector_layer.isValid():
-                self.apply_graduated_symbology_to_vector(vector_layer, params['input_field'])
-                QgsProject.instance().addMapLayer(vector_layer, False)
-                group.addLayer(vector_layer)
+        try:
+            # Add to layer group
+            group = self.get_layer_group()
+            QgsProject.instance().addMapLayer(layer, False)
+            group.addLayer(layer)
+            
+            # Apply color ramp styling
+            self.apply_color_ramp_to_raster(layer)
+            
+            # Add variance raster if provided
+            if variance_path and Path(variance_path).exists():
+                variance_layer_name = Path(variance_path).stem
+                variance_layer = QgsRasterLayer(variance_path, variance_layer_name)
+                if variance_layer.isValid():
+                    QgsProject.instance().addMapLayer(variance_layer, False)
+                    group.addLayer(variance_layer)
+                    # Apply special styling for variance (different color ramp)
+                    self._apply_variance_styling(variance_layer)
+                    self.log(f"Varianz-Layer hinzugefügt: {variance_layer_name}")
+            
+            # Add vector layer if provided
+            if vector_path and Path(vector_path).exists():
+                vector_layer = QgsVectorLayer(vector_path, f"{layer_name}_points", "ogr")
+                if vector_layer.isValid():
+                    self.apply_graduated_symbology_to_vector(vector_layer, params['input_field'])
+                    QgsProject.instance().addMapLayer(vector_layer, False)
+                    group.addLayer(vector_layer)
+        finally:
+            # Signale wieder freigeben
+            if self.dlg:
+                self.dlg.mMapLayerComboBox.blockSignals(False)
+                self.dlg.mMapLayerComboBox_target_layer.blockSignals(False)
+                self.dlg.mMapLayerComboBox_covariate_point.blockSignals(False)
+                self.dlg.mMapLayerComboBox_boundary.blockSignals(False)
         
         # Show success message
         method = params.get('method', 'ordinary_kriging')
