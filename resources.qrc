@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/interpolation" >
+    <qresource prefix="/plugins/i_plugin" >
         <file>icon.png</file>
     </qresource>
 </RCC>

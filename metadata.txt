@@ -3,7 +3,7 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=I-PlugIn
+name=OFR 3. Kartenerzeugen und Datensätze anreichern 
 qgisMinimumVersion=3.0
 description=Plugin to perform interpolation task for onfarm research module
 version=0.1

@@ -16,18 +16,18 @@ import unittest
 
 from qgis.PyQt.QtGui import QDialogButtonBox, QDialog
 
-from interpolation_dialog import InterpolationDialog
+from i_plugin_dialog import IPlugInDialog
 
 from utilities import get_qgis_app
 QGIS_APP = get_qgis_app()
 
 
-class InterpolationDialogTest(unittest.TestCase):
+class IPlugInDialogTest(unittest.TestCase):
     """Test dialog works."""
 
     def setUp(self):
         """Runs before each test."""
-        self.dialog = InterpolationDialog(None)
+        self.dialog = IPlugInDialog(None)
 
     def tearDown(self):
         """Runs after each test."""
@@ -49,7 +49,7 @@ class InterpolationDialogTest(unittest.TestCase):
         self.assertEqual(result, QDialog.Rejected)
 
 if __name__ == "__main__":
-    suite = unittest.makeSuite(InterpolationDialogTest)
+    suite = unittest.makeSuite(IPlugInDialogTest)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
 

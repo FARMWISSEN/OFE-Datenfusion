@@ -38,15 +38,15 @@ LOCALES =
 # translation
 SOURCES = \
 	__init__.py \
-	interpolation.py interpolation_dialog.py
+	i_plugin.py i_plugin_dialog.py
 
 PLUGINNAME = interpolation
 
 PY_FILES = \
 	__init__.py \
-	interpolation.py interpolation_dialog.py
+	i_plugin.py i_plugin_dialog.py
 
-UI_FILES = interpolation_dialog_base.ui
+UI_FILES = i_plugin_dialog_base.ui
 
 EXTRAS = metadata.txt icon.png
 
