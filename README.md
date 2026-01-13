@@ -163,4 +163,8 @@ projektverzeichnis/
 
 ## 📄 Lizenz
 
-Dieses Plugin steht unter der **MIT-Lizenz**. Details siehe **LICENSE.txt**.
+Dieses Projekt ist freie Software: Du kannst es unter den Bedingungen der **GNU General Public License** weiterverbreiten und/oder modifizieren, wie von der Free Software Foundation veröffentlicht; entweder **Version 2 der Lizenz** oder (nach deiner Wahl) **jeder späteren Version**.
+
+Der vollständige Lizenztext liegt in der Datei **LICENSE.txt**.
+
+**SPDX-License-Identifier:** `GPL-2.0-or-later`
