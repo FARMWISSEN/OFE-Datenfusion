@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# IPlugIn documentation build configuration file, created by
+# OFE-Datenfusion documentation build configuration file, created by
 # sphinx-quickstart on Sun Feb 12 17:11:03 2012.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -211,6 +211,6 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'ofe_datenfusion', u'IPlugIn Documentation',
+    ('index', 'OFE_Datenfusion.tex', u'OFE-Datenfusion Dokumentation',
      [u'Lucas Johannsen'], 1)
 ]
