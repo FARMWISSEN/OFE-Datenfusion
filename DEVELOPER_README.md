@@ -1404,17 +1404,17 @@ def reject(self):
 
 **Problem**: Outputs wurden in verschiedenen Ordnern gespeichert
 - UTM-Layer: Direkt im Projektverzeichnis
-- Backups: In `backups/` (außerhalb von `ofr_interpolation_outputs`)
-- Raster-Interpolationen: In `ofr_interpolation_outputs/raster_interpolation/`
-- Punkt-Interpolationen: In `ofr_interpolation_outputs/point_interpolation/`
+- Backups: In `backups/` (außerhalb von `ofe_datenfusion_outputs`)
+- Raster-Interpolationen: In `ofe_datenfusion_outputs/raster_interpolation/`
+- Punkt-Interpolationen: In `ofe_datenfusion_outputs/point_interpolation/`
 - Inkonsistente Struktur, schwer zu finden
 
-**Lösung**: Alle Outputs unter `ofr_interpolation_outputs/` (`i_plugin.py`)
+**Lösung**: Alle Outputs unter `ofe_datenfusion_outputs/` (`i_plugin.py`)
 
 #### **Neue Ordnerstruktur:**
 ```
 Projektverzeichnis/
-└── ofr_interpolation_outputs/
+└── ofe_datenfusion_outputs/
     ├── utm/                    # UTM-konvertierte Layer (Zeile 367)
     ├── backups/                # Layer-Backups (Zeile 1849)
     ├── raster_interpolation/   # Raster-Outputs (bereits vorhanden)
@@ -1425,14 +1425,14 @@ Projektverzeichnis/
 
 **1. UTM-Layer** (`convert_to_utm()`, Zeile 367):
 - Vorher: `project_dir / "UTM_LayerName.shp"`
-- Nachher: `project_dir / "ofr_interpolation_outputs/utm/UTM_LayerName.shp"`
+- Nachher: `project_dir / "ofe_datenfusion_outputs/utm/UTM_LayerName.shp"`
 
 **2. Backups** (`create_layer_backup()`, Zeile 1849):
 - Vorher: `project_dir / "backups/LayerName_backup.shp"`
-- Nachher: `project_dir / "ofr_interpolation_outputs/backups/LayerName_backup.shp"`
+- Nachher: `project_dir / "ofe_datenfusion_outputs/backups/LayerName_backup.shp"`
 
 **3. User-Nachrichten aktualisiert** (`i_plugin_dialog.py`, Zeilen 1464, 1466):
-- Backup-Pfad in Success-Message: `'ofr_interpolation_outputs/backups/'`
+- Backup-Pfad in Success-Message: `'ofe_datenfusion_outputs/backups/'`
 
 **Vorteile**:
 - ✅ Alle Plugin-Outputs an einem Ort
@@ -1449,7 +1449,7 @@ Projektverzeichnis/
 **Lösung**:
 1. **`VariogramDialog.__init__()` erweitert** (Zeile 28): Neue Parameter `layer_name`, `field_name`, `method`, `is_point_tab`
 2. **`export_plot()` angepasst** (Zeilen 147-169):
-   - Speichert in `ofr_interpolation_outputs/raster_interpolation/` oder `ofr_interpolation_outputs/point_interpolation/`
+   - Speichert in `ofe_datenfusion_outputs/raster_interpolation/` oder `ofe_datenfusion_outputs/point_interpolation/`
    - Namenskonvention: `variogram_{method}_{layer_name}_{field_name}_{timestamp}.png`
    - Gleiche Konvention wie Interpolations-Outputs
 3. **Dialog-Aufrufe aktualisiert** (`i_plugin_dialog.py`, Zeilen 985-991, 2078-2084):
@@ -1469,7 +1469,7 @@ Projektverzeichnis/
 #### **5. Alle Plugin-Layer in Layer-Gruppe organisiert** (`i_plugin.py`)
 
 **Problem**: UTM-Layer wurden direkt zum Projekt-Root hinzugefügt
-- Raster- und Vector-Layer waren in "OFR Interpolationen" Gruppe
+- Raster- und Vector-Layer waren in "OFE-Datenfusion" Gruppe
 - UTM-Layer waren außerhalb der Gruppe
 - Inkonsistente Organisation
 
@@ -1517,9 +1517,9 @@ Layers
 
 **Workflow:**
 1. **Kopie erstellen**: Ziel-Layer wird kopiert
-2. **Speichern**: In `ofr_interpolation_outputs/point_interpolation/`
+2. **Speichern**: In `ofe_datenfusion_outputs/point_interpolation/`
 3. **Benennung**: `INTERP_{LayerName}_{CovarField}_{timestamp}.shp`
-4. **Zur Gruppe hinzufügen**: Automatisch in "OFR Interpolationen"
+4. **Zur Gruppe hinzufügen**: Automatisch in "OFE-Datenfusion"
 5. **Interpolation**: Erfolgt auf Kopie, nicht auf Original
 
 **Vorher (`run_point_interpolation()`):**
