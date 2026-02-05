@@ -1,4 +1,4 @@
-# OFE Datenfusion – QGIS Plugin für On-Farm-Experimente
+# OFE-Datenfusion – QGIS Plugin für On-Farm-Experimente
 
 Das OFE Datenfusion Plugin ist das dritte Plugin des OFE-Werkzeugkastens der OG SNaPwürZ. Es erweitert QGIS um leistungsstarke Interpolationsverfahren für Raster- und Punktdaten sowie weitere Methoden für die räumliche Zusammenführung von Geodaten. Es bietet mehrere Interpolationsmethoden, interaktive Variogramm-Analyse, automatische UTM-Konvertierung und eine deutschsprachige Benutzeroberfläche.
 
@@ -101,12 +101,12 @@ python -m pip install pykrige
 
 ## 🚀 Schnellstart
 
-1. Öffne das Plugin: *Praxisversuche → OFR Interpolation*
+1. Öffne das Plugin: *Praxisversuche → OFE-Datenfusion*
 2. Raster-Tab: Wähle Eingabe-Layer, Attributfeld und optional Boundary
 3. Punkt-Tab: Wähle Kovariaten-Layer und Ziel-Layer
 4. Führe optional eine Variogramm-Analyse durch (nur Kriging)
 5. Klicke auf „Interpolieren“
-6. Ergebnisse werden zur Layer-Gruppe „OFR Interpolationen“ hinzugefügt
+6. Ergebnisse werden zur Layer-Gruppe „OFE-Datenfusion“ hinzugefügt
 
 ---
 
@@ -142,7 +142,7 @@ interpolation/
 
 ```text
 projektverzeichnis/
-└── ofr_interpolation_outputs/
+└── ofe_datenfusion_outputs/
     ├── raster_interpolation/       # Raster-Ergebnisse (.tif)
     ├── point_interpolation/        # Punkt-Ergebnisse (.shp)
     ├── utm_layers/                 # UTM-transformierte Layer
