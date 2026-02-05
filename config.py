@@ -159,7 +159,7 @@ class InterpolationConfig:
     DEFAULT_NUGGET = DEFAULT_NUGGET_SPHERICAL
     
     # Output-Verzeichnisse
-    OUTPUT_DIR_NAME = "ofe_datenfusion_outputs"
+    OUTPUT_DIR_NAME = "OFE_Datenfusion"
     LAYER_GROUP_NAME = "OFE-Datenfusion"
     RASTER_INTERPOLATION_DIR = "raster_interpolation"
     POINT_INTERPOLATION_DIR = "point_interpolation"

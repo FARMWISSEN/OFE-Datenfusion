@@ -142,7 +142,7 @@ interpolation/
 
 ```text
 projektverzeichnis/
-└── ofe_datenfusion_outputs/
+└── OFE_Datenfusion/
     ├── raster_interpolation/       # Raster-Ergebnisse (.tif)
     ├── point_interpolation/        # Punkt-Ergebnisse (.shp)
     ├── utm_layers/                 # UTM-transformierte Layer

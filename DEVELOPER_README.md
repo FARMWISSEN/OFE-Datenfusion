@@ -1404,17 +1404,17 @@ def reject(self):
 
 **Problem**: Outputs wurden in verschiedenen Ordnern gespeichert
 - UTM-Layer: Direkt im Projektverzeichnis
-- Backups: In `backups/` (außerhalb von `ofe_datenfusion_outputs`)
-- Raster-Interpolationen: In `ofe_datenfusion_outputs/raster_interpolation/`
-- Punkt-Interpolationen: In `ofe_datenfusion_outputs/point_interpolation/`
+- Backups: In `backups/` (außerhalb von `OFE_Datenfusion`)
+- Raster-Interpolationen: In `OFE_Datenfusion/raster_interpolation/`
+- Punkt-Interpolationen: In `OFE_Datenfusion/point_interpolation/`
 - Inkonsistente Struktur, schwer zu finden
 
-**Lösung**: Alle Outputs unter `ofe_datenfusion_outputs/` (`i_plugin.py`)
+**Lösung**: Alle Outputs unter `OFE_Datenfusion/` (`i_plugin.py`)
 
 #### **Neue Ordnerstruktur:**
 ```
 Projektverzeichnis/
-└── ofe_datenfusion_outputs/
+└── OFE_Datenfusion/
     ├── utm/                    # UTM-konvertierte Layer (Zeile 367)
     ├── backups/                # Layer-Backups (Zeile 1849)
     ├── raster_interpolation/   # Raster-Outputs (bereits vorhanden)
@@ -1425,14 +1425,14 @@ Projektverzeichnis/
 
 **1. UTM-Layer** (`convert_to_utm()`, Zeile 367):
 - Vorher: `project_dir / "UTM_LayerName.shp"`
-- Nachher: `project_dir / "ofe_datenfusion_outputs/utm/UTM_LayerName.shp"`
+- Nachher: `project_dir / "OFE_Datenfusion/utm/UTM_LayerName.shp"`
 
 **2. Backups** (`create_layer_backup()`, Zeile 1849):
 - Vorher: `project_dir / "backups/LayerName_backup.shp"`
-- Nachher: `project_dir / "ofe_datenfusion_outputs/backups/LayerName_backup.shp"`
+- Nachher: `project_dir / "OFE_Datenfusion/backups/LayerName_backup.shp"`
 
 **3. User-Nachrichten aktualisiert** (`i_plugin_dialog.py`, Zeilen 1464, 1466):
-- Backup-Pfad in Success-Message: `'ofe_datenfusion_outputs/backups/'`
+- Backup-Pfad in Success-Message: `'OFE_Datenfusion/backups/'`
 
 **Vorteile**:
 - ✅ Alle Plugin-Outputs an einem Ort
@@ -1449,7 +1449,7 @@ Projektverzeichnis/
 **Lösung**:
 1. **`VariogramDialog.__init__()` erweitert** (Zeile 28): Neue Parameter `layer_name`, `field_name`, `method`, `is_point_tab`
 2. **`export_plot()` angepasst** (Zeilen 147-169):
-   - Speichert in `ofe_datenfusion_outputs/raster_interpolation/` oder `ofe_datenfusion_outputs/point_interpolation/`
+   - Speichert in `OFE_Datenfusion/raster_interpolation/` oder `OFE_Datenfusion/point_interpolation/`
    - Namenskonvention: `variogram_{method}_{layer_name}_{field_name}_{timestamp}.png`
    - Gleiche Konvention wie Interpolations-Outputs
 3. **Dialog-Aufrufe aktualisiert** (`i_plugin_dialog.py`, Zeilen 985-991, 2078-2084):
@@ -1517,7 +1517,7 @@ Layers
 
 **Workflow:**
 1. **Kopie erstellen**: Ziel-Layer wird kopiert
-2. **Speichern**: In `ofe_datenfusion_outputs/point_interpolation/`
+2. **Speichern**: In `OFE_Datenfusion/point_interpolation/`
 3. **Benennung**: `INTERP_{LayerName}_{CovarField}_{timestamp}.shp`
 4. **Zur Gruppe hinzufügen**: Automatisch in "OFE-Datenfusion"
 5. **Interpolation**: Erfolgt auf Kopie, nicht auf Original
