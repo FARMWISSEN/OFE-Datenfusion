@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>OFR - Interpolations Tool</string>
+   <string>OFE-Datenfusion</string>
   </property>
   <widget class="QTabWidget" name="tabWidget">
    <property name="geometry">
