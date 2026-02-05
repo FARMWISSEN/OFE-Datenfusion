@@ -2384,9 +2384,9 @@ class IPlugIn:
             QgsVectorLayer: Der kopierte Layer oder None bei Fehler
             
         Notes:
-            - Speichert in 'ofr_interpolation_outputs/point_interpolation/'
+            - Speichert in 'ofe_interpolation_outputs/point_interpolation/'
             - Dateiname: INTERP_{LayerName}_{CovarField}_{timestamp}.shp
-            - Layer wird automatisch zur "OFR Interpolationen" Gruppe hinzugefügt
+            - Layer wird automatisch zur "OFE-Datenfusion" Gruppe hinzugefügt
             - Kopie enthält alle Features und Felder des Originals
         """
         try:
