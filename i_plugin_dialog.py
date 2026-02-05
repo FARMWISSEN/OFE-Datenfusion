@@ -460,7 +460,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         QgsMessageLog.logMessage(
             "PyKrige ist nicht installiert. Kriging-Interpolation und Variogramm-Analyse "
             "sind nicht verfügbar. Bitte installieren Sie PyKrige: pip install pykrige",
-            "I-PlugIn",
+            "OFE-Datenfusion",
             Qgis.Warning
         )
         
@@ -633,38 +633,38 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                     else:
                         QgsMessageLog.logMessage(
                             f"Feld '{field}' nicht im transformierten Layer gefunden. Verfügbare Felder: {', '.join(field_names)}",
-                            "I-PlugIn",
+                            "OFE-Datenfusion",
                             Qgis.Warning
                         )
             
             # Erfolgsmeldung
             if field is not None:
                 self.iface.messageBar().pushSuccess(
-                    "I-PlugIn - Validierung",
+                    "OFE-Datenfusion - Validierung",
                     f"Layer '{layer.name()}', Feld '{field}' ist gültig und kann verwendet werden."
                 )
             else:
                 self.iface.messageBar().pushSuccess(
-                    "I-PlugIn - Validierung",
+                    "OFE-Datenfusion - Validierung",
                     f"Layer '{layer.name()}' ist gültig und kann verwendet werden."
                 )
             
             return True
             
         except DataValidationError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Datenvalidierung", str(e), duration=5)
+            self.iface.messageBar().pushWarning("OFE-Datenfusion - Datenvalidierung", str(e), duration=5)
             return False
         except GeometryError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Geometrie", str(e), duration=5)
+            self.iface.messageBar().pushWarning("OFE-Datenfusion - Geometrie", str(e), duration=5)
             return False
         except CoordinateSystemError as e:
-            self.iface.messageBar().pushWarning("I-PlugIn - Koordinatensystem", str(e), duration=5)
+            self.iface.messageBar().pushWarning("OFE-Datenfusion - Koordinatensystem", str(e), duration=5)
             return False
         except InterpolationError as e:
-            self.iface.messageBar().pushCritical("I-PlugIn - Fehler", str(e), duration=5)
+            self.iface.messageBar().pushCritical("OFE-Datenfusion - Fehler", str(e), duration=5)
             return False
         except Exception as e:
-            self.iface.messageBar().pushCritical("I-PlugIn - Unerwarteter Fehler", str(e), duration=5)
+            self.iface.messageBar().pushCritical("OFE-Datenfusion - Unerwarteter Fehler", str(e), duration=5)
             return False
     
     def boundary_layer_add(self):
@@ -744,7 +744,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if len(values) < 3:
                 QgsMessageLog.logMessage(
                     f"Not enough valid data points ({len(values)}) for parameter calculation",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Warning
                 )
                 return None
@@ -759,7 +759,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if variance == 0:
                 QgsMessageLog.logMessage(
                     "Variance is zero - cannot calculate meaningful parameters",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Warning
                 )
                 return None
@@ -772,7 +772,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if bbox_diagonal == 0:
                 QgsMessageLog.logMessage(
                     "Bounding box diagonal is zero - all points at same location",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Warning
                 )
                 return None
@@ -815,7 +815,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             QgsMessageLog.logMessage(
                 f"Calculated initial parameters: Var={variance:.3f}, BBox_diag={bbox_diagonal:.2f}, "
                 f"C={partial_sill:.3f}, C0={nugget:.3f}, rp={base_range:.2f}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Info
             )
             
@@ -824,7 +824,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         except Exception as e:
             QgsMessageLog.logMessage(
                 f"Error calculating initial parameters: {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Critical
             )
             return None
@@ -844,7 +844,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if not layer or not field:
                 QgsMessageLog.logMessage(
                     "No layer or field selected for initial value calculation",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Info
                 )
                 return
@@ -856,7 +856,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if calculated_values is None:
                 QgsMessageLog.logMessage(
                     "Using default values as fallback",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Info
                 )
                 calculated_values = {
@@ -914,14 +914,14 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             
             QgsMessageLog.logMessage(
                 f"Initial values calculated and set for layer '{layer.name()}', field '{field}'",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Info
             )
             
         except Exception as e:
             QgsMessageLog.logMessage(
                 f"Failed to calculate initial values: {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Warning
             )
     
@@ -940,7 +940,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if not layer or not field:
                 QgsMessageLog.logMessage(
                     "No layer or field selected for initial value calculation (point tab)",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Info
                 )
                 return
@@ -952,7 +952,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             if calculated_values is None:
                 QgsMessageLog.logMessage(
                     "Using default values as fallback (point tab)",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Info
                 )
                 calculated_values = {
@@ -1010,14 +1010,14 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             
             QgsMessageLog.logMessage(
                 f"Initial values calculated and set for layer '{layer.name()}', field '{field}' (point tab)",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Info
             )
             
         except Exception as e:
             QgsMessageLog.logMessage(
                 f"Failed to calculate initial values (point tab): {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Warning
             )
 
@@ -1031,7 +1031,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             0,
             self
         )
-        progress.setWindowTitle("I-PlugIn")
+        progress.setWindowTitle("OFE-Datenfusion")
         progress.setWindowModality(Qt.WindowModal)
         progress.setMinimumDuration(0)  # Show immediately
         progress.setAutoClose(True)
@@ -1061,7 +1061,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 progress.close()
                 QgsMessageLog.logMessage(
                     "No valid data points found for point variogram analysis",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Warning
                 )
                 return
@@ -1125,7 +1125,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             progress.close()
             QgsMessageLog.logMessage(
                 f"Unerwarteter Fehler bei Variogramm-Analyse: {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Critical
             )
             QMessageBox.critical(self, "Unerwarteter Fehler", f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}")
@@ -1271,7 +1271,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Log the change
         QgsMessageLog.logMessage(
             f"Raster tab: Switched to parameter page {method_index} for method '{method_name}'",
-            "I-PlugIn",
+            "OFE-Datenfusion",
             Qgis.Info
         )
         
@@ -1299,7 +1299,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Log the change
         QgsMessageLog.logMessage(
             f"Point tab: Switched to parameter page {method_index} for method '{method_name}'",
-            "I-PlugIn",
+            "OFE-Datenfusion",
             Qgis.Info
         )
         
@@ -1332,7 +1332,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Log the change
         QgsMessageLog.logMessage(
             f"Raster tab: Switched to parameter page {model_index} for variogram model '{model_name}'",
-            "I-PlugIn",
+            "OFE-Datenfusion",
             Qgis.Info
         )
 
@@ -1362,7 +1362,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Log the change
         QgsMessageLog.logMessage(
             f"Point tab: Switched to parameter page {model_index} for variogram model '{model_name}'",
-            "I-PlugIn",
+            "OFE-Datenfusion",
             Qgis.Info
         )
 
@@ -1585,7 +1585,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 0,
                 self
             )
-            progress.setWindowTitle("I-PlugIn")
+            progress.setWindowTitle("OFE-Datenfusion")
             progress.setWindowModality(Qt.WindowModal)
             progress.setMinimumDuration(0)
             progress.setAutoClose(True)
@@ -2185,7 +2185,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         # Log über QgsMessageLog statt self.log
         QgsMessageLog.logMessage(
             "Plugin auf Standard-Einstellungen zurückgesetzt",
-            "I-PlugIn",
+            "OFE-Datenfusion",
             Qgis.Info
         )
 
@@ -2255,7 +2255,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             0,
             self
         )
-        progress.setWindowTitle("I-PlugIn")
+        progress.setWindowTitle("OFE-Datenfusion")
         progress.setWindowModality(Qt.WindowModal)
         progress.setMinimumDuration(0)  # Show immediately
         progress.setAutoClose(True)
@@ -2285,7 +2285,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 progress.close()
                 QgsMessageLog.logMessage(
                     "No valid data points found for variogram analysis",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Warning
                 )
                 return
@@ -2349,7 +2349,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
             progress.close()
             QgsMessageLog.logMessage(
                 f"Unerwarteter Fehler bei Variogramm-Analyse: {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Critical
             )
             QMessageBox.critical(self, "Unerwarteter Fehler", f"Ein unerwarteter Fehler ist aufgetreten:\n\n{str(e)}")
@@ -2471,7 +2471,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         except Exception as e:
             QgsMessageLog.logMessage(
                 f"UI state update failed: {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Critical
             )
 
@@ -2494,7 +2494,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         except Exception as e:
             QgsMessageLog.logMessage(
                 f"Failed to reset variogram parameters (Raster): {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Warning
             )
 
@@ -2517,7 +2517,7 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         except Exception as e:
             QgsMessageLog.logMessage(
                 f"Failed to reset variogram parameters (Point): {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Warning
             )
 
@@ -2560,14 +2560,14 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 warning_text = "\n".join(warnings)
                 QgsMessageLog.logMessage(
                     f"Variogram Parameter Warnings (Raster):\n{warning_text}",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Warning
                 )
             
         except Exception as e:
             QgsMessageLog.logMessage(
                 f"Parameter validation failed (Raster): {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Critical
             )
 
@@ -2610,14 +2610,14 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
                 warning_text = "\n".join(warnings)
                 QgsMessageLog.logMessage(
                     f"Variogram Parameter Warnings (Point):\n{warning_text}",
-                    "I-PlugIn",
+                    "OFE-Datenfusion",
                     Qgis.Warning
                 )
             
         except Exception as e:
             QgsMessageLog.logMessage(
                 f"Parameter validation failed (Point): {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Critical
             )
 
@@ -2740,6 +2740,6 @@ class IPlugInDialog(QtWidgets.QDialog, FORM_CLASS):
         except Exception as e:
             QgsMessageLog.logMessage(
                 f"Failed to update variogram parameters: {str(e)}",
-                "I-PlugIn",
+                "OFE-Datenfusion",
                 Qgis.Critical
             )
