@@ -178,7 +178,7 @@ htmlhelp_basename = 'TemplateClassdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'IPlugIn.tex', u'IPlugIn Documentation',
+  ('index', 'OFE_Datenfusion.tex', u'OFE-Datenfusion Dokumentation',
    u'Lucas Johannsen', 'manual'),
 ]
 
@@ -211,6 +211,6 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'TemplateClass', u'IPlugIn Documentation',
+    ('index', 'ofe_datenfusion', u'IPlugIn Documentation',
      [u'Lucas Johannsen'], 1)
 ]
