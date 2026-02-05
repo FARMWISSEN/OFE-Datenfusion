@@ -521,7 +521,7 @@ def prepare_data(self, layer, field_name, boundary_layer=None):
 ## Kontakt & Support
 
 - **Autor**: Lucas Johannsen (lucas.johannsen@fh-kiel.de)
-- **Projekt**: On-Farm Research Module (OFR 3)
+- **Projekt**: On-Farm Experimente Module (OFR 3)
 - **QGIS Version**: ≥3.0
 - **Lizenz**: GNU GPL v2+
 
@@ -1490,7 +1490,7 @@ group.addLayer(new_layer)  # ✅ Zur Gruppe hinzufügen
 **Layer-Gruppe in QGIS:**
 ```
 Layers
-└── OFR Interpolationen/                # Alle Plugin-Layer hier!
+└── OFE Datenfusion/                # Alle Plugin-Layer hier!
     ├── UTM_MeinLayer                   # ✅ UTM-konvertierte Layer
     ├── UTM_MeinLayer_1
     ├── ordinary_kriging_...            # ✅ Raster-Interpolationen
