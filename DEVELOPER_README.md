@@ -385,10 +385,10 @@ projektverzeichnis/
 ```python
 # In QGIS Python Console:
 from qgis.core import QgsMessageLog, Qgis
-QgsMessageLog.logMessage("Test", "I-PlugIn", Qgis.Info)
+QgsMessageLog.logMessage("Test", "OFE-Datenfusion", Qgis.Info)
 ```
 
-**Log-Viewer**: QGIS → View → Panels → Log Messages → Filter "I-PlugIn"
+**Log-Viewer**: QGIS → View → Panels → Log Messages → Filter "OFE-Datenfusion"
 
 ### **Häufige Probleme**
 
