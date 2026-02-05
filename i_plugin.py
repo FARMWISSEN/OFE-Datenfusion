@@ -224,7 +224,7 @@ class IPlugIn:
         icon_path = f'{self.plugin_dir}/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'OFR Interpolation'),
+            text=self.tr(u'OFE-Datenfusion'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
