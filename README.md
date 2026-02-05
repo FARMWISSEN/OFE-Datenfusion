@@ -76,11 +76,30 @@ Das Plugin unterstützt Interpolation für typische Datenszenarien in On-Farm-Ex
 
 ## 🧩 Installation
 
-### Plugin installieren
-1. Kopiere dieses Repository nach:  
-   `QGIS3/profiles/default/python/plugins/ofe_datenfusion`
-2. Starte QGIS neu
-3. Aktiviere das Plugin unter: *Erweiterungen → Erweiterungen verwalten*
+### Option A (empfohlen): Installation über QGIS-Plugin-Repository (Auto-Updates)
+1. QGIS öffnen
+2. **Erweiterungen → Erweiterungen verwalten und installieren…**
+3. Reiter **Einstellungen**
+4. Sicherstellen, dass **Auch experimentelle Erweiterungen anzeigen** aktiviert ist
+5. Unter **Erweiterungsrepositorien** auf **Hinzufügen…** klicken
+5. Name vergeben (z. B. `SNaPwürZ OFE-Datenfusion`) und folgende URL eintragen:
+
+   `https://github.com/FARMWISSEN/OFE-Datenfusion/releases/latest/download/plugins.xml`
+
+6. Mit **OK** bestätigen und **Repos aktualisieren** / **Neu laden**
+7. Reiter **Alle** (oder Suche) → **OFE-Datenfusion** auswählen → **Installieren**
+
+
+### Option B: Manuelle Installation aus dem Quellcode (für Entwicklung)
+Diese Variante ist für Entwickler gedacht.
+
+1. Repository klonen oder herunterladen
+2. Sicherstellen, dass der Plugin-Ordner **`ofe_datenfusion/`** direkt im QGIS-Plugin-Verzeichnis liegt:
+
+   Windows (Standardprofil):
+   `%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\ofe_datenfusion`
+
+3. QGIS neu starten und Plugin im Plugin-Manager aktivieren
 
 ### Optionale Abhängigkeit: PyKrige
 PyKrige wird nur für **Kriging** benötigt. **IDW** und **Nearest Neighbor** funktionieren auch ohne PyKrige.
