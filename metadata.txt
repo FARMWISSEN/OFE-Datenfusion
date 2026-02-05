@@ -5,15 +5,15 @@
 [general]
 name=OFR 3. Kartenerzeugen und Datensätze anreichern 
 qgisMinimumVersion=3.0
-description=Plugin to perform interpolation task for onfarm research module
-version=0.1
+description=Plugin to perform interpolation task for On-Farm-Experiments
+version=0.1.1
 author=Lucas Johannsen
-email=lucas.johannsen@fh-kiel.de
+email=lucas.johannsen@haw-kiel.de
 
-about=Provide a brief description of the plugin and its purpose.
+about=Plugin zum Zusammenführen von Vektor-Punktdaten im OFE-Kontext und zur Erstellung von Rasterkarten.
 
-tracker=http://bugs
-repository=http://repo
+tracker=https://github.com/FARMWISSEN/OFE-Datenfusion/issues
+repository=https://github.com/FARMWISSEN/OFE-Datenfusion
 # End of mandatory metadata
 
 # Recommended items:
@@ -23,10 +23,10 @@ hasProcessingProvider=no
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=python
+tags=python, ofe
 
-homepage=http://homepage
-category=Plugins
+homepage=https://xn--snapwrz-r2a.de/
+category=Raster, Vector
 icon=icon.png
 # experimental flag
 experimental=True
@@ -39,11 +39,8 @@ deprecated=False
 # Check the documentation for more information.
 # plugin_dependencies=
 
-Category of the plugin: Raster, Vector, Database or Web
-# category=
-
 # If the plugin can run on QGIS Server.
 server=False
 
 [python]
-required_modules= pykrige
+required_modules=pykrige
