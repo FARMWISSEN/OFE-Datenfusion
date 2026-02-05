@@ -40,7 +40,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'IPlugIn'
+project = u'OFE-Datenfusion'
 copyright = u'2013, Lucas Johannsen'
 
 # The version info for the project you're documenting, acts as replacement for
