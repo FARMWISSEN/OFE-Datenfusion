@@ -1,4 +1,4 @@
-# Error Handling Analyse - I-PlugIn
+# Error Handling Analyse - OFE-Datenfusion
 
 **Datum:** 2025-10-07  
 **Zweck:** Vollständige Analyse des aktuellen Error-Handlings zur Identifikation von Verbesserungspotential

@@ -40,7 +40,7 @@ SOURCES = \
 	__init__.py \
 	i_plugin.py i_plugin_dialog.py
 
-PLUGINNAME = interpolation
+PLUGINNAME = ofe_datenfusion
 
 PY_FILES = \
 	__init__.py \
