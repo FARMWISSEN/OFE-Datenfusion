@@ -78,7 +78,7 @@ Das Plugin unterstützt Interpolation für typische Datenszenarien in On-Farm-Ex
 
 ### Plugin installieren
 1. Kopiere dieses Repository nach:  
-   `QGIS3/profiles/default/python/plugins/interpolation`
+   `QGIS3/profiles/default/python/plugins/ofe_datenfusion`
 2. Starte QGIS neu
 3. Aktiviere das Plugin unter: *Erweiterungen → Erweiterungen verwalten*
 
