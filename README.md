@@ -172,11 +172,19 @@ projektverzeichnis/
 
 ## 🆘 Support & Kontakt
 
-- Fehler bitte als Issue melden: 
+- Fehler bitte als Issue melden: https://github.com/FARMWISSEN/OFE-Datenfusion/issues 
 - Repository: https://github.com/FARMWISSEN/OFE-Datenfusion
 - Projekthomepage: https://snapwürz.de/
 ![](https://xn--snapwrz-r2a.de/wp-content/uploads/2024/06/Logo_Transparent-1-1024x635.png)
 
+
+---
+
+## :dollar: Förderung
+### Europäische Innovationspartnerschaft (EIP Agri)
+Das Projekt **Chancen durch digitale Innovation in On Farm Research und Exaktversuchen** (SNaPwürZ) wird durch die EU im Rahmen der Europäischen Innovationspartnerschaft (EIP Agri) und das Landesprogramm Ländlicher Raum des Landes Schleswig-Holstein (LPLR) gefördert. Ziel ist es, neue Problemlösungen anzuregen, die die Nachhaltigkeit und Effizienz in der Landwirtschaft steigern. Jedes Projekt wird durch eine Operationelle Gruppe (OG) gesteuert. Darin arbeiten Landwirte, Wissenschaftler, Berater, NGOs und Wirtschaftspartner gemeinsam.
+
+www.eip-agrar-sh.de 
 
 ---
 
