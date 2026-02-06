@@ -224,7 +224,7 @@ class IPlugIn:
         icon_path = f'{self.plugin_dir}/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'OFR Interpolation'),
+            text=self.tr(u'OFE-Datenfusion'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -234,9 +234,7 @@ class IPlugIn:
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
-            self.iface.removePluginMenu(
-                self.tr(u'&I-PlugIn'),
-                action)
+            self.iface.removePluginMenu(self.menu, action)
             self.iface.removeToolBarIcon(action)
 
     # ==================== HELPER FUNCTIONS ====================
@@ -262,7 +260,7 @@ class IPlugIn:
             message (str): Die Log-Nachricht
             level (Qgis.MessageLevel): Log-Level (Info, Warning, Critical, Success)
         """
-        QgsMessageLog.logMessage(message, "I-PlugIn", level)
+        QgsMessageLog.logMessage(message, "OFE-Datenfusion", level)
     
     # ==================== DATA HANDLING ====================
 
@@ -2386,9 +2384,9 @@ class IPlugIn:
             QgsVectorLayer: Der kopierte Layer oder None bei Fehler
             
         Notes:
-            - Speichert in 'ofr_interpolation_outputs/point_interpolation/'
+            - Speichert in 'ofe_interpolation_outputs/point_interpolation/'
             - Dateiname: INTERP_{LayerName}_{CovarField}_{timestamp}.shp
-            - Layer wird automatisch zur "OFR Interpolationen" Gruppe hinzugefügt
+            - Layer wird automatisch zur "OFE-Datenfusion" Gruppe hinzugefügt
             - Kopie enthält alle Features und Felder des Originals
         """
         try:
@@ -2971,7 +2969,7 @@ class IPlugIn:
             self.tr("Abbrechen"), 0, 0, 
             self.iface.mainWindow()
         )
-        progress.setWindowTitle("I-PlugIn - Kriging")
+        progress.setWindowTitle("OFE-Datenfusion - Kriging")
         progress.setWindowModality(Qt.WindowModal)
         progress.setMinimumDuration(0)
         progress.setMinimum(0)
@@ -3139,7 +3137,7 @@ class IPlugIn:
             self.tr("Abbrechen"), 0, 0, 
             self.iface.mainWindow()
         )
-        progress.setWindowTitle("I-PlugIn - IDW")
+        progress.setWindowTitle("OFE-Datenfusion - IDW")
         progress.setWindowModality(Qt.WindowModal)
         progress.setMinimumDuration(0)
         progress.setMinimum(0)
@@ -3214,7 +3212,7 @@ class IPlugIn:
             self.tr("Abbrechen"), 0, 0, 
             self.iface.mainWindow()
         )
-        progress.setWindowTitle("I-PlugIn - Nearest Neighbor")
+        progress.setWindowTitle("OFE-Datenfusion - Nearest Neighbor")
         progress.setWindowModality(Qt.WindowModal)
         progress.setMinimumDuration(0)
         progress.setMinimum(0)
@@ -3343,7 +3341,7 @@ class IPlugIn:
             variance_info = " + Varianz-Karte" if variance_path else ""
             success_msg = f"Kriging-Interpolation erfolgreich: {layer_name}{variance_info}"
         
-        self.iface.messageBar().pushSuccess("I-PlugIn", success_msg)
+        self.iface.messageBar().pushSuccess("OFE-Datenfusion", success_msg)
 
     def _handle_interpolation_error(self, error):
         """Zentrale Fehlerbehandlung für Interpolations-Workflows.
@@ -3354,24 +3352,24 @@ class IPlugIn:
         error_msg = str(error)
         
         if isinstance(error, DataValidationError):
-            self.iface.messageBar().pushWarning("I-PlugIn", f"Daten-Problem: {error_msg}")
+            self.iface.messageBar().pushWarning("OFE-Datenfusion", f"Daten-Problem: {error_msg}")
             QMessageBox.warning(self.iface.mainWindow(), "Datenvalidierung", error_msg)
         elif isinstance(error, GeometryError):
-            self.iface.messageBar().pushWarning("I-PlugIn", f"Geometrie-Problem: {error_msg}")
+            self.iface.messageBar().pushWarning("OFE-Datenfusion", f"Geometrie-Problem: {error_msg}")
             QMessageBox.warning(self.iface.mainWindow(), "Geometrie-Problem", error_msg)
         elif isinstance(error, CoordinateSystemError):
-            self.iface.messageBar().pushWarning("I-PlugIn", f"CRS-Problem: {error_msg}")
+            self.iface.messageBar().pushWarning("OFE-Datenfusion", f"CRS-Problem: {error_msg}")
             QMessageBox.warning(self.iface.mainWindow(), "Koordinatensystem", error_msg)
         elif isinstance(error, InterpolationCalculationError):
-            self.iface.messageBar().pushCritical("I-PlugIn", f"Berechnung: {error_msg}")
+            self.iface.messageBar().pushCritical("OFE-Datenfusion", f"Berechnung: {error_msg}")
             QMessageBox.critical(self.iface.mainWindow(), "Interpolation fehlgeschlagen", error_msg)
         elif isinstance(error, InterpolationError):
-            self.iface.messageBar().pushCritical("I-PlugIn", f"Plugin-Fehler: {error_msg}")
+            self.iface.messageBar().pushCritical("OFE-Datenfusion", f"Plugin-Fehler: {error_msg}")
             QMessageBox.critical(self.iface.mainWindow(), "Fehler", error_msg)
         else:
             self.log(f"Unerwarteter Fehler: {error_msg}", Qgis.Critical)
             self.log(f"Traceback: {traceback.format_exc()}", Qgis.Critical)
-            self.iface.messageBar().pushCritical("I-PlugIn", f"Unerwarteter Fehler: {error_msg}")
+            self.iface.messageBar().pushCritical("OFE-Datenfusion", f"Unerwarteter Fehler: {error_msg}")
             QMessageBox.critical(
                 self.iface.mainWindow(),
                 "Unerwarteter Fehler",

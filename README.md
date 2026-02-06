@@ -1,4 +1,4 @@
-# OFE Datenfusion – QGIS Plugin für On-Farm-Experimente
+# OFE-Datenfusion – QGIS Plugin für On-Farm-Experimente
 
 Das OFE Datenfusion Plugin ist das dritte Plugin des OFE-Werkzeugkastens der OG SNaPwürZ. Es erweitert QGIS um leistungsstarke Interpolationsverfahren für Raster- und Punktdaten sowie weitere Methoden für die räumliche Zusammenführung von Geodaten. Es bietet mehrere Interpolationsmethoden, interaktive Variogramm-Analyse, automatische UTM-Konvertierung und eine deutschsprachige Benutzeroberfläche.
 
@@ -76,11 +76,30 @@ Das Plugin unterstützt Interpolation für typische Datenszenarien in On-Farm-Ex
 
 ## 🧩 Installation
 
-### Plugin installieren
-1. Kopiere dieses Repository nach:  
-   `QGIS3/profiles/default/python/plugins/interpolation`
-2. Starte QGIS neu
-3. Aktiviere das Plugin unter: *Erweiterungen → Erweiterungen verwalten*
+### Option A (empfohlen): Installation über QGIS-Plugin-Repository (Auto-Updates)
+1. QGIS öffnen
+2. **Erweiterungen → Erweiterungen verwalten und installieren…**
+3. Reiter **Einstellungen**
+4. Sicherstellen, dass **Auch experimentelle Erweiterungen anzeigen** aktiviert ist
+5. Unter **Erweiterungsrepositorien** auf **Hinzufügen…** klicken
+5. Name vergeben (z. B. `SNaPwürZ OFE-Datenfusion`) und folgende URL eintragen:
+
+   `https://github.com/FARMWISSEN/OFE-Datenfusion/releases/latest/download/plugins.xml`
+
+6. Mit **OK** bestätigen und **Repos aktualisieren** / **Neu laden**
+7. Reiter **Alle** (oder Suche) → **OFE-Datenfusion** auswählen → **Installieren**
+
+
+### Option B: Manuelle Installation aus dem Quellcode (für Entwicklung)
+Diese Variante ist für Entwickler gedacht.
+
+1. Repository klonen oder herunterladen
+2. Sicherstellen, dass der Plugin-Ordner **`ofe_datenfusion/`** direkt im QGIS-Plugin-Verzeichnis liegt:
+
+   Windows (Standardprofil):
+   `%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\ofe_datenfusion`
+
+3. QGIS neu starten und Plugin im Plugin-Manager aktivieren
 
 ### Optionale Abhängigkeit: PyKrige
 PyKrige wird nur für **Kriging** benötigt. **IDW** und **Nearest Neighbor** funktionieren auch ohne PyKrige.
@@ -101,12 +120,12 @@ python -m pip install pykrige
 
 ## 🚀 Schnellstart
 
-1. Öffne das Plugin: *Praxisversuche → OFR Interpolation*
+1. Öffne das Plugin: *Praxisversuche → OFE-Datenfusion*
 2. Raster-Tab: Wähle Eingabe-Layer, Attributfeld und optional Boundary
 3. Punkt-Tab: Wähle Kovariaten-Layer und Ziel-Layer
 4. Führe optional eine Variogramm-Analyse durch (nur Kriging)
 5. Klicke auf „Interpolieren“
-6. Ergebnisse werden zur Layer-Gruppe „OFR Interpolationen“ hinzugefügt
+6. Ergebnisse werden zur Layer-Gruppe „OFE-Datenfusion“ hinzugefügt
 
 ---
 
@@ -142,7 +161,7 @@ interpolation/
 
 ```text
 projektverzeichnis/
-└── ofr_interpolation_outputs/
+└── OFE_Datenfusion/
     ├── raster_interpolation/       # Raster-Ergebnisse (.tif)
     ├── point_interpolation/        # Punkt-Ergebnisse (.shp)
     ├── utm_layers/                 # UTM-transformierte Layer
@@ -153,11 +172,19 @@ projektverzeichnis/
 
 ## 🆘 Support & Kontakt
 
-- Fehler bitte als Issue melden: 
+- Fehler bitte als Issue melden: https://github.com/FARMWISSEN/OFE-Datenfusion/issues 
 - Repository: https://github.com/FARMWISSEN/OFE-Datenfusion
 - Projekthomepage: https://snapwürz.de/
 ![](https://xn--snapwrz-r2a.de/wp-content/uploads/2024/06/Logo_Transparent-1-1024x635.png)
 
+
+---
+
+## :dollar: Förderung
+### Europäische Innovationspartnerschaft (EIP Agri)
+Das Projekt **Chancen durch digitale Innovation in On Farm Research und Exaktversuchen** (SNaPwürZ) wird durch die EU im Rahmen der Europäischen Innovationspartnerschaft (EIP Agri) und das Landesprogramm Ländlicher Raum des Landes Schleswig-Holstein (LPLR) gefördert. Ziel ist es, neue Problemlösungen anzuregen, die die Nachhaltigkeit und Effizienz in der Landwirtschaft steigern. Jedes Projekt wird durch eine Operationelle Gruppe (OG) gesteuert. Darin arbeiten Landwirte, Wissenschaftler, Berater, NGOs und Wirtschaftspartner gemeinsam.
+
+www.eip-agrar-sh.de 
 
 ---
 
