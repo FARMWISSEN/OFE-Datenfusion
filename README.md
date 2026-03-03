@@ -77,6 +77,7 @@ Das Plugin unterstützt Interpolation für typische Datenszenarien in On-Farm-Ex
 ## 🧩 Installation
 
 ### Option A (empfohlen): Installation über QGIS-Plugin-Repository (Auto-Updates)
+> Hier gehts zum ausführlichen Tutorial: [Installation der SNaPWürZ Plugins für QGIS](https://farmwiki.de/de/Tutorials/GIS/QGIS/installation_snapwuerz_plugin)
 1. QGIS öffnen
 2. **Erweiterungen → Erweiterungen verwalten und installieren…**
 3. Reiter **Einstellungen**
@@ -103,6 +104,7 @@ Diese Variante ist für Entwickler gedacht.
 
 ### Optionale Abhängigkeit: PyKrige
 PyKrige wird nur für **Kriging** benötigt. **IDW** und **Nearest Neighbor** funktionieren auch ohne PyKrige.
+> Hier gehts zum ausführlichen Tutorial: [Installation von Python-Paketen in der Python-Umgebung von QGIS](https://farmwiki.de/de/Tutorials/GIS/QGIS/installation_python_pakete_qgis)
 
 **Windows (OSGeo4W Shell):**
 ```bash
